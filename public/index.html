@@ -36,7 +36,7 @@
 
 <nav class="top"><div class="wrap">
   <div class="logo">á<span>casa</span><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:5px;margin-left:1px"><path d="M12 1c.7 4.6 2.6 6.5 7 7-4.4.5-6.3 2.4-7 7-.7-4.6-2.6-6.5-7-7 4.4-.5 6.3-2.4 7-7z" fill="var(--gold)"/></svg></div>
-  <div class="links"><a href="/shop.html">Productos</a><a href="/playground.html">Admin</a></div>
+  <div class="links"><a href="/shop.html">Productos</a><a href="/playground.html" class="admin-only">Admin</a></div>
   <div class="spacer"></div>
   <button class="btn wire" onclick="location='/shop.html'">Ingresar</button>
   <button class="btn orange" onclick="location='/shop.html'">Crear cuenta</button>
@@ -64,5 +64,11 @@
   <div class="legal">La transacción anunciada es un contrato de crédito celebrado en México, en términos del capítulo VII de la Ley Federal de protección al consumidor. Términos y condiciones en Acasa.mx</div>
 </div></footer>
 
+<script>
+// Admin tools need the Rails backend. Hide them on the static (deployed) demo.
+if(!/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)){
+  document.querySelectorAll('.admin-only').forEach(function(e){ e.style.display='none'; });
+}
+</script>
 </body>
 </html>

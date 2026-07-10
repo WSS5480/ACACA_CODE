@@ -1,0 +1,33 @@
+# Development image for the Ácasa API.
+# Kept separate from the production Dockerfile so we can run in RAILS_ENV=development
+# with the code mounted from the host (live reload) and gems cached in a volume.
+FROM ruby:3.3.2-slim
+
+# System deps: build tools + PostgreSQL client libs (for the pg gem) + git + libvips (Active Storage).
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      libpq-dev \
+      git \
+      libvips \
+      curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Match the bundler version pinned in Gemfile.lock.
+RUN gem install bundler -v 2.7.1
+
+WORKDIR /app
+
+# Gems live outside /app so the host bind-mount doesn't hide them.
+ENV BUNDLE_PATH=/usr/local/bundle
+
+# Install gems first (better layer caching). The full source is bind-mounted at runtime.
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+COPY . .
+
+EXPOSE 3000
+
+# Default command is overridden per-service in docker-compose.yml.
+CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]

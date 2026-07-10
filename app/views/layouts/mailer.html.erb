@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #EEEEEE;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#EEEEEE">
+    <tr>
+      <td style="padding: 110px 20px;">
+        <!-- Card principal -->
+        <table cellpadding="0" cellspacing="0" border="0" width="645" align="center" bgcolor="#ffffff" style="border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 0 auto;">
+          <tr>
+            <td style="padding: 50px;">
+              <!-- Logo -->
+              <div style="margin-bottom: 30px;">
+                <%= image_tag attachments['acasa_logo_mail.png'].url, 
+                    alt: "Acasa", 
+                    style: "max-width: 79px; height: auto;" %>
+              </div>
+              
+              <!-- Título -->
+              <% if content_for?(:email_title) %>
+                <h1 style="font-family: Helvetica, Arial, sans-serif; font-size: 30px; line-height: 40px; font-weight: 400; margin: 0 0 20px 0; color: #333;">
+                  <%= yield :email_title %>
+                </h1>
+              <% end %>
+              
+              <!-- Contenido -->
+              <div style="font-family: Helvetica, Arial, sans-serif; font-size: 16px; line-height: 24px; font-weight: 400; color: #333;">
+                <%= yield %>
+              </div>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Footer con copyright -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="text-align: center; padding-top: 30px;">
+              <p style="margin: 0; font-size: 14px; color: #666666; font-family: Arial, sans-serif;">
+                Acasa © <%= Date.current.year %>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

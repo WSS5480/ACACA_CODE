@@ -1,0 +1,30 @@
+<% content_for :email_title do %>
+  Hola <%= @user&.name || '' %>,
+<% end %>
+
+<p style="margin-bottom: 20px;">
+  ¡Gracias por crear una cuenta con nosotros! Nos complace darte la bienvenida a Acasa.
+</p>
+
+<p style="margin-bottom: 20px;">
+  Si estás leyendo este correo, significa que has registrado correctamente tu dirección de correo electrónico y que estás recibiendo nuestros correos sin problemas.
+</p>
+
+<p style="margin-bottom: 20px;">
+  ¡Esperamos que disfrutes de la experiencia!
+</p>
+
+<%# 
+<table cellpadding="0" cellspacing="0" border="0" style="margin: 30px 0;">
+  <tr>
+    <td>
+      <a href="< %= @login_url % >" target="_blank" style="padding: 12px 18px; border-radius: 3px; font-size: 16px; font-family: Helvetica, Arial, sans-serif; font-weight: normal; background-color: #111111; color: #ffffff; text-decoration: none; display: inline-block; white-space: nowrap;">
+        Verificar cuenta
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-top: 12px; font-size: 14px; color: #666;">Si no puedes hacer clic en el botón, copia y pega el siguiente enlace en tu navegador: < %= @login_url % ></td>
+  </tr>
+</table>
+%>

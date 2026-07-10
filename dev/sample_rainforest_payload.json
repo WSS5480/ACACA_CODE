@@ -1,0 +1,107 @@
+[
+  {
+    "success": true,
+    "id": "demo-collection-item-1",
+    "result": {
+      "product": {
+        "asin": "B08N5WRWNW",
+        "title": "Sofá seccional 3 plazas color gris",
+        "keywords": "sofa seccional sala mueble gris",
+        "link": "https://www.amazon.com/dp/B08N5WRWNW",
+        "brand": "Ashley",
+        "rating": 4.5,
+        "color": "Gris",
+        "material": "Tela",
+        "dimensions": "200 x 90 x 85 cm",
+        "model_number": "SEC-300",
+        "feature_bullets": [
+          "Asiento de 3 plazas con chaise reversible",
+          "Tapizado de tela resistente a manchas",
+          "Estructura de madera maciza"
+        ],
+        "buybox_winner": { "price": { "value": 5400, "currency": "MXN" } },
+        "categories": [
+          { "category_id": "3733551", "name": "Muebles", "link": "https://www.amazon.com/b?node=3733551" },
+          { "category_id": "3733561", "name": "Sala", "link": "https://www.amazon.com/b?node=3733561" }
+        ],
+        "specifications": [
+          { "name": "Peso", "value": "42 kg" },
+          { "name": "Capacidad", "value": "3 personas" }
+        ],
+        "images": [
+          { "link": "https://m.media-amazon.com/images/I/71demo1sofa._AC_SL1500_.jpg" }
+        ]
+      }
+    }
+  },
+  {
+    "success": true,
+    "id": "demo-collection-item-2",
+    "result": {
+      "product": {
+        "asin": "B07FZ8S74R",
+        "title": "Refrigerador 18 pies cúbicos acero inoxidable",
+        "keywords": "refrigerador nevera cocina acero",
+        "link": "https://www.amazon.com/dp/B07FZ8S74R",
+        "brand": "Whirlpool",
+        "rating": 4.3,
+        "color": "Acero inoxidable",
+        "material": "Metal",
+        "dimensions": "70 x 70 x 180 cm",
+        "model_number": "WRF-18",
+        "feature_bullets": [
+          "Capacidad de 18 pies cúbicos",
+          "Dispensador de agua y hielo",
+          "Bajo consumo energético"
+        ],
+        "buybox_winner": { "price": { "value": 16200, "currency": "MXN" } },
+        "categories": [
+          { "category_id": "2619526011", "name": "Electrodomésticos", "link": "https://www.amazon.com/b?node=2619526011" },
+          { "category_id": "3741261", "name": "Refrigeradores", "link": "https://www.amazon.com/b?node=3741261" }
+        ],
+        "specifications": [
+          { "name": "Capacidad", "value": "18 pies³" },
+          { "name": "Eficiencia", "value": "Energy Star" }
+        ],
+        "images": [
+          { "link": "https://m.media-amazon.com/images/I/71demo2fridge._AC_SL1500_.jpg" }
+        ]
+      }
+    }
+  },
+  {
+    "success": true,
+    "id": "demo-collection-item-3",
+    "result": {
+      "product": {
+        "asin": "B09G9FPHY6",
+        "title": "Televisor 55 pulgadas 4K UHD Smart TV",
+        "keywords": "television pantalla 4k smart tv 55",
+        "link": "https://www.amazon.com/dp/B09G9FPHY6",
+        "brand": "Samsung",
+        "rating": 4.7,
+        "color": "Negro",
+        "material": "Plástico y metal",
+        "dimensions": "123 x 71 x 8 cm",
+        "model_number": "TV-55U",
+        "feature_bullets": [
+          "Resolución 4K UHD (3840 x 2160)",
+          "Smart TV con apps integradas",
+          "3 puertos HDMI"
+        ],
+        "buybox_winner": { "price": { "value": 9000, "currency": "MXN" } },
+        "categories": [
+          { "category_id": "17938598011", "name": "Electrónica", "link": "https://www.amazon.com/b?node=17938598011" },
+          { "category_id": "172659", "name": "Televisores", "link": "https://www.amazon.com/b?node=172659" }
+        ],
+        "specifications": [
+          { "name": "Resolución", "value": "3840 x 2160" },
+          { "name": "Tamaño", "value": "55 pulgadas" }
+        ],
+        "images": [
+          { "link": "https://m.media-amazon.com/images/I/71demo3tv._AC_SL1500_.jpg" }
+        ]
+      }
+    }
+  }
+]

@@ -1,0 +1,5 @@
+﻿ID,ASIN,Título,Marca,Color,Material,Dimensiones,Modelo,Keywords,Categorías,Link original,Precio original,Moneda original,Precio USD,Precio con descuento USD,Turns,Factor decimal,Estatus
+1,B08N5WRWNW,Sofá seccional 3 plazas,Ashley,Gris,Tela,200x90x85 cm,SEC-300,sofa sala mueble,Muebles > Sala,https://www.amazon.com/dp/B08N5WRWNW,5400,MXN,300.00,"",3.5,0.75,Activo
+2,B07FZ8S74R,Refrigerador 18 pies,Whirlpool,Acero,Metal,70x70x180 cm,WRF-18,refrigerador cocina,Electrodomésticos > Cocina,https://www.amazon.com/dp/B07FZ8S74R,16200,MXN,900.00,750.00,3.5,0.75,Activo
+3,B09G9FPHY6,Televisor 55 pulgadas 4K,Samsung,Negro,Plástico,123x71x8 cm,TV-55U,television pantalla 4k,Electrónica > TV,https://www.amazon.com/dp/B09G9FPHY6,9000,MXN,500.00,"",3.5,0.75,Activo
+4,B08XYZ1234,Lavadora carga frontal,LG,Blanco,Metal,60x60x85 cm,LV-FRONT,lavadora ropa,Electrodomésticos > Lavandería,https://www.amazon.com/dp/B08XYZ1234,7200,MXN,400.00,360.00,3.5,0.75,Desactivado

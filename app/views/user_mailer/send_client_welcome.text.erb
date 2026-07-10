@@ -1,0 +1,21 @@
+¡Bienvenid@ a Acasa, <%= @user&.name || '' %>!
+
+Nos alegra mucho que formes parte de nuestra familia. Tu cuenta ha sido creada exitosamente.
+
+Para acceder a tu cuenta, necesitarás tu número de cliente:
+
+Tu número de cliente es: <%= @user.number %>
+
+Importante: Guarda este número en un lugar seguro. Lo necesitarás cada vez que quieras iniciar sesión.
+
+<% if @confirmation_url.present? %>
+Para activar tu cuenta y poder iniciar sesión, abre este enlace en tu navegador:
+<%= @confirmation_url %>
+
+<% end %>
+Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.
+
+¡Gracias por confiar en nosotros!
+
+Acasa © <%= Date.current.year %>
+

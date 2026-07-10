@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ácasa API Playground</title>
+<style>
+  :root { --bg:#0f1220; --card:#191d2f; --line:#2b3048; --txt:#e7e9f3; --mut:#9aa0be; --accent:#5b8cff; --good:#37c98b; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--txt); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  .pill { font-size:12px; padding:3px 10px; border-radius:20px; background:#333; color:#fff; }
+  .pill.ok { background:rgba(55,201,139,.15); color:var(--good); }
+  .pill.err { background:rgba(255,107,107,.15); color:var(--bad); }
+  main { max-width:920px; margin:0 auto; padding:24px; display:grid; gap:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
+  .card h2 { font-size:15px; margin:0 0 12px; font-weight:600; }
+  .card p.hint { color:var(--mut); font-size:13px; margin:0 0 14px; }
+  label { display:block; font-size:12px; color:var(--mut); margin:10px 0 4px; }
+  input, select { width:100%; padding:9px 10px; background:#0e1120; border:1px solid var(--line); border-radius:8px; color:var(--txt); font-size:14px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:140px; }
+  button { background:var(--accent); color:#fff; border:0; padding:10px 16px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-top:12px; }
+  button.sec { background:#2b3048; }
+  button:disabled { opacity:.5; cursor:default; }
+  .plans { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .plan { background:#0e1120; border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+  .plan .wk { font-size:12px; color:var(--mut); }
+  .plan .amt { font-size:20px; font-weight:700; margin:4px 0; }
+  .plan .tot { font-size:11px; color:var(--mut); }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:8px; }
+  .kpi { background:#0e1120; border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+  .kpi .n { font-size:22px; font-weight:700; }
+  .kpi .l { font-size:11px; color:var(--mut); }
+  table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+  th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--mut); font-weight:500; }
+  #log { background:#0a0c16; border:1px solid var(--line); border-radius:10px; padding:12px; font-family:ui-monospace,Menlo,monospace; font-size:12px; color:#b9c0e0; white-space:pre-wrap; max-height:220px; overflow:auto; }
+  .muted { color:var(--mut); font-size:12px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:6px; background:#2b3048; color:var(--mut); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ácasa API Playground</h1>
+  <nav style="display:flex;gap:6px;">
+    <a href="/shop.html" style="color:#9aa0be;text-decoration:none;font-size:13px;padding:6px 12px;border-radius:16px;">Tienda</a>
+    <a href="/playground.html" style="color:#fff;background:#2b3048;text-decoration:none;font-size:13px;padding:6px 12px;border-radius:16px;">Panel</a>
+    <a href="/credit.html" style="color:#9aa0be;text-decoration:none;font-size:13px;padding:6px 12px;border-radius:16px;">Crédito</a>
+    <a href="/risk.html" style="color:#9aa0be;text-decoration:none;font-size:13px;padding:6px 12px;border-radius:16px;">Riesgo</a>
+  </nav>
+  <span id="status" class="pill">checking…</span>
+  <span id="token-badge" class="badge">not logged in</span>
+</header>
+<main>
+
+  <div class="card">
+    <h2>1 · Set up demo data</h2>
+    <p class="hint">Logs in as admin, sets an exchange rate, and loads a small demo catalog through the scraper webhook — so the rest of the page has products to work with.</p>
+    <button id="btn-seed">Set up demo data</button>
+    <button class="sec" id="btn-reload">Reload products</button>
+  </div>
+
+  <div class="card">
+    <h2>2 · Payment plan simulator <span class="badge">public endpoint</span></h2>
+    <p class="hint">The core pricing engine. Pick a product, choose how much is down vs. store credit, and see the four weekly-payment plans the API returns.</p>
+    <div class="row">
+      <div>
+        <label>Product</label>
+        <select id="sim-product"></select>
+      </div>
+      <div>
+        <label>Downpayment ($<span id="dp-val">0</span>)</label>
+        <input type="range" id="sim-dp" min="0" max="100" value="100" step="1">
+      </div>
+      <div>
+        <label>Store credit applied</label>
+        <input id="sim-credit" readonly>
+      </div>
+    </div>
+    <button id="btn-sim">Simulate</button>
+    <div class="plans" id="sim-plans"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Log in</h2>
+    <p class="hint">Get a JWT. Client: cliente@test.com / password123 · Admin: admin@test.com / admin123</p>
+    <div class="row">
+      <div><label>Email</label><input id="li-email" value="admin@test.com"></div>
+      <div><label>Password</label><input id="li-pass" value="admin123"></div>
+    </div>
+    <button id="btn-login">Log in</button>
+  </div>
+
+  <div class="card">
+    <h2>4 · Admin dashboard <span class="badge">needs login</span></h2>
+    <p class="hint">Counts of clients, prequalifications, orders, and active store credits (this last one used to be hardcoded to 0 — now real).</p>
+    <button id="btn-dash">Load dashboard</button>
+    <div class="kpis" id="dash-kpis"></div>
+  </div>
+
+  <div class="card">
+    <h2>Products in the catalog</h2>
+    <table id="prod-table"><thead><tr><th>ID</th><th>Title</th><th>Price</th><th>Discount</th><th>Min weekly</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>Request log</h2>
+    <p class="hint">Every call this page makes, with the response — handy for spotting what to improve.</p>
+    <div id="log"></div>
+  </div>
+
+</main>
+<script>
+const API = '';
+let TOKEN = null;
+let PRODUCTS = [];
+
+const $ = id => document.getElementById(id);
+function log(msg, kind){ const el=$('log'); const t=new Date().toLocaleTimeString(); el.textContent = `[${t}] ${msg}\n` + el.textContent; }
+function setStatus(ok, txt){ const s=$('status'); s.textContent=txt; s.className='pill '+(ok?'ok':'err'); }
+
+async function api(method, path, body, auth){
+  const headers = { 'Content-Type':'application/json' };
+  if(auth && TOKEN) headers['Authorization'] = TOKEN;
+  const res = await fetch(API+path, { method, headers, body: body?JSON.stringify(body):undefined });
+  const authHdr = res.headers.get('Authorization');
+  let data=null, text='';
+  try { text = await res.text(); data = text?JSON.parse(text):null; } catch(e){ data = text; }
+  log(`${method} ${path} → ${res.status}` + (data?'  '+JSON.stringify(data).slice(0,200):''));
+  return { ok:res.ok, status:res.status, data, authHdr };
+}
+
+function effective(p){ return (p.price_with_discount && p.price_with_discount>0) ? p.price_with_discount : p.price; }
+
+function normalizeProducts(json){
+  let arr = (json && (json.data || json.products)) || json || [];
+  if(!Array.isArray(arr)) arr = [];
+  return arr.map(p=>{ const a=p.attributes||p; return {
+    id: p.id||a.id, title:a.title,
+    price: parseFloat(a.price),
+    price_with_discount: (a.price_with_discount!=null && a.price_with_discount!=='')?parseFloat(a.price_with_discount):null,
+    min_weekly_payment: a.min_weekly_payment
+  };}).filter(p=>p.id);
+}
+
+async function checkHealth(){
+  try { const r = await fetch(API+'/up'); setStatus(r.ok, r.ok?'API online':'API error '+r.status); }
+  catch(e){ setStatus(false,'API offline'); }
+}
+
+async function loadProducts(){
+  const r = await api('GET','/api/products?per_page=50');
+  if(!r.ok){ return; }
+  PRODUCTS = normalizeProducts(r.data);
+  // table
+  const tb = $('prod-table').querySelector('tbody');
+  tb.innerHTML = PRODUCTS.map(p=>`<tr><td>${p.id}</td><td>${p.title||''}</td><td>$${p.price??''}</td><td>${p.price_with_discount?'$'+p.price_with_discount:'—'}</td><td>${p.min_weekly_payment?'$'+p.min_weekly_payment:'—'}</td></tr>`).join('') || '<tr><td colspan=5 class=muted>No products yet — click “Set up demo data”.</td></tr>';
+  // simulator dropdown
+  const sel = $('sim-product');
+  sel.innerHTML = PRODUCTS.map(p=>`<option value="${p.id}">${p.title||('Product '+p.id)} — $${effective(p)}</option>`).join('');
+  syncSim();
+}
+
+function currentSimProduct(){ const id=$('sim-product').value; return PRODUCTS.find(p=>String(p.id)===String(id)); }
+function syncSim(){
+  const p = currentSimProduct(); if(!p) return;
+  const eff = effective(p);
+  const dp = $('sim-dp'); dp.max = eff; if(+dp.value>eff) dp.value=eff;
+  $('dp-val').textContent = (+dp.value).toFixed(0);
+  $('sim-credit').value = '$'+(eff - dp.value).toFixed(2);
+}
+
+async function simulate(){
+  const p = currentSimProduct(); if(!p){ log('Pick a product first.'); return; }
+  const eff = effective(p); const dp = +$('sim-dp').value; const credit = eff - dp;
+  const qs = `product_id=${p.id}&product_price=${eff}&downpayment=${dp}&used_credit=${credit}`;
+  const r = await api('GET','/api/orders/simulate_payment_plans?'+qs);
+  const box = $('sim-plans');
+  if(!r.ok){ box.innerHTML = `<div class="muted">Error: ${JSON.stringify(r.data)}</div>`; return; }
+  const plans = (r.data && r.data.payment_plans) || [];
+  box.innerHTML = plans.map(pl=>`<div class="plan"><div class="wk">${pl.weeks} weeks</div><div class="amt">$${Number(pl.weekly_payment).toFixed(2)}</div><div class="tot">total $${(pl.weekly_payment*pl.weeks).toFixed(2)}</div></div>`).join('');
+}
+
+async function login(){
+  const r = await api('POST','/api/login',{ user:{ email:$('li-email').value, password:$('li-pass').value }});
+  if(r.ok && r.authHdr){ TOKEN=r.authHdr; $('token-badge').textContent='logged in ✓'; $('token-badge').style.color='#37c98b'; log('Got JWT ✓'); }
+  else { $('token-badge').textContent='login failed'; log('Login failed: '+JSON.stringify(r.data)); }
+}
+
+async function dashboard(){
+  if(!TOKEN){ log('Log in first (as admin).'); return; }
+  const r = await api('GET','/api/orders/dashboard',null,true);
+  if(!r.ok){ $('dash-kpis').innerHTML=`<div class="muted">Error: ${JSON.stringify(r.data)}</div>`; return; }
+  const d = (r.data && r.data.data) || {};
+  const items = [['Clients','clients_count'],['Prequalifications','prequalifications_count'],['Orders','orders_count'],['Active credits','credits_count']];
+  $('dash-kpis').innerHTML = items.map(([l,k])=>`<div class="kpi"><div class="n">${d[k]??'—'}</div><div class="l">${l}</div></div>`).join('');
+}
+
+const SAMPLE_CATALOG = [
+  {success:true,id:'pg-1',result:{product:{asin:'PG0001',title:'Sofá seccional 3 plazas',brand:'Ashley',rating:4.5,color:'Gris',buybox_winner:{price:{value:5400,currency:'MXN'}},categories:[{category_id:'C1',name:'Muebles'}],images:[{link:'https://via.placeholder.com/300'}]}}},
+  {success:true,id:'pg-2',result:{product:{asin:'PG0002',title:'Refrigerador 18 pies',brand:'Whirlpool',rating:4.3,buybox_winner:{price:{value:16200,currency:'MXN'}},categories:[{category_id:'C2',name:'Electrodomésticos'}],images:[{link:'https://via.placeholder.com/300'}]}}},
+  {success:true,id:'pg-3',result:{product:{asin:'PG0003',title:'Televisor 55" 4K',brand:'Samsung',rating:4.7,buybox_winner:{price:{value:9000,currency:'MXN'}},categories:[{category_id:'C3',name:'Electrónica'}],images:[{link:'https://via.placeholder.com/300'}]}}}
+];
+
+async function seed(){
+  $('btn-seed').disabled = true; $('btn-seed').textContent='Setting up…';
+  log('— Setting up demo data —');
+  // 1) admin login
+  const li = await api('POST','/api/login',{ user:{ email:'admin@test.com', password:'admin123' }});
+  if(li.authHdr){ TOKEN=li.authHdr; $('token-badge').textContent='logged in ✓'; }
+  // 2) exchange rate
+  let er = await api('POST','/api/exchange_rates',{ exchange_rate:{ usd_to_mxn:18 }}, true);
+  if(!er.ok){ er = await api('POST','/api/exchange_rates',{ usd_to_mxn:18 }, true); }
+  if(!er.ok){ log('⚠ Could not set exchange rate via API. Tip: trigger “fetch_exchange_rate” in /sidekiq, then click “Set up demo data” again.'); }
+  // 3) catalog via scraper webhook
+  const mc = await api('POST','/api/products/manage_collection', SAMPLE_CATALOG);
+  if(mc.ok){ log('Catalog webhook accepted. Products are being created in the background…'); }
+  // 4) reload after a moment (background job)
+  setTimeout(loadProducts, 2500);
+  setTimeout(()=>{ $('btn-seed').disabled=false; $('btn-seed').textContent='Set up demo data'; }, 2600);
+}
+
+$('btn-seed').onclick = seed;
+$('btn-reload').onclick = loadProducts;
+$('btn-sim').onclick = simulate;
+$('btn-login').onclick = login;
+$('btn-dash').onclick = dashboard;
+$('sim-product').onchange = syncSim;
+$('sim-dp').oninput = syncSim;
+
+checkHealth();
+loadProducts();
+</script>
+</body>
+</html>

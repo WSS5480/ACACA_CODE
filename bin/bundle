@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Bundle wrapper for Bundler 4.0+ compatibility
+# This script intercepts bundle commands and removes the deprecated --deployment flag
+
+# Configure bundle deployment mode via config (Bundler 4.0+ way)
+bundle config set --local deployment true 2>/dev/null || true
+
+# Remove --deployment flag from arguments if present (Bundler 4.0+ doesn't support it)
+ARGS=()
+DEPLOYMENT_SET=false
+
+for arg in "$@"; do
+  if [ "$arg" = "--deployment" ]; then
+    DEPLOYMENT_SET=true
+    # Skip this argument - don't add it to ARGS
+    continue
+  fi
+  ARGS+=("$arg")
+done
+
+# If --deployment was found, ensure config is set
+if [ "$DEPLOYMENT_SET" = true ]; then
+  bundle config set --local deployment true 2>/dev/null || true
+fi
+
+# Execute bundle with cleaned arguments
+exec /usr/bin/env bundle "${ARGS[@]}"

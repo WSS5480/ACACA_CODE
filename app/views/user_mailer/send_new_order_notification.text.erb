@@ -1,0 +1,12 @@
+Nueva orden #<%= @order.id %> - Acasa
+
+Se ha registrado una nueva orden:
+
+ID orden:       #<%= @order.id %>
+Cliente:        <%= @order.user_name %> <%= @order.user_last_name %> (<%= @order.user_email %>)
+Producto:       <%= @order.product_title %> (ASIN: <%= @order.product_asin %>)
+Enganche:       <%= number_to_currency(@order.downpayment) %>
+Crédito usado:  <%= number_to_currency(@order.used_credit) %>
+Pago semanal:   <%= number_to_currency(@order.weekly_payment) %>
+Fecha:          <%= l(@order.created_at, format: :long) %>
+

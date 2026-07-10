@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+
+# Configure bundler for deployment (Bundler 4.0+ compatibility)
+# This replaces the deprecated --deployment flag
+bundle config set --local deployment true
+bundle config set --local path vendor/bundle
+bundle config set --local without 'development test'
+
+# Install gems (without --deployment flag as it's deprecated in Bundler 4.0+)
+bundle install
+
+# Run any other deployment tasks
+exec "$@"

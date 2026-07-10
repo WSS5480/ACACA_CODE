@@ -1,0 +1,9 @@
+# Tareas programadas de sidekiq-scheduler.
+# Cargado en config/initializers/sidekiq.rb al iniciar el servidor Sidekiq.
+# Formato cron estándar de 5 campos (en la zona horaria del proceso).
+
+fetch_exchange_rate:
+  cron: '0 12 * * *'            # todos los días a las 12:00
+  class: 'ExchangeRates::FetchRateJob'
+  queue: default
+  description: 'Obtiene el tipo de cambio USD->MXN y guarda un ExchangeRate si cambió'

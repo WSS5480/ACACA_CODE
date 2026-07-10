@@ -319,8 +319,9 @@ async function submitApply(){
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on')));
 $('m-dp').oninput=simulate;$('m-apply').onclick=openApply;$('a-submit').onclick=submitApply;
 $('q').oninput=applyView;$('sort').onchange=applyView;
-// Admin tools need the backend; hide them on the static (deployed) demo.
-if(!/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)){ document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='none';}); }
+// Admin tools need the backend; show them only where the API responds.
+document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='none';});
+fetch('/up').then(function(r){ if(r.ok) document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='';}); }).catch(function(){});
 load();
 </script>
 </body>

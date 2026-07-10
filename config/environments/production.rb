@@ -43,6 +43,8 @@ Rails.application.configure do
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
+  # Don't redirect the health-check endpoint (so platform health checks on /up get 200, not a 301).
+  config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
   # Configure default URL options for production
   config.action_mailer.default_url_options = { 

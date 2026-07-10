@@ -31,6 +31,10 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free            # sleeps when idle; use starter ($7/mo) for always-on
     healthCheckPath: /up
+    # Run DB setup + migrations as a clear, separate step (not in the container
+    # entrypoint), then start Puma directly so boot doesn't depend on db:prepare.
+    preDeployCommand: "bundle exec rails db:prepare && bundle exec rails db:migrate"
+    dockerCommand: "bundle exec puma -C config/puma.rb"
     envVars:
       - key: RAILS_ENV
         value: production
@@ -65,10 +69,7 @@ services:
       - key: RAILS_ENV
         value: production
       - key: SECRET_KEY_BASE
-        fromService:
-          type: web
-          name: acasa-web
-          envVarKey: SECRET_KEY_BASE
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: acasa-db

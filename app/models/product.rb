@@ -13,12 +13,15 @@ class Product < ApplicationRecord
   def image_urls
     return [] unless images.attached?
 
-    images.map { |image| rails_blob_url(image) }
+    # En desarrollo usamos rutas relativas para que las fotos carguen tanto en
+    # localhost como a través de un túnel público (mismo origen que sirve la página).
+    # En producción se generan URLs absolutas (S3 / host configurado).
+    images.map { |image| Rails.env.development? ? rails_blob_path(image) : rails_blob_url(image) }
+  rescue StandardError => e
+    Rails.logger.warn("[product #{id}] no se pudo generar image_urls: #{e.message}")
+    []
   end
 
-  # Retorna el precio efectivo del producto:
-  # - price_with_discount si está definido y es mayor a 0
-  # - price en caso contrario
   def effective_price
     price_with_discount.present? && price_with_discount > 0 ? price_with_discount : price
   end
@@ -32,7 +35,6 @@ class Product < ApplicationRecord
     differential = product_cost_usd - used_credit
     cash_price = product_cost_usd * turns * decimal_factor
     downpayment ||= 0.1 * cash_price
-    #down_plus_diff = downpayment + differential # presente en los cálculos de acasa pero no es usado aquí
     financed_amount = (product_cost_usd * turns) - downpayment - differential
     weekly_no_waiver = financed_amount / weeks.to_f
     waiver = weekly_no_waiver * 0.1
@@ -40,4 +42,3 @@ class Product < ApplicationRecord
     weekly_payment.round(2)
   end
 end
-

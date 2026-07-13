@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ácasa — Panel de administración</title>
+<style>
+  :root{
+    --brand:#f26a2a; --brand-d:#d4531a; --navy:#16213f; --gold:#f5a623;
+    --ink:#1b2130; --mut:#6b7280; --line:#eceef3; --bg:#f7f8fa; --card:#fff;
+    --good:#12925f; --bad:#d64545; --sb:#ffffff;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;height:100%;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;text-decoration:none;}
+  .app{display:flex;min-height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  .sb{width:212px;background:var(--sb);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+  .sb .brand{display:flex;align-items:center;gap:9px;padding:20px 20px 14px;font-weight:800;font-size:20px;color:var(--navy);}
+  .sb .brand svg{flex:none;}
+  .sb nav{padding:6px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .sb nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:#525a6b;font-weight:600;font-size:14px;cursor:pointer;}
+  .sb nav a svg{flex:none;opacity:.75;}
+  .sb nav a:hover{background:#f6f7f9;}
+  .sb nav a.on{background:#f1f2f6;color:var(--navy);}
+  .sb nav a.on svg{opacity:1;color:var(--brand);}
+  .sb .sep{height:1px;background:var(--line);margin:8px 14px;}
+  .sb .foot{margin-top:auto;padding:14px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);}
+  .sb .foot .av{width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
+  .sb .foot .who{font-size:12.5px;color:var(--mut);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .sb .foot .out{cursor:pointer;color:var(--mut);}
+
+  /* ---------- Main ---------- */
+  main{flex:1;min-width:0;padding:26px 32px 60px;}
+  .head{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+  h1{font-size:26px;font-weight:800;margin:0;color:var(--navy);}
+  .head .sp{flex:1;}
+  .sel{appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 10px center;border:1px solid var(--line);border-radius:10px;padding:9px 32px 9px 12px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;}
+
+  /* Stat cards */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
+  @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px;position:relative;overflow:hidden;}
+  .stat .ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
+  .stat .l{font-size:13px;color:var(--mut);}
+  .stat .n{font-size:30px;font-weight:800;color:var(--navy);margin-top:2px;line-height:1;}
+  .i-blue{background:#eaf1ff;color:#3366e0;} .i-amber{background:#fff2df;color:#e0870f;}
+  .i-green{background:#e6f6ee;color:#12925f;} .i-orange{background:#ffece2;color:var(--brand-d);}
+
+  /* Section shell */
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 4px 4px;margin-bottom:22px;}
+  .sec .stitle{font-size:16px;font-weight:800;color:var(--navy);padding:14px 18px 2px;}
+  .tabs{display:flex;gap:2px;padding:8px 14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tabs button{border:0;background:none;padding:10px 14px;font-size:13.5px;font-weight:700;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .tabs button.on{color:var(--navy);border-color:var(--brand);}
+  .toolbar{display:flex;gap:10px;align-items:center;padding:14px 16px;flex-wrap:wrap;}
+  .search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff;}
+  .search input{border:0;outline:0;flex:1;font-size:14px;background:none;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{text-align:left;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:#8a90a0;font-weight:700;padding:12px 16px;background:#fafbfc;border-bottom:1px solid var(--line);}
+  tbody td{padding:13px 16px;border-bottom:1px solid #f2f3f6;color:#2c3242;}
+  tbody tr:last-child td{border-bottom:0;}
+  tbody tr:hover{background:#fafbfd;}
+  .empty{padding:46px 16px;text-align:center;color:#9aa0ae;font-size:14px;}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+  .pill.p-pend{background:#fff3df;color:#a9760d;} .pill.p-appr{background:#e6f6ee;color:#12925f;}
+  .pill.p-canc{background:#fdeaea;color:#c23b3b;} .pill.p-other{background:#eef0f4;color:#5b6270;}
+  .mono{font-variant-numeric:tabular-nums;}
+  .right{text-align:right;}
+
+  /* ---------- Login ---------- */
+  .lock{position:fixed;inset:0;background:linear-gradient(160deg,#16213f,#0e1730);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .lock .box{background:#fff;border-radius:18px;padding:30px 30px 26px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .lock .lg{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;color:var(--navy);margin-bottom:4px;}
+  .lock p{color:var(--mut);font-size:13px;margin:0 0 18px;}
+  .lock label{display:block;font-size:12.5px;color:var(--mut);margin:12px 0 5px;}
+  .lock input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;}
+  .lock button{width:100%;margin-top:18px;background:var(--brand);color:#fff;border:0;padding:12px;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;}
+  .lock button:hover{background:var(--brand-d);}
+  .lock .msg{color:var(--bad);font-size:12.5px;margin-top:10px;min-height:16px;}
+  .lock .hint{margin-top:14px;font-size:11.5px;color:#9aa0ae;text-align:center;}
+
+  .hide{display:none!important;}
+
+  /* ---------- Risk engine ---------- */
+  .rk-vbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:18px;}
+  .rk-vtag{background:var(--navy);color:#fff;border-radius:10px;padding:6px 12px;font-weight:800;font-size:14px;}
+  .rk-vnote{color:var(--mut);font-size:13px;flex:1;min-width:200px;}
+  .rk-hist{display:flex;gap:8px;flex-wrap:wrap;}
+  .rk-chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12.5px;background:#fff;position:relative;}
+  .rk-chip.on{border-color:var(--brand);color:var(--brand-d);font-weight:700;background:#fff5f0;}
+  .rk-chip button{border:0;background:var(--brand);color:#fff;border-radius:8px;padding:2px 8px;font-size:11px;margin-left:6px;cursor:pointer;}
+  .rk-warn{background:#fffaf0;border:1px solid #f2e2bf;border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#5b4a1e;}
+  .rk-cols{display:grid;grid-template-columns:330px 1fr;gap:20px;align-items:start;}
+  @media(max-width:860px){.rk-cols{grid-template-columns:1fr;}}
+  .rk-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:18px;}
+  .rk-card h2{font-size:15px;margin:0 0 12px;color:var(--navy);} .rk-card h3{font-size:13px;margin:16px 0 8px;color:var(--navy);}
+  .rk-f{margin-bottom:11px;} .rk-f label{display:block;font-size:13px;color:var(--mut);margin-bottom:5px;}
+  .rk-f input,.rk-f select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;}
+  table.bd td{padding:8px 6px;border-bottom:1px solid var(--line);} table.bd td:last-child{text-align:right;font-weight:700;}
+  table.bd tr.tot td{font-weight:800;border-top:2px solid var(--line);font-size:16px;}
+  table.cfg th{font-size:11px;color:var(--mut);font-weight:500;text-align:left;padding:4px 6px;}
+  table.cfg td{padding:3px 6px;} table.cfg input{width:82px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;text-align:right;}
+  .rk-result{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .kpi{background:var(--navy);color:#fff;border-radius:14px;padding:15px 16px;text-align:center;}
+  .kpi .l{font-size:12px;opacity:.8;} .kpi .n{font-size:28px;font-weight:800;margin-top:2px;}
+  .kpi.credit{background:var(--brand);} .kpi.credit.denied{background:#5b6270;}
+  .ladder .row{display:flex;justify-content:space-between;padding:7px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13px;}
+  .ladder .row.on{border-color:var(--brand);background:#fff5f0;font-weight:700;color:var(--brand-d);}
+  .cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;} @media(max-width:640px){.cfg-grid{grid-template-columns:1fr;}}
+  .btn{background:var(--brand);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;} .btn:hover{background:var(--brand-d);}
+  textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-height:62px;font-family:inherit;}
+  .muted{color:var(--mut);font-size:12.5px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="lock" id="lock">
+  <div class="box">
+    <div class="lg">á<span>casa</span>
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 1c.7 4.6 2.6 6.5 7 7-4.4.5-6.3 2.4-7 7-.7-4.6-2.6-6.5-7-7 4.4-.5 6.3-2.4 7-7z" fill="var(--gold)"/></svg>
+    </div>
+    <p>Panel de administración — acceso del personal.</p>
+    <label>Correo</label>
+    <input id="lg-email" type="email" value="admin@test.com" autocomplete="username">
+    <label>Contraseña</label>
+    <input id="lg-pass" type="password" value="admin123" autocomplete="current-password">
+    <button id="lg-btn">Ingresar</button>
+    <div class="msg" id="lg-msg"></div>
+    <div class="hint">Cuenta de prueba local precargada · el cliente entra por la tienda</div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div class="app hide" id="app">
+  <aside class="sb">
+    <a class="brand" href="/" title="Volver a la tienda">á<span>casa</span>
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 1c.7 4.6 2.6 6.5 7 7-4.4.5-6.3 2.4-7 7-.7-4.6-2.6-6.5-7-7 4.4-.5 6.3-2.4 7-7z" fill="var(--gold)"/></svg>
+    </a>
+    <nav id="nav">
+      <a data-view="dashboard" class="on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard</a>
+      <a data-view="clientes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Clientes</a>
+      <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
+      <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
+      <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
+      <div class="sep"></div>
+      <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
+      <a data-view="config"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
+    </nav>
+    <div class="foot">
+      <div class="av" id="av">A</div>
+      <div class="who" id="who">admin@test.com</div>
+      <div class="out" id="logout" title="Salir"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="view" data-v="dashboard">
+      <div class="head"><h1>Dashboard</h1><div class="sp"></div>
+        <select class="sel" id="dashFilter">
+          <option value="">Todos</option>
+          <option value="last_30_days" selected>Últimos 30 días</option>
+          <option value="last_7_days">Últimos 7 días</option>
+          <option value="last_90_days">Últimos 90 días</option>
+          <option value="this_year">Este año</option>
+        </select>
+      </div>
+      <div class="cards">
+        <div class="stat"><div class="ic i-blue"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="l">Clientes</div><div class="n" id="s-clients">—</div></div>
+        <div class="stat"><div class="ic i-amber"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="l">Precalificaciones</div><div class="n" id="s-preq">—</div></div>
+        <div class="stat"><div class="ic i-green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="l">Órdenes</div><div class="n" id="s-orders">—</div></div>
+        <div class="stat"><div class="ic i-orange"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="l">Créditos</div><div class="n" id="s-credits">—</div></div>
+      </div>
+      <div class="sec">
+        <div class="stitle">Órdenes</div>
+        <div class="tabs" id="ordTabs">
+          <button data-st="" class="on">Todo</button>
+          <button data-st="pending">Pendiente</button>
+          <button data-st="approved">Aprobado</button>
+          <button data-st="cancelled">Cancelado</button>
+        </div>
+        <div class="toolbar">
+          <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="ordSearch" placeholder="Buscar por email…"></div>
+          <select class="sel" id="ordSort"><option value="desc">Más reciente</option><option value="asc">Más antiguo</option></select>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>Orden</th><th>Cliente</th><th>Producto</th><th class="right">Precio</th><th>Plazo</th>
+            <th class="right">Crédito</th><th class="right">Waiver %</th><th class="right">Pago x Semana</th>
+          </tr></thead><tbody id="ordBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- CLIENTES ---------- -->
+    <section class="view hide" data-v="clientes">
+      <div class="head"><h1>Clientes</h1><div class="sp"></div>
+        <div class="search" style="max-width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="cliSearch" placeholder="Buscar…"></div>
+      </div>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito</th><th>Registrado</th><th>Versión riesgo</th></tr></thead>
+        <tbody id="cliBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
+    </section>
+
+    <!-- ---------- CRÉDITOS ---------- -->
+    <section class="view hide" data-v="creditos">
+      <div class="head"><h1>Créditos</h1></div>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th class="right">Crédito disponible</th><th>Versión riesgo</th></tr></thead>
+        <tbody id="creBody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
+    </section>
+
+    <!-- ---------- ÓRDENES ---------- -->
+    <section class="view hide" data-v="ordenes">
+      <div class="head"><h1>Órdenes</h1></div>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Orden</th><th>Cliente</th><th>Producto</th><th class="right">Precio</th><th>Plazo</th>
+          <th class="right">Crédito</th><th class="right">Waiver %</th><th class="right">Pago x Semana</th><th>Estado</th>
+        </tr></thead><tbody id="allOrdBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
+    </section>
+
+    <!-- ---------- CATÁLOGOS ---------- -->
+    <section class="view hide" data-v="catalogos">
+      <div class="head"><h1>Catálogos</h1><div class="sp"></div>
+        <select class="sel" id="catFilter" title="Filtrar por categoría"><option value="">Todas las categorías</option></select>
+        <button class="btn" id="catDownload" style="background:#eef0f6;color:var(--navy)">Descargar CSV</button>
+        <button class="btn" id="catSave">Guardar cambios</button>
+      </div>
+      <div id="catActions" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;background:#fff;border:1px solid var(--line);border-radius:12px">
+        <span style="font-weight:700;font-size:13.5px" id="catSelInfo"></span>
+        <div class="sp" style="flex:1"></div>
+        <button class="btn" id="catPub" style="background:var(--good)">Publicar</button>
+        <button class="btn" id="catUnpub" style="background:#eef0f6;color:var(--navy)">Despublicar</button>
+        <button class="btn" id="catDel" style="background:var(--bad)">Eliminar</button>
+        <span class="muted" id="catActMsg"></span>
+      </div>
+      <p class="muted" style="margin:-8px 0 14px">Los productos llegan del scraper (Rainforest). Aquí afinas cada uno: precio, descuento, <b>turns</b>, factor y estatus. Al guardar se genera el CSV que alimenta el catálogo y se aplica en segundo plano.</p>
+      <div class="sec" style="padding:18px">
+        <div class="stitle" style="padding:0 0 6px">Importar de Amazon (Rainforest)</div>
+        <p class="muted" style="margin:0 0 12px">Escribe lo que buscas y Ácasa lo trae de Amazon (convierte a USD y baja hasta 7 fotos). <b>Costo:</b> 1 crédito por la búsqueda + 1 por cada producto revisado. Requiere tu API key (Configuración).</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="impTerm" placeholder="Ej.: refrigerador LG, pantalla 55 pulgadas, laptop HP…" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;">
+          <select class="sel" id="impDomain"><option value="amazon.com.mx" selected>amazon.com.mx (MX)</option><option value="amazon.com">amazon.com (EU)</option></select>
+          <input id="impLimit" type="number" min="1" max="20" value="8" title="Máx. productos a revisar (créditos)" style="width:72px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:center">
+          <button class="btn" id="impBtn">Buscar e importar</button>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink);cursor:pointer">
+            <input type="checkbox" id="impSold" checked style="width:16px;height:16px;cursor:pointer"> Vendido por Amazon
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink);cursor:pointer">
+            <input type="checkbox" id="impDelivered" checked style="width:16px;height:16px;cursor:pointer"> Entregado por Amazon
+          </label>
+        </div>
+        <div class="muted" id="impMsg" style="margin-top:10px"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">Opción sin créditos: subir export de Rainforest</div>
+          <p class="muted" style="margin:0 0 10px">¿Ya corriste una colección en Rainforest? Descarga el <b>JSON</b> y súbelo aquí. Se procesa con las mismas reglas (USD, hasta 7 fotos, categorías) sin gastar créditos en la app.</p>
+          <input type="file" id="impFile" accept=".json,application/json" style="font-size:13px">
+          <button class="btn" id="impFileBtn" style="margin-left:8px;background:#eef0f6;color:var(--navy)">Subir e importar</button>
+          <div class="muted" id="impFileMsg" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="toolbar">
+          <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="catSearch" placeholder="Buscar producto o ASIN…"></div>
+          <span class="muted" id="catMsg"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead>
+            <tr>
+              <th style="width:26px"><input type="checkbox" id="catAll" title="Seleccionar todo"></th>
+              <th data-sort="title" style="cursor:pointer">Producto</th>
+              <th data-sort="asin" style="cursor:pointer">ASIN</th>
+              <th data-sort="category" style="cursor:pointer">Categoría</th>
+              <th data-sort="price" class="right" style="cursor:pointer">Precio USD</th>
+              <th data-sort="price_with_discount" class="right" style="cursor:pointer">Con desc.</th>
+              <th data-sort="turns" class="right" style="cursor:pointer">Turns</th>
+              <th data-sort="decimal_factor" class="right" style="cursor:pointer">Factor</th>
+              <th class="right" title="Precio × Turns">Total</th>
+              <th class="right" title="Precio de contado — Precio × Turns × Factor">Al Contado · Cash Price</th>
+              <th data-sort="min_weekly_payment" class="right" style="cursor:pointer">Pago x sem</th>
+              <th data-sort="status" style="cursor:pointer">Estatus</th>
+              <th style="width:34px"></th>
+            </tr>
+            <tr>
+              <th></th>
+              <th><input class="colf" data-col="title" placeholder="filtrar…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
+              <th><input class="colf" data-col="asin" placeholder="…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
+              <th><input class="colf" data-col="category" placeholder="…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
+              <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+              <th><select class="colf" data-col="status" style="width:100%;padding:5px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"><option value="">todos</option><option value="active">En tienda</option><option value="inactive">Borrador</option></select></th>
+              <th></th>
+            </tr>
+          </thead><tbody id="catBody"><tr><td colspan="13" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- MOTOR DE RIESGO ---------- -->
+    <section class="view hide" data-v="riesgo">
+      <div class="head"><h1>Motor de Riesgo</h1></div>
+      <p class="muted" style="margin:-6px 0 16px">Cada configuración es una versión guardada. Edita, prueba con un solicitante, guarda como nueva versión (con el motivo) o revierte a una anterior.</p>
+
+      <div class="rk-warn" id="rk-warn" style="display:none"></div>
+      <div class="rk-vbar">
+        <span class="rk-vtag" id="rk-vtag" title="">Versión —</span>
+        <span class="rk-vnote" id="rk-vnote"></span>
+        <div class="rk-hist" id="rk-hist"></div>
+      </div>
+
+      <div class="rk-cols">
+        <div class="rk-card">
+          <h2>Solicitante de prueba</h2>
+          <div class="rk-f"><label>Tipo de vivienda</label><select id="housing"><option value="owner">Propietario</option><option value="tenant" selected>Inquilino</option></select></div>
+          <div class="rk-f"><label>Meses en Estados Unidos</label><input type="number" id="usa" value="24" min="0"></div>
+          <div class="rk-f"><label>Meses en el domicilio</label><input type="number" id="addr" value="12" min="0"></div>
+          <div class="rk-f"><label>Meses en el empleo</label><input type="number" id="job" value="12" min="0"></div>
+          <div class="rk-f"><label>Ingreso semanal (USD)</label><input type="number" id="income" value="400" min="0"></div>
+          <div class="rk-f"><label>Parentesco con beneficiario</label><select id="rel">
+            <option value="conyuge">Cónyuge</option><option value="hijo">Hijo / Hija</option><option value="padre">Padre / Madre</option>
+            <option value="hermano" selected>Hermano / Hermana</option><option value="otro">Otro</option><option value="">Sin especificar</option>
+          </select></div>
+        </div>
+        <div class="rk-card">
+          <h2>Resultado</h2>
+          <table class="bd" id="bd"><tbody></tbody></table>
+          <div class="rk-result">
+            <div class="kpi"><div class="l">Puntaje total</div><div class="n" id="total">0</div></div>
+            <div class="kpi credit" id="creditKpi"><div class="l">Crédito asignado</div><div class="n" id="credit">$0</div></div>
+          </div>
+          <h3 style="margin-top:16px;font-size:13px;color:var(--navy)">Escala de crédito</h3>
+          <div class="ladder" id="ladder"></div>
+        </div>
+      </div>
+
+      <div class="rk-card">
+        <h2>Configuración (editable)</h2>
+        <div class="cfg-grid">
+          <div>
+            <h3>Vivienda / entrega / parentesco base</h3>
+            <table class="cfg"><tr><td>Propietario (pts)</td><td><input id="c-housing" type="number" value="5"></td></tr>
+            <tr><td>País de entrega (pts)</td><td><input id="c-delivery" type="number" value="5"></td></tr>
+            <tr><td>Parentesco sin dato (pts)</td><td><input id="c-kindef" type="number" value="20"></td></tr></table>
+            <h3>Meses (USA / domicilio / empleo)</h3>
+            <table class="cfg" id="c-months"><tr><th>Meses ≥</th><th>Puntos</th></tr></table>
+            <h3>Parentesco</h3>
+            <table class="cfg" id="c-kin"><tr><th>Relación</th><th>Puntos</th></tr></table>
+          </div>
+          <div>
+            <h3>Ingreso semanal (USD)</h3>
+            <table class="cfg" id="c-income"><tr><th>Ingreso ≥</th><th>Puntos</th></tr></table>
+            <h3>Puntos → crédito</h3>
+            <table class="cfg" id="c-credit"><tr><th>Puntos ≥</th><th>Crédito $</th></tr></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="rk-card">
+        <h2>Guardar como nueva versión</h2>
+        <label class="muted" style="display:block;margin-bottom:6px">Motivo del cambio (para recordar por qué se hizo):</label>
+        <textarea id="note" placeholder="Ej.: Subimos el puntaje de ingreso alto por baja morosidad en ese segmento…"></textarea>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+          <button class="btn" id="saveBtn">Guardar como nueva versión</button>
+          <span class="muted" id="saveMsg"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- CONFIGURACIÓN ---------- -->
+    <section class="view hide" data-v="config">
+      <div class="head"><h1>Configuración</h1></div>
+      <div class="sec" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px">
+            <div class="stitle" style="padding:0">Tipo de cambio · USD → MXN</div>
+            <div class="muted" style="margin-top:3px">Se actualiza automáticamente cada día a las 12:00 (tarea de Sidekiq) y sólo guarda un registro cuando el valor cambia. Este valor alimentará los pagos en pesos.</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:32px;font-weight:800;color:var(--navy);line-height:1" id="fxRate">—</div>
+            <div class="muted" id="fxWhen">sin datos</div>
+          </div>
+          <button class="btn" id="fxRefresh">Actualizar ahora</button>
+        </div>
+      </div>
+      <div class="sec"><div class="stitle">Historial</div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>1 USD = MXN</th><th>Registrado</th><th>ID</th></tr></thead>
+          <tbody id="fxBody"><tr><td colspan="3" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="sec" style="padding:18px">
+        <div class="stitle" style="padding:0 0 6px">Conexión con Rainforest · scraper de Amazon</div>
+        <p class="muted" style="margin:0 0 12px">Guarda tu API key de Rainforest para poder buscar e importar productos desde Catálogos. Se guarda de forma segura y nunca se muestra completa.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="rfKey" type="password" placeholder="Pega tu API key de Rainforest…" style="flex:1;min-width:260px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;">
+          <button class="btn" id="rfSave">Guardar</button>
+          <button class="btn" id="rfTest" style="background:#eef0f6;color:var(--navy)">Probar conexión</button>
+        </div>
+        <div class="muted" id="rfMsg" style="margin-top:10px">—</div>
+      </div>
+      <div class="sec" style="padding:18px"><div class="stitle" style="padding:0 0 8px">Motor de riesgo</div>
+        <p class="muted">Las reglas de puntaje y montos de crédito se administran en <a data-view="riesgo" style="color:var(--brand-d);font-weight:700;cursor:pointer">Motor de Riesgo</a>, con historial de versiones y opción de revertir.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let TOKEN=null, EMAIL='admin@test.com';
+
+/* ---------------- API + auth ---------------- */
+async function api(method,path,body){
+  const h={'Content-Type':'application/json'}; if(TOKEN) h.Authorization=TOKEN;
+  const r=await fetch(path,{method,headers:h,body:body?JSON.stringify(body):undefined});
+  let d=null; try{d=await r.json();}catch(e){}
+  return {ok:r.ok,status:r.status,data:d,auth:r.headers.get('Authorization')};
+}
+async function doLogin(){
+  $('lg-msg').textContent='';
+  const email=$('lg-email').value.trim(), pass=$('lg-pass').value;
+  $('lg-btn').textContent='Ingresando…'; $('lg-btn').disabled=true;
+  const r=await api('POST','/api/login',{user:{email,password:pass}});
+  $('lg-btn').textContent='Ingresar'; $('lg-btn').disabled=false;
+  if(r.auth){ TOKEN=r.auth; EMAIL=email; enterApp(); }
+  else { $('lg-msg').textContent = (r.status===0?'No se pudo conectar con el servidor.':'Correo o contraseña incorrectos.'); }
+}
+function enterApp(){
+  $('lock').classList.add('hide'); $('app').classList.remove('hide');
+  $('who').textContent=EMAIL; $('av').textContent=(EMAIL[0]||'A').toUpperCase();
+  show('dashboard');
+}
+$('lg-btn').onclick=doLogin;
+$('lg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+$('logout').onclick=()=>{TOKEN=null;location.reload();};
+
+/* ---------------- Router ---------------- */
+const loaded={};
+function show(view){
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===view));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('hide',s.dataset.v!==view));
+  if(view==='dashboard'){ loadDash(); loadOrders('dashboard'); }
+  if(view==='clientes' && !loaded.cli){ loadClients(); }
+  if(view==='creditos' && !loaded.cre){ loadCredits(); }
+  if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
+  if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
+  if(view==='catalogos') loaded.cat=1;
+  if(view==='riesgo' && !loaded.rk){ loadVersions(); loaded.rk=1; }
+  if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
+}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
+
+/* ---------------- Helpers ---------------- */
+const money=v=>{const n=Number(v); return isFinite(n)&&n!==0?('$'+n.toLocaleString('en-US',{maximumFractionDigits:2})):(n===0?'$0':'—');};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// jsonapi-serializer or plain array -> array of attribute objects (with id)
+function rows(d){
+  if(!d) return [];
+  let arr = Array.isArray(d)?d : (Array.isArray(d.data)?d.data : (Array.isArray(d.users)?d.users : (Array.isArray(d.orders)?d.orders : (Array.isArray(d.products)?d.products : (d.data&&Array.isArray(d.data.data)?d.data.data:[])))));
+  return arr.map(x=> x && x.attributes ? Object.assign({id:x.id}, x.attributes) : x );
+}
+function pick(o,keys,def){ for(const k of keys){ if(o && o[k]!=null && o[k]!=='') return o[k]; } return def; }
+function statusPill(s){ s=String(s||'').toLowerCase();
+  const cls = s.includes('pend')||s.includes('incomplete')?'p-pend' : (s.includes('appr')||s.includes('paid')?'p-appr' : (s.includes('cancel')?'p-canc':'p-other'));
+  const lbl = s.includes('pend')?'Pendiente' : s.includes('incomplete')?'Incompleto' : s.includes('appr')?'Aprobado' : s.includes('paid')?'Pagado' : s.includes('cancel')?'Cancelado' : (s||'—');
+  return `<span class="pill ${cls}">${esc(lbl)}</span>`;
+}
+function fdate(v){ if(!v) return '—'; const d=new Date(v); return isNaN(d)?'—':d.toLocaleDateString('es-MX',{year:'numeric',month:'short',day:'numeric'}); }
+
+/* ---------------- Dashboard stats ---------------- */
+async function loadDash(){
+  const f=$('dashFilter').value;
+  const r=await api('GET','/api/orders/dashboard'+(f?('?date_filter='+f):''));
+  const d=(r.data&&r.data.data)||r.data||{};
+  $('s-clients').textContent = d.clients_count ?? '0';
+  $('s-preq').textContent    = d.prequalifications_count ?? '0';
+  $('s-orders').textContent  = d.orders_count ?? '0';
+  $('s-credits').textContent = d.credits_count ?? '0';
+}
+$('dashFilter').onchange=()=>{ loadDash(); loadOrders('dashboard'); };
+
+/* ---------------- Orders ---------------- */
+let ordStatus='';
+function orderRow(o,withStatus){
+  const cliente = pick(o,['client_email','user_email','email','client_name','buyer_name'],'—');
+  const prod = pick(o,['product_title','product_name','product','title'],'—');
+  const precio = pick(o,['product_cost_usd','price','product_price','total'],null);
+  const plazo = pick(o,['weeks','term_weeks','installments'],null);
+  const credito = pick(o,['used_credit','credit','credit_used'],null);
+  const waiver = pick(o,['waiver_percentage','waiver','waiver_percent'],null);
+  const pago = pick(o,['weekly_payment','payment_per_week','weekly'],null);
+  const id = pick(o,['id','order_id','number'],'—');
+  return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
+    <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
+    <td class="right mono">${credito!=null?money(credito):'—'}</td><td class="right mono">${waiver!=null?esc(waiver)+'%':'—'}</td>
+    <td class="right mono">${pago!=null?money(pago):'—'}</td>${withStatus?`<td>${statusPill(pick(o,['status','state'],''))}</td>`:''}</tr>`;
+}
+async function loadOrders(where){
+  const body = where==='all' ? $('allOrdBody') : $('ordBody');
+  const cols = where==='all'?9:8;
+  const q = where==='dashboard' && ordStatus ? ('?status='+ordStatus) : '';
+  const r=await api('GET','/api/orders'+q);
+  if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
+  let list=rows(r.data);
+  if(where==='dashboard' && ordStatus) list=list.filter(o=>String(pick(o,['status','state'],'')).toLowerCase().includes(ordStatus.slice(0,4)));
+  const term=(where==='dashboard'?$('ordSearch').value:'').trim().toLowerCase();
+  if(term) list=list.filter(o=>JSON.stringify(o).toLowerCase().includes(term));
+  if(where==='dashboard' && $('ordSort').value==='asc') list.reverse();
+  body.innerHTML = list.length ? list.map(o=>orderRow(o,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
+}
+$('ordTabs').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
+  $('ordTabs').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); ordStatus=b.dataset.st; loadOrders('dashboard');});
+$('ordSearch').addEventListener('input',()=>loadOrders('dashboard'));
+$('ordSort').addEventListener('change',()=>loadOrders('dashboard'));
+
+/* ---------------- Clients / Credits ---------------- */
+let CLIENTS=[];
+async function fetchClients(){ if(CLIENTS.length) return CLIENTS; const r=await api('GET','/api/users'); CLIENTS=rows(r.data); return CLIENTS; }
+async function loadClients(){
+  loaded.cli=1; const list=await fetchClients();
+  const render=term=>{
+    let l=list; if(term) l=list.filter(u=>JSON.stringify(u).toLowerCase().includes(term));
+    $('cliBody').innerHTML = l.length ? l.map(u=>{
+      const name=pick(u,['name','full_name','first_name'],'—'), email=pick(u,['email'],'—');
+      const num=pick(u,['number','client_number','phone'],'—'), credit=pick(u,['credit','available_credit','credit_amount'],null);
+      return `<tr><td>${esc(name)}</td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+        <td class="right mono">${credit!=null?money(credit):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
+        <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
+    }).join('') : `<tr><td colspan="6" class="empty">No se encontraron clientes</td></tr>`;
+  };
+  render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
+}
+async function loadCredits(){
+  loaded.cre=1; const list=await fetchClients();
+  const withCredit=list.filter(u=>{const c=pick(u,['credit','available_credit','credit_amount'],0);return Number(c)>0;});
+  $('creBody').innerHTML = withCredit.length ? withCredit.map(u=>{
+    const c=pick(u,['credit','available_credit','credit_amount'],0);
+    return `<tr><td>${esc(pick(u,['name','full_name'],'—'))}</td><td>${esc(pick(u,['email'],'—'))}</td>
+      <td class="right mono">${money(c)}</td><td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
+  }).join('') : `<tr><td colspan="4" class="empty">Ningún cliente con crédito disponible todavía</td></tr>`;
+}
+
+/* ---------------- Catalog ---------------- */
+let CAT=[], CATS=[], SEL=new Set();
+async function loadCatalog(){
+  const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
+  CAT=rows(pr.data); CATS=rows(cr.data);
+  const sel=$('catFilter'), cur=sel.value;
+  sel.innerHTML='<option value="">Todas las categorías</option>'+CATS.map(c=>`<option value="${pick(c,['id'],'')}">${esc(pick(c,['name'],'—'))}</option>`).join('')+'<option value="__none">— Sin categoría —</option>';
+  sel.value=cur||''; SEL.clear();
+  $('catSearch').oninput=renderCat; sel.onchange=renderCat;
+  renderCat();
+}
+function catInp(v,key,id,extra){ return `<input data-id="${id}" data-key="${key}" value="${v==null?'':esc(v)}" ${extra||''} style="width:82px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;text-align:right;">`; }
+function prodCats(p){ return (pick(p,['categories'],[])||[]).map(c=>String(c.id)); }
+let SORT={key:null,dir:1};
+function catNames(p){ return (pick(p,['categories'],[])||[]).map(c=>c.name).join(', '); }
+function sortVal(p,k){ return k==='category'?catNames(p):pick(p,[k],''); }
+function sortList(list){
+  if(!SORT.key) return list;
+  const k=SORT.key,d=SORT.dir;
+  return [...list].sort((a,b)=>{ const av=sortVal(a,k),bv=sortVal(b,k),na=parseFloat(av),nb=parseFloat(bv);
+    if(!isNaN(na)&&!isNaN(nb)&&av!==''&&bv!=='') return (na-nb)*d;
+    return String(av).localeCompare(String(bv))*d; });
+}
+function colFilters(){ const o={}; document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>{ if(el.value) o[el.dataset.col]=el.value.toLowerCase(); }); return o; }
+function currentList(){
+  const term=$('catSearch').value.trim().toLowerCase(), cf=$('catFilter').value; let list=CAT;
+  if(cf==='__none') list=list.filter(p=>prodCats(p).length===0);
+  else if(cf) list=list.filter(p=>prodCats(p).includes(cf));
+  if(term) list=list.filter(p=>JSON.stringify(p).toLowerCase().includes(term));
+  const f=colFilters();
+  if(f.title) list=list.filter(p=>String(pick(p,['title','name'],'')).toLowerCase().includes(f.title));
+  if(f.asin) list=list.filter(p=>String(pick(p,['asin'],'')).toLowerCase().includes(f.asin));
+  if(f.category) list=list.filter(p=>catNames(p).toLowerCase().includes(f.category));
+  if(f.status) list=list.filter(p=>String(pick(p,['status'],'active'))===f.status);
+  return sortList(list);
+}
+function renderCat(){
+  const list=currentList();
+  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="12" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
+  $('catBody').innerHTML=list.map(p=>{
+    const id=String(pick(p,['id'],'')), asin=pick(p,['asin'],'—'), title=pick(p,['title','name'],'—');
+    const price=pick(p,['price'],''), disc=pick(p,['price_with_discount'],''), turns=pick(p,['turns'],''), fac=pick(p,['decimal_factor'],''), st=String(pick(p,['status'],'active'));
+    return `<tr data-rid="${id}">
+      <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
+      <td style="max-width:210px">${esc(title)}</td>
+      <td class="mono">${esc(asin)}</td>
+      <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>
+      <td class="right">${catInp(price,'price',id,'type="number" step="0.01"')}</td>
+      <td class="right">${catInp(disc,'price_with_discount',id,'type="number" step="0.01"')}</td>
+      <td class="right">${catInp(turns,'turns',id,'type="number" step="0.1"')}</td>
+      <td class="right">${catInp(fac,'decimal_factor',id,'type="number" step="0.01"')}</td>
+      <td class="right mono cell-total">—</td>
+      <td class="right mono cell-cash">—</td>
+      <td class="right mono cell-pago">—</td>
+      <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+        <option value="active" ${st==='active'?'selected':''}>En tienda</option>
+        <option value="inactive" ${st!=='active'?'selected':''}>Borrador</option></select></td>
+      <td><button class="delone" data-id="${id}" title="Eliminar" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td>
+    </tr>`;
+  }).join('');
+  $('catBody').querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('change',()=>{el.dataset.dirty='1'; el.style.borderColor='var(--brand)';}));
+  $('catBody').querySelectorAll('input[data-key="price"],input[data-key="turns"],input[data-key="decimal_factor"]').forEach(el=>el.addEventListener('input',()=>recalcRow(el.dataset.id)));
+  $('catBody').querySelectorAll('.csel').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?SEL.add(cb.dataset.id):SEL.delete(cb.dataset.id); updateCatActions(); }));
+  $('catBody').querySelectorAll('.delone').forEach(b=>b.onclick=()=>deleteProducts([b.dataset.id]));
+  list.forEach(p=>recalcRow(String(pick(p,['id'],''))));
+  $('catAll').checked=false; updateCatActions();
+}
+function recalcRow(id){
+  const row=$('catBody').querySelector('tr[data-rid="'+id+'"]'); if(!row) return;
+  const g=k=>parseFloat((row.querySelector('input[data-key="'+k+'"]')||{}).value)||0;
+  const price=g('price'), turns=g('turns'), fac=g('decimal_factor');
+  const total=price*turns;        // total a plazos (con pagos)
+  const cash=price*turns*fac;     // precio de contado
+  const weekly=turns ? (total - 0.1*cash)/52*1.1 : 0;
+  const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago');
+  if(t) t.textContent = total ? money(total) : '—';
+  if(c) c.textContent = cash ? money(cash) : '—';
+  if(pg) pg.textContent = weekly ? money(weekly) : '—';
+}
+$('catAll').onchange=()=>{ const on=$('catAll').checked; currentList().forEach(p=>{const id=String(pick(p,['id'],'')); on?SEL.add(id):SEL.delete(id);}); renderCat(); };
+document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(th=>{ th.dataset.label=th.textContent; th.onclick=()=>{
+  const k=th.dataset.sort; SORT.dir=(SORT.key===k)?-SORT.dir:1; SORT.key=k;
+  document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(t=>t.textContent=t.dataset.label);
+  th.textContent=th.dataset.label+(SORT.dir>0?' ↑':' ↓'); renderCat();
+};});
+document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>el.addEventListener('input',renderCat));
+function updateCatActions(){
+  const cf=$('catFilter'), catName=(cf.value&&cf.value!=='__none')?cf.options[cf.selectedIndex].text:null, n=SEL.size;
+  if(n===0 && !catName){ $('catActions').style.display='none'; return; }
+  $('catActions').style.display='flex';
+  $('catSelInfo').textContent = n>0 ? (n+' seleccionado(s)') : ('Categoría: '+catName+' ('+currentList().length+')');
+  $('catActMsg').textContent='';
+}
+function bulkPayload(){ return SEL.size>0 ? {ids:[...SEL]} : (($('catFilter').value&&$('catFilter').value!=='__none') ? {category_id:$('catFilter').value} : null); }
+async function bulkStatus(status){
+  const p=bulkPayload(); if(!p){ return; }
+  $('catActMsg').textContent='Aplicando…';
+  const r=await api('POST','/api/products/bulk_update', Object.assign({status}, p));
+  $('catActMsg').textContent = (r.data&&r.data.ok) ? (r.data.updated+' actualizado(s)') : 'Error';
+  SEL.clear(); loaded.cat=0; await loadCatalog();
+}
+async function deleteProducts(ids){
+  if(!confirm('¿Eliminar '+ids.length+' producto(s)? No se puede deshacer.')) return;
+  await api('POST','/api/products/bulk_delete',{ids}); SEL.clear(); loaded.cat=0; await loadCatalog();
+}
+async function bulkDelete(){
+  const p=bulkPayload(); if(!p) return;
+  const what=p.ids?(p.ids.length+' seleccionado(s)'):'toda la categoría';
+  if(!confirm('¿Eliminar '+what+'? No se puede deshacer.')) return;
+  $('catActMsg').textContent='Eliminando…';
+  const r=await api('POST','/api/products/bulk_delete', p);
+  $('catActMsg').textContent = (r.data&&r.data.ok) ? (r.data.deleted+' eliminado(s)') : 'Error';
+  SEL.clear(); loaded.cat=0; await loadCatalog();
+}
+$('catPub').onclick=()=>bulkStatus('active');
+$('catUnpub').onclick=()=>bulkStatus('inactive');
+$('catDel').onclick=bulkDelete;
+async function downloadCsv(){
+  $('catMsg').textContent='Descargando…';
+  const h={}; if(TOKEN) h.Authorization=TOKEN;
+  const r=await fetch('/api/products/download_csv',{headers:h});
+  if(!r.ok){ $('catMsg').textContent='No se pudo descargar el CSV.'; return; }
+  const blob=await r.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download='catalogo_productos.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  $('catMsg').textContent='CSV descargado.';
+}
+async function saveCatalog(){
+  const changed={};
+  $('catBody').querySelectorAll('[data-dirty="1"]').forEach(el=>{ const id=el.dataset.id; (changed[id]=changed[id]||{}) [el.dataset.key]=el.value; });
+  const ids=Object.keys(changed);
+  if(!ids.length){ $('catMsg').textContent='No hay cambios para guardar.'; return; }
+  const byId={}; CAT.forEach(p=>byId[String(pick(p,['id'],''))]=p);
+  const stMap={active:'Activo',inactive:'Desactivado'};
+  const headers=['ID','ASIN','Precio USD','Precio con descuento USD','Turns','Factor decimal','Estatus'];
+  const lines=[headers.join(',')];
+  ids.forEach(id=>{ const c=changed[id], p=byId[id]||{};
+    const row=[ id, pick(p,['asin'],''),
+      (c.price!=null?c.price:pick(p,['price'],'')), (c.price_with_discount!=null?c.price_with_discount:pick(p,['price_with_discount'],'')),
+      (c.turns!=null?c.turns:pick(p,['turns'],'')), (c.decimal_factor!=null?c.decimal_factor:pick(p,['decimal_factor'],'')),
+      (c.status?stMap[c.status]:(stMap[String(pick(p,['status'],'active'))]||'Activo')) ];
+    lines.push(row.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(','));
+  });
+  $('catMsg').textContent='Guardando '+ids.length+' cambio(s)…';
+  const fd=new FormData(); fd.append('file', new Blob([lines.join('\n')],{type:'text/csv'}), 'update.csv');
+  const h={}; if(TOKEN) h.Authorization=TOKEN;
+  const r=await fetch('/api/products/update_csv',{method:'POST',headers:h,body:fd});
+  const d=await r.json().catch(()=>null);
+  if(!r.ok){ $('catMsg').textContent='Error: '+((d&&(d.error||JSON.stringify(d)))||r.status); return; }
+  await pollCsv(d.job_id);
+}
+async function pollCsv(jobId){
+  for(let i=0;i<25;i++){
+    await new Promise(r=>setTimeout(r,1000));
+    const r=await api('GET','/api/products/track_csv_job/'+jobId);
+    const st=r.data&&r.data.status;
+    if(st==='completed'||st==='failed'||st==='error'){
+      const res=(r.data&&r.data.result)||{};
+      $('catMsg').textContent = st==='completed'
+        ? `Listo: ${res.updated??0} actualizado(s), ${res.not_found??0} no encontrado(s), ${res.errors?res.errors.length:0} error(es).`
+        : ('Terminó con estado: '+st);
+      loaded.cat=0; loadCatalog(); return;
+    }
+    $('catMsg').textContent='Procesando… ('+(i+1)+')';
+  }
+  $('catMsg').textContent='Sigue procesando en segundo plano; recarga en un momento.';
+}
+$('catDownload').onclick=downloadCsv;
+$('catSave').onclick=saveCatalog;
+
+/* ---------------- Exchange rates ---------------- */
+function fxRow(x){
+  const rate=pick(x,['usd_to_mxn','rate','value','mxn'],'—');
+  return `<tr><td class="mono">$${esc(rate)}</td><td>${fdate(pick(x,['created_at','date'],null))}</td><td class="mono">${esc(pick(x,['id'],'—'))}</td></tr>`;
+}
+async function loadFx(autofetched){
+  const r=await api('GET','/api/exchange_rates'); let list=rows(r.data);
+  list.sort((a,b)=> new Date(pick(b,['created_at','date'],0)) - new Date(pick(a,['created_at','date'],0)));
+  if(!list.length){
+    $('fxBody').innerHTML=`<tr><td colspan="3" class="empty">Sin registros — obteniendo el tipo de cambio…</td></tr>`;
+    $('fxRate').textContent='—'; $('fxWhen').textContent='sin datos';
+    if(!autofetched){ await refreshFx(true); }   // auto-fetch the live rate on first empty load
+    return;
+  }
+  const latest=list[0];
+  $('fxRate').innerHTML='$'+esc(pick(latest,['usd_to_mxn','rate'],'—'))+' <span style="font-size:14px;color:var(--mut);font-weight:600">MXN</span>';
+  $('fxWhen').textContent='Actualizado '+fdate(pick(latest,['created_at','date'],null));
+  $('fxBody').innerHTML=list.map(fxRow).join('');
+}
+async function refreshFx(auto){
+  const btn=$('fxRefresh'), old=btn.textContent; btn.textContent='Actualizando…'; btn.disabled=true;
+  const r=await api('POST','/api/exchange_rates/refresh');
+  btn.textContent=old; btn.disabled=false;
+  await loadFx(true);
+  if(!auto){ $('fxWhen').textContent = (r.data&&r.data.updated) ? ('Actualizado ahora · '+fdate(r.data.fetched_at)) : (r.ok?'Sin cambios desde la última consulta':'No se pudo actualizar (¿sin internet?)'); }
+}
+$('fxRefresh').onclick=()=>refreshFx(false);
+
+/* ---------------- Rainforest connection (Configuración) ---------------- */
+async function loadRf(){
+  const r=await api('GET','/api/settings/rainforest');
+  $('rfMsg').textContent = (r.data&&r.data.configured) ? ('Configurada: '+r.data.masked) : 'Sin configurar todavía.';
+}
+async function saveRf(){
+  const key=$('rfKey').value.trim(); if(!key){ $('rfMsg').textContent='Pega tu API key primero.'; return; }
+  $('rfMsg').textContent='Guardando…';
+  const r=await api('PUT','/api/settings/rainforest',{api_key:key});
+  if(r.ok&&r.data&&r.data.configured){ $('rfKey').value=''; $('rfMsg').textContent='Guardada: '+r.data.masked+' — ya puedes importar en Catálogos.'; }
+  else { $('rfMsg').textContent='Error: '+((r.data&&r.data.error)||r.status); }
+}
+async function testRf(){
+  $('rfMsg').textContent='Probando (usa 1 crédito)…';
+  const r=await api('POST','/api/settings/rainforest/test');
+  $('rfMsg').textContent = (r.data&&r.data.ok) ? ('✓ '+r.data.message) : ('✗ '+((r.data&&r.data.error)||'falló'));
+}
+$('rfSave').onclick=saveRf; $('rfTest').onclick=testRf;
+
+/* ---------------- Importar de Amazon (Catálogos) ---------------- */
+async function importSearch(){
+  const term=$('impTerm').value.trim(); if(!term){ $('impMsg').textContent='Escribe qué buscar.'; return; }
+  const btn=$('impBtn'), old=btn.textContent; btn.textContent='Buscando…'; btn.disabled=true;
+  btn.textContent='Buscando… (puede tardar)';
+  const r=await api('POST','/api/products/import_search',{search_term:term, amazon_domain:$('impDomain').value, sold_only:$('impSold').checked, delivered_only:$('impDelivered').checked, limit:$('impLimit').value});
+  btn.textContent=old; btn.disabled=false;
+  console.log('[import] respuesta:', r.data);
+  if(r.data&&r.data.ok){ $('impMsg').textContent='✓ Importados '+r.data.imported+' de '+r.data.checked+' revisados ('+r.data.skipped+' descartados). Entran como BORRADOR — revísalos y publica por categoría abajo. Precios en USD, fotos en 2° plano.'; loaded.cat=0; setTimeout(loadCatalog,3500); }
+  else { $('impMsg').textContent='✗ '+((r.data&&r.data.error)||'No se pudo importar'); }
+}
+$('impBtn').onclick=importSearch;
+
+async function uploadFile(){
+  const f=$('impFile').files[0]; if(!f){ $('impFileMsg').textContent='Elige un archivo JSON primero.'; return; }
+  const btn=$('impFileBtn'), old=btn.textContent; btn.textContent='Subiendo…'; btn.disabled=true;
+  const fd=new FormData(); fd.append('file', f);
+  const h={}; if(TOKEN) h.Authorization=TOKEN;
+  let d=null;
+  try{ const r=await fetch('/api/products/import_file',{method:'POST',headers:h,body:fd}); d=await r.json().catch(()=>null); }
+  catch(e){ d={error:e.message}; }
+  btn.textContent=old; btn.disabled=false;
+  if(d&&d.ok){ $('impFileMsg').textContent='✓ Recibidos '+d.received+' productos. Procesando (USD, fotos, categorías) en segundo plano…'; loaded.cat=0; setTimeout(loadCatalog,5000); }
+  else { $('impFileMsg').textContent='✗ '+((d&&d.error)||'No se pudo importar el archivo'); }
+}
+$('impFileBtn').onclick=uploadFile;
+
+/* ================= RISK ENGINE (versioning) ================= */
+const DEFAULTS={housing:{owner:5},months:[[48,20],[24,15],[12,10],[6,5]],income:[[750,30],[500,25],[400,20],[300,15],[200,10],[100,5]],kinship:{conyuge:20,'cónyuge':20,esposo:20,esposa:20,hijo:20,hija:20,padre:20,madre:20,hermano:15,hermana:15,otro:10},kinship_default:20,delivery:5,credit:[[79,750],[69,600],[59,500],[49,400],[45,300]]};
+const kinLabels={conyuge:'Cónyuge','cónyuge':'Cónyuge',esposo:'Esposo',esposa:'Esposa',hijo:'Hijo',hija:'Hija',padre:'Padre',madre:'Madre',hermano:'Hermano',hermana:'Hermana',otro:'Otro'};
+let CFG=JSON.parse(JSON.stringify(DEFAULTS)), ACTIVE=null, VERSIONS=[];
+
+async function loadVersions(){
+  try{
+    const r=await api('GET','/api/risk_engine/versions');
+    if(r.ok && r.data && r.data.versions && r.data.versions.length){
+      VERSIONS=r.data.versions; ACTIVE=r.data.active_version;
+      const act=VERSIONS.find(v=>v.version===ACTIVE)||VERSIONS[0];
+      CFG=Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), act.config||{});
+      $('rk-warn').style.display='none'; renderVersionBar(); buildEditor(); rkRender(); return;
+    }
+    throw new Error('sin versiones');
+  }catch(e){
+    $('rk-warn').style.display='block';
+    $('rk-warn').textContent='Backend de versiones no disponible (¿falta aplicar la migración?). Se usa la configuración por defecto (Versión 2) y no se puede guardar todavía.';
+    ACTIVE=2; VERSIONS=[]; renderVersionBar(); buildEditor(); rkRender();
+  }
+}
+function renderVersionBar(){
+  const act=VERSIONS.find(v=>v.version===ACTIVE);
+  $('rk-vtag').textContent='Versión '+(ACTIVE||'—'); $('rk-vtag').title=act?(act.notes||''):'';
+  $('rk-vnote').textContent=act?(act.notes||''):'Configuración por defecto';
+  $('rk-hist').innerHTML=VERSIONS.map(v=>`<span class="rk-chip ${v.version===ACTIVE?'on':''}" title="${(v.notes||'').replace(/"/g,'&quot;')}">v${v.version}${v.version===ACTIVE?' · activa':`<button data-rev="${v.version}">Revertir</button>`}</span>`).join('');
+  $('rk-hist').querySelectorAll('[data-rev]').forEach(b=>b.onclick=()=>revert(+b.dataset.rev));
+}
+async function revert(version){ const r=await api('POST',`/api/risk_engine/versions/${version}/activate`); if(r.ok){ await loadVersions(); } else { alert('No se pudo revertir: '+JSON.stringify(r.data)); } }
+function pairRows(tbl,arr,cls){ tbl.querySelectorAll('tr[data-row]').forEach(r=>r.remove());
+  arr.forEach((r,i)=>{const tr=document.createElement('tr');tr.setAttribute('data-row','');
+    tr.innerHTML=`<td><input type="number" data-k="${cls}" data-i="${i}" data-j="0" value="${r[0]}"></td><td><input type="number" data-k="${cls}" data-i="${i}" data-j="1" value="${r[1]}"></td>`;tbl.appendChild(tr);});}
+function buildEditor(){
+  $('c-housing').value=(CFG.housing&&CFG.housing.owner)||0; $('c-delivery').value=CFG.delivery||0; $('c-kindef').value=CFG.kinship_default||0;
+  pairRows($('c-months'),CFG.months,'months'); pairRows($('c-income'),CFG.income,'income'); pairRows($('c-credit'),CFG.credit,'credit');
+  $('c-kin').querySelectorAll('tr[data-row]').forEach(r=>r.remove());
+  Object.keys(CFG.kinship).forEach(k=>{const tr=document.createElement('tr');tr.setAttribute('data-row','');
+    tr.innerHTML=`<td>${kinLabels[k]||k}</td><td><input type="number" data-kin="${k}" value="${CFG.kinship[k]}"></td>`;$('c-kin').appendChild(tr);});
+  bindInputs();
+}
+function readEditor(){
+  document.querySelectorAll('[data-k]').forEach(inp=>{CFG[inp.dataset.k][+inp.dataset.i][+inp.dataset.j]=+inp.value||0;});
+  document.querySelectorAll('[data-kin]').forEach(inp=>{CFG.kinship[inp.dataset.kin]=+inp.value||0;});
+  CFG.housing={owner:+$('c-housing').value||0}; CFG.delivery=+$('c-delivery').value||0; CFG.kinship_default=+$('c-kindef').value||0;
+}
+const tier=(v,t)=>{const r=t.find(([m])=>v>=m);return r?r[1]:0;};
+function kin(r){ if(!r) return CFG.kinship_default; return (r in CFG.kinship)?CFG.kinship[r]:10; }
+function rkRender(){
+  readEditor();
+  const housing=$('housing').value,usa=+$('usa').value||0,addr=+$('addr').value||0,job=+$('job').value||0,income=+$('income').value||0,rel=$('rel').value;
+  const rowsD=[['Vivienda',housing==='owner'?'Propietario':'Inquilino',housing==='owner'?(CFG.housing.owner||0):0],
+    ['Meses en USA',usa+' m',tier(usa,CFG.months)],['Meses en domicilio',addr+' m',tier(addr,CFG.months)],['Meses en empleo',job+' m',tier(job,CFG.months)],
+    ['Ingreso semanal','$'+income,tier(income,CFG.income)],['Parentesco',$('rel').selectedOptions[0].text,kin(rel)],['País de entrega','México',CFG.delivery]];
+  const total=rowsD.reduce((s,r)=>s+r[2],0), credit=tier(total,CFG.credit);
+  $('bd').querySelector('tbody').innerHTML=rowsD.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>+${r[2]}</td></tr>`).join('')+`<tr class="tot"><td>Total</td><td></td><td>${total}</td></tr>`;
+  $('total').textContent=total; $('credit').textContent=credit?('$'+credit):'Rechazado'; $('creditKpi').classList.toggle('denied',credit===0);
+  $('ladder').innerHTML=CFG.credit.map((t,i)=>{const hi=i===0?Infinity:CFG.credit[i-1][0];const on=total>=t[0]&&total<hi;return `<div class="row ${on?'on':''}"><span>≥ ${t[0]} puntos</span><span>$${t[1]}</span></div>`;}).join('')+`<div class="row ${total<CFG.credit[CFG.credit.length-1][0]?'on':''}"><span>&lt; ${CFG.credit[CFG.credit.length-1][0]} puntos</span><span>Rechazado</span></div>`;
+}
+function bindInputs(){ document.querySelectorAll('[data-v="riesgo"] input,[data-v="riesgo"] select').forEach(el=>{el.oninput=rkRender;}); }
+async function saveNew(){
+  readEditor(); const note=$('note').value.trim();
+  if(!note){ $('saveMsg').textContent='Escribe el motivo del cambio primero.'; return; }
+  $('saveMsg').textContent='Guardando…';
+  const r=await api('POST','/api/risk_engine/versions',{notes:note,config:CFG});
+  if(r.ok){ $('note').value=''; $('saveMsg').textContent='Guardado como Versión '+r.data.version+' (activa).'; await loadVersions(); }
+  else { $('saveMsg').textContent='Error: '+JSON.stringify(r.data); }
+}
+$('saveBtn').onclick=saveNew;
+['housing','usa','addr','job','income','rel'].forEach(id=>$(id).addEventListener('input',rkRender));
+</script>
+</body>
+</html>

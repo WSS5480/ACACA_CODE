@@ -5,16 +5,15 @@ class ManageJson::ProcessProductsJob
   require 'set'
   require 'zip'
 
-  def perform(products_data)
+  def perform(products_data, deactivate_missing = true, default_status = 'active')
     return if products_data.blank?
 
-    # Detectar tipo de respuesta y obtener el array de productos
     products_array = extract_products_array(products_data)
 
     return if products_array.blank?
 
     if ExchangeRate.current_rate <= 0
-      Rails.logger.error "❌ No se puede procesar productos: ExchangeRate.current_rate debe ser mayor a 0"
+      Rails.logger.error "No se puede procesar productos: ExchangeRate.current_rate debe ser mayor a 0"
       return
     end
 
@@ -35,8 +34,7 @@ class ManageJson::ProcessProductsJob
 
       begin
         product = Product.find_by(asin: product_data[:asin])
-        # Incluir status active: reactiva productos que estaban desactivados en un run anterior
-        product_data_with_status = product_data.merge(status: 'active')
+        product_data_with_status = product_data.merge(status: default_status)
 
         if product
           product.update!(product_data_with_status)
@@ -46,7 +44,6 @@ class ManageJson::ProcessProductsJob
           created_count += 1
         end
 
-        # Calcular y asignar min_weekly_payment
         price_usd = product_data[:price]
         if price_usd.present?
           min_payment = product.calculate_weekly_payment(
@@ -58,13 +55,8 @@ class ManageJson::ProcessProductsJob
           product.update_column(:min_weekly_payment, min_payment)
         end
 
-        # Procesar categorías del producto
         process_categories(product, item)
-
-        # Procesar especificaciones del producto
         process_specifications(product, item)
-
-        # Encolar job para descargar imágenes en segundo plano
         enqueue_image_download(product, item)
       rescue StandardError => e
         errors << { asin: product_data[:asin], error: e.message }
@@ -72,20 +64,19 @@ class ManageJson::ProcessProductsJob
       end
     end
 
-    # Desactivar productos que ya existen en la DB pero no vinieron en este payload
-    deactivated_count = Product.where.not(asin: asins_in_payload).update_all(status: 'inactive')
+    deactivated_count = 0
+    if deactivate_missing
+      deactivated_count = Product.where.not(asin: asins_in_payload).update_all(status: 'inactive')
+    end
 
-    Rails.logger.info "Procesamiento completado: #{created_count} creados, #{updated_count} actualizados, #{deactivated_count} desactivados (no en payload), #{errors.size} errores"
+    Rails.logger.info "Procesamiento completado: #{created_count} creados, #{updated_count} actualizados, #{deactivated_count} desactivados, #{errors.size} errores"
   end
 
   private
 
-  # Detecta el tipo de respuesta y extrae el array de productos
   def extract_products_array(data)
-    # Si ya es un array, retornarlo directamente
     return data if data.is_a?(Array)
 
-    # Si es un hash con download_links, descargar y procesar
     if data.is_a?(Hash) && data.dig('result_set', 'download_links', 'json', 'all_pages').present?
       download_url = data.dig('result_set', 'download_links', 'json', 'all_pages')
       Rails.logger.info "Detectada respuesta con download_links. Descargando desde: #{download_url}"
@@ -97,20 +88,17 @@ class ManageJson::ProcessProductsJob
     nil
   end
 
-  # Descarga el ZIP, lo descomprime y extrae el JSON de productos
   def download_and_extract_products(zip_url)
     Dir.mktmpdir do |tmp_dir|
       zip_path = File.join(tmp_dir, 'products.zip')
 
-      # Descargar el archivo ZIP
       Rails.logger.info "Descargando archivo ZIP..."
       download_file(zip_url, zip_path)
 
-      # Descomprimir y leer el JSON
       Rails.logger.info "Descomprimiendo archivo..."
       products_array = extract_json_from_zip(zip_path)
 
-      Rails.logger.info "Extracción completada. #{products_array&.size || 0} productos encontrados."
+      Rails.logger.info "Extraccion completada. #{products_array&.size || 0} productos encontrados."
       products_array
     end
   rescue StandardError => e
@@ -119,7 +107,6 @@ class ManageJson::ProcessProductsJob
     nil
   end
 
-  # Descarga un archivo desde una URL
   def download_file(url, destination)
     URI.open(url, 'rb') do |remote_file|
       File.open(destination, 'wb') do |local_file|
@@ -128,22 +115,18 @@ class ManageJson::ProcessProductsJob
     end
   end
 
-  # Extrae y parsea el JSON del archivo ZIP
   def extract_json_from_zip(zip_path)
     products = []
 
     Zip::File.open(zip_path) do |zip_file|
       zip_file.each do |entry|
-        # Solo procesar archivos .json
         next unless entry.name.end_with?('.json')
 
         Rails.logger.info "Procesando archivo: #{entry.name}"
 
-        # Extraer y leer el contenido
         json_content = entry.get_input_stream.read
         parsed_data = JSON.parse(json_content)
 
-        # El JSON debe ser un array directamente
         if parsed_data.is_a?(Array)
           products.concat(parsed_data)
         end
@@ -180,7 +163,6 @@ class ManageJson::ProcessProductsJob
   def process_categories(product, item)
     categories_data = item.dig('result', 'product', 'categories') || []
 
-    # Filtrar solo categorías que tienen category_id
     valid_categories = categories_data.select { |cat| cat['category_id'].present? }
 
     return if valid_categories.blank?
@@ -193,15 +175,13 @@ class ManageJson::ProcessProductsJob
 
       current_category_ids << category.id
 
-      # Crear la relación ProductCategory si no existe
       begin
         ProductCategory.find_or_create_by(product: product, category: category)
       rescue StandardError => e
-        Rails.logger.error "Error creando relación producto-categoría (producto: #{product.asin}, categoría: #{category.external_id}): #{e.message}"
+        Rails.logger.error "Error creando relacion producto-categoria (#{product.asin}): #{e.message}"
       end
     end
 
-    # Eliminar relaciones con categorías que ya no están en el array
     if current_category_ids.present?
       product.product_categories.where.not(category_id: current_category_ids).destroy_all
     end
@@ -227,7 +207,7 @@ class ManageJson::ProcessProductsJob
 
     category
   rescue StandardError => e
-    Rails.logger.error "Error procesando categoría #{external_id}: #{e.message}"
+    Rails.logger.error "Error procesando categoria #{external_id}: #{e.message}"
     nil
   end
 
@@ -253,7 +233,7 @@ class ManageJson::ProcessProductsJob
     return nil unless specifications.is_a?(Array)
 
     specifications.map do |spec|
-      name = sanitize_text(spec['name']) || 'Especificación'
+      name = sanitize_text(spec['name']) || 'Especificacion'
       value = sanitize_text(spec['value'])
       next if name.blank? && value.blank?
 
@@ -282,8 +262,7 @@ class ManageJson::ProcessProductsJob
     return nil if value.nil?
     return value unless value.is_a?(String)
 
-    # Eliminar caracter LEFT-TO-RIGHT MARK (U+200E)
-    value.gsub("\u200E", '').strip
+    value.gsub("‎", '').strip
   end
 
   def convert_to_usd(price_value, currency)

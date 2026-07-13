@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_17_165819) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_10_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -40,6 +40,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_17_165819) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "app_settings", force: :cascade do |t|
+    t.string "key", null: false
+    t.text "value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_app_settings_on_key", unique: true
   end
 
   create_table "beneficiaries", force: :cascade do |t|
@@ -204,6 +212,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_17_165819) do
     t.index ["order_id"], name: "index_referrals_on_order_id"
   end
 
+  create_table "risk_engine_configs", force: :cascade do |t|
+    t.integer "version", null: false
+    t.text "notes"
+    t.jsonb "config", default: {}, null: false
+    t.boolean "active", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_risk_engine_configs_on_active"
+    t.index ["version"], name: "index_risk_engine_configs_on_version", unique: true
+  end
+
   create_table "roles", force: :cascade do |t|
     t.string "name"
     t.string "label"
@@ -243,6 +262,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_17_165819) do
     t.string "confirmation_token"
     t.datetime "confirmed_at"
     t.datetime "confirmation_sent_at"
+    t.integer "risk_version"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true

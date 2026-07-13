@@ -120,7 +120,7 @@
 <header>
   <div class="wrap hbar">
     <a href="/" class="logo">á<span>casa</span><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:5px;margin-left:1px"><path d="M12 1c.7 4.6 2.6 6.5 7 7-4.4.5-6.3 2.4-7 7-.7-4.6-2.6-6.5-7-7 4.4-.5 6.3-2.4 7-7z" fill="var(--gold)"/></svg></a>
-    <nav class="nav"><a href="/shop.html" class="active">Productos</a><a href="/playground.html" class="admin-only">Admin</a></nav>
+    <nav class="nav"><a href="/">Inicio</a><a href="/shop.html" class="active">Productos</a><a href="/admin.html" style="opacity:.6">Admin</a></nav>
     <div style="flex:1"></div>
     <div class="search"><i>⌕</i><input id="q" placeholder="Buscar productos…"></div>
   </div>
@@ -204,13 +204,16 @@
 </div></div>
 
 <script>
-const API='https://api.acasa.mx';
+// Use the same app that serves this page (local app / tunnel). Falls back to
+// production only if this page is opened as a static file with no backend host.
+const API=(location.protocol==='http:'||location.protocol==='https:')&&location.host?'':'https://api.acasa.mx';
 let ALL=[], VIEW=[], SEL=null, SELPLAN=null, CATSEL='all', GAL=[];
 const $=id=>document.getElementById(id);
 const eff=p=>(p.price_with_discount&&p.price_with_discount>0)?p.price_with_discount:p.price;
 const money=n=>'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 function kw(t){t=(t||'').toLowerCase();if(/sof|sala|sill/.test(t))return'sofa';if(/refri|nevera/.test(t))return'refrigerator';if(/tele|pantalla|\btv\b/.test(t))return'television';if(/lavad/.test(t))return'washing-machine';if(/laptop|port[aá]til|comput/.test(t))return'laptop';if(/horno|estufa|cocina/.test(t))return'kitchen';return'furniture';}
-function img1(p){return (p.image&&p.image.length)?p.image[0]:('https://loremflickr.com/500/400/'+kw(p.title));}
+const PLACEHOLDER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='400'%3E%3Crect width='500' height='400' fill='%23eef0f4'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='20' fill='%239aa0ae' text-anchor='middle' dy='.3em'%3ESin foto%3C/text%3E%3C/svg%3E";
+function img1(p){return (p.image&&p.image.length)?p.image[0]:PLACEHOLDER;}
 
 async function getJSON(u){const r=await fetch(u);let d=null;try{d=await r.json();}catch(e){}return{ok:r.ok,status:r.status,data:d};}
 function norm(j){let a=(j&&(j.data||j.products))||[];if(!Array.isArray(a))a=[];return a.map(p=>{const x=p.attributes||p;return{
@@ -225,7 +228,7 @@ function card(p){
   const disc=p.price_with_discount&&p.price_with_discount>0&&p.price_with_discount<p.price;
   return `<div class="prod" data-id="${p.id}">
     ${disc?'<div class="badge">Oferta</div>':''}
-    <div class="ph"><img src="${img1(p)}" onerror="this.onerror=null;this.src='https://loremflickr.com/500/400/${kw(p.title)}'" alt=""></div>
+    <div class="ph"><img src="${img1(p)}" onerror="this.onerror=null;this.src=PLACEHOLDER" alt=""></div>
     <div class="body">
       <div class="name">${p.title||'Producto'}</div>
       <div class="price">${disc?('<s>'+money(p.price)+'</s>'):''}${money(eff(p))}</div>
@@ -319,7 +322,6 @@ async function submitApply(){
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on')));
 $('m-dp').oninput=simulate;$('m-apply').onclick=openApply;$('a-submit').onclick=submitApply;
 $('q').oninput=applyView;$('sort').onchange=applyView;
-// Admin tools need the backend; show them only where the API responds.
 document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='none';});
 fetch('/up').then(function(r){ if(r.ok) document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='';}); }).catch(function(){});
 load();

@@ -1,5 +1,10 @@
 # See https://git-scm.com/docs/gitattributes for more about git attribute files.
 
+# Force LF for scripts so they run inside Linux containers (fixes /usr/bin/env: 'ruby\r').
+*.sh text eol=lf
+bin/* text eol=lf
+Dockerfile* text eol=lf
+
 # Mark the database schema as having been generated.
 db/schema.rb linguist-generated
 

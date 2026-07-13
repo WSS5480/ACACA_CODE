@@ -4,18 +4,15 @@ class Api::ExchangeRatesController < ApplicationController
 
   before_action :set_exchange_rate, only: [:show, :destroy]
 
-  # GET /api/exchange_rates
   def index
     exchange_rates = ExchangeRate.all
     render_paginated(exchange_rates, ExchangeRateSerializer)
   end
 
-  # GET /api/exchange_rates/:id
   def show
     render json: ExchangeRateSerializer.new(@exchange_rate).serializable_hash, status: :ok
   end
 
-  # POST /api/exchange_rates
   def create
     @exchange_rate = ExchangeRate.new(exchange_rate_params)
 
@@ -26,7 +23,19 @@ class Api::ExchangeRatesController < ApplicationController
     end
   end
 
-  # DELETE /api/exchange_rates/:id
+  def refresh
+    before = ExchangeRate.current_rate
+    ExchangeRates::FetchRateJob.new.perform
+    latest = ExchangeRate.order(created_at: :desc).first
+    render json: {
+      usd_to_mxn: (latest&.usd_to_mxn || before),
+      updated: latest.present? && latest.usd_to_mxn.to_d != before.to_d,
+      fetched_at: latest&.created_at
+    }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message, usd_to_mxn: ExchangeRate.current_rate }, status: :ok
+  end
+
   def destroy
     @exchange_rate.destroy
     head :no_content
@@ -44,4 +53,3 @@ class Api::ExchangeRatesController < ApplicationController
     params.require(:exchange_rate).permit(:usd_to_mxn)
   end
 end
-

@@ -3,23 +3,19 @@ class Api::ProductsController < ApplicationController
   include Paginatable
   include Searchable
 
-  # Desactivar autenticación solo para acciones públicas
   skip_before_action :authenticate_entity!, only: [:index, :show, :manage_collection]
 
   before_action :set_product, only: [:show, :update, :destroy]
   before_action :authorize_master!, only: [:reset]
 
-  # GET /api/products
   def index
     render_paginated(filtered_products(Product.all), ProductSerializer, 'title')
   end
 
-  # GET /api/products/:id
   def show
     render json: ProductDetailSerializer.new(@product).serializable_hash, status: :ok
   end
 
-  # PATCH/PUT /api/products/:id
   def update
     if @product.update(product_params)
       recalculate_weekly_payment_if_needed
@@ -29,17 +25,13 @@ class Api::ProductsController < ApplicationController
     end
   end
 
-  # DELETE /api/products/:id
   def destroy
     @product.destroy
     head :no_content
   end
 
-  # POST /api/products/manage_collection
   def manage_collection
-    # Forzar formato JSON (Rainforest no siempre envía Content-Type correcto)
     request.format = :json
-
     payload = extract_rainforest_payload
 
     unless payload.present?
@@ -47,43 +39,92 @@ class Api::ProductsController < ApplicationController
     end
 
     if ExchangeRate.current_rate <= 0
-      return render json: { error: 'No se puede procesar productos: se requiere un tipo de cambio válido' }, status: :unprocessable_entity
+      return render json: { error: 'No se puede procesar productos: se requiere un tipo de cambio valido' }, status: :unprocessable_entity
     end
 
-    # Log para debugging de webhooks de Rainforest (solo Formato 2: hash con result_set/collection)
     if payload.is_a?(Hash)
       Rails.logger.info("[rainforest] result_set=#{payload.dig('result_set', 'id')} collection=#{payload.dig('collection', 'id')}")
     else
       Rails.logger.info("[rainforest] payload=array size=#{payload.size}")
     end
 
-    # Encolar el job para procesar los productos en segundo plano
     ManageJson::ProcessProductsJob.perform_async(payload.as_json)
-
-    # Responder 200 OK inmediatamente (Rainforest requiere 200, no acepta 202)
     render json: { ok: true }, status: :ok
   end
 
-  # DELETE /api/products/reset
+  def import_search
+    if ExchangeRate.current_rate <= 0
+      return render json: { error: 'Se requiere un tipo de cambio valido antes de importar.' }, status: :unprocessable_entity
+    end
+
+    result = RainforestImportService.new.search_and_import(
+      search_term: params[:search_term].to_s.strip,
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com',
+      sold_only: params[:sold_only].to_s != 'false',
+      delivered_only: params[:delivered_only].to_s != 'false'
+    )
+
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  def import_file
+    return render json: { error: 'Se requiere un archivo.' }, status: :bad_request unless params[:file].present?
+
+    if ExchangeRate.current_rate <= 0
+      return render json: { error: 'Se requiere un tipo de cambio valido antes de importar.' }, status: :unprocessable_entity
+    end
+
+    parsed = (JSON.parse(params[:file].read) rescue nil)
+    return render json: { error: 'El archivo debe ser JSON valido de Rainforest.' }, status: :unprocessable_entity if parsed.nil?
+
+    array = parsed.is_a?(Array) ? parsed : (parsed['results'] || parsed['search_results'] || parsed['products'] || parsed['data'] || [parsed])
+    items = Array(array).filter_map do |item|
+      next unless item.is_a?(Hash)
+      product = item.dig('result', 'product') || item['product'] || (item['asin'] ? item : nil)
+      next unless product.is_a?(Hash) && product['asin'].present?
+      product = product.merge('buybox_winner' => { 'price' => product['price'] }) if product['buybox_winner'].blank? && product['price'].present?
+      { 'success' => true, 'id' => (item['id'] || product['asin']), 'result' => { 'product' => product } }
+    end
+    return render json: { error: 'No se encontraron productos en el archivo.' }, status: :unprocessable_entity if items.blank?
+
+    ManageJson::ProcessProductsJob.perform_async(items, false, 'inactive')
+    render json: { ok: true, received: items.size }, status: :ok
+  end
+
+  def bulk_update
+    scope = bulk_scope
+    return render json: { error: 'Nada que actualizar.' }, status: :bad_request if scope.nil?
+
+    status = params[:status].to_s
+    return render json: { error: 'Estatus invalido.' }, status: :unprocessable_entity unless %w[active inactive].include?(status)
+
+    count = scope.update_all(status: status)
+    render json: { ok: true, updated: count }, status: :ok
+  end
+
+  def bulk_delete
+    scope = bulk_scope
+    return render json: { error: 'Nada que eliminar.' }, status: :bad_request if scope.nil?
+
+    count = scope.count
+    scope.destroy_all
+    render json: { ok: true, deleted: count }, status: :ok
+  end
+
   def reset
     deleted_count = Product.count
     Product.destroy_all
     render json: { message: "#{deleted_count} productos eliminados exitosamente" }, status: :ok
   end
 
-  # GET /api/products/download_csv
   def download_csv
     products = Product.includes(:categories)
     csv_data = ProductCsvExporterService.call(filtered_products(products))
     filename = "catalogo_productos_#{Date.current.strftime('%Y%m%d')}.csv"
 
-    send_data csv_data,
-              filename: filename,
-              type: 'text/csv; charset=utf-8',
-              disposition: 'attachment'
+    send_data csv_data, filename: filename, type: 'text/csv; charset=utf-8', disposition: 'attachment'
   end
 
-  # POST /api/products/update_csv
   def update_csv
     unless params[:file].present?
       return render json: { error: 'El archivo CSV es requerido' }, status: :bad_request
@@ -94,21 +135,12 @@ class Api::ProductsController < ApplicationController
     end
 
     csv_content = params[:file].read
-
-    # Generar un ID único para trackear el job
     job_id = SecureRandom.uuid
-
-    # Encolar el job para procesar el CSV en segundo plano
     Products::ImportCsvJob.perform_async(job_id, csv_content)
 
-    render json: {
-      message: 'El archivo CSV se está procesando en segundo plano',
-      job_id: job_id,
-      status: 'processing'
-    }, status: :accepted
+    render json: { message: 'El archivo CSV se esta procesando en segundo plano', job_id: job_id, status: 'processing' }, status: :accepted
   end
 
-  # GET /api/products/track_csv_job/:job_id
   def track_csv_job
     job_id = params[:job_id]
 
@@ -119,14 +151,7 @@ class Api::ProductsController < ApplicationController
     result = Products::ImportCsvJob.fetch_result(job_id)
 
     if result.nil?
-      # Si no se encuentra, asumimos que ya terminó exitosamente y expiró
-      render json: {
-        status: 'completed',
-        message: 'El proceso ha finalizado exitosamente',
-        result: {
-          note: 'Los detalles del resultado ya no están disponibles'
-        }
-      }, status: :ok
+      render json: { status: 'completed', message: 'El proceso ha finalizado exitosamente', result: { note: 'Los detalles del resultado ya no estan disponibles' } }, status: :ok
     else
       render json: result, status: :ok
     end
@@ -141,16 +166,11 @@ class Api::ProductsController < ApplicationController
     valid_types.include?(file.content_type) || file.original_filename&.end_with?('.csv')
   end
 
-  # Extrae el payload de Rainforest según el formato recibido
-  # - Array: formato directo de productos [{ "success": true, "result": {...} }, ...]
-  # - Hash con download_links: formato con URLs de descarga
   def extract_rainforest_payload
-    # Formato 1: Array directo de productos (params[:_json])
     if params[:_json].present? && params[:_json].is_a?(Array)
       return params[:_json]
     end
 
-    # Formato 2: Hash con download_links (Rainforest envía esto para colecciones grandes)
     if params[:result_set].present? && params.dig(:result_set, :download_links, :json, :all_pages).present?
       return params.to_unsafe_h.except(:controller, :action)
     end
@@ -178,6 +198,18 @@ class Api::ProductsController < ApplicationController
       :min_weekly_payment, :turns, :decimal_factor, :original_price,
       category_ids: []
     )
+  end
+
+  def bulk_scope
+    ids =
+      if params[:ids].present?
+        Array(params[:ids])
+      elsif params[:category_id].present?
+        Product.joins(:product_categories)
+               .where(product_categories: { category_id: params[:category_id] })
+               .distinct.pluck(:id)
+      end
+    ids && Product.where(id: ids)
   end
 
   def filtered_products(input_products)
@@ -239,8 +271,7 @@ class Api::ProductsController < ApplicationController
     return unless pricing_fields_changed && @product.effective_price.present?
 
     new_weekly_payment = @product.calculate_weekly_payment(
-      weeks: nil,
-      downpayment: nil,
+      weeks: nil, downpayment: nil,
       product_cost_usd: @product.effective_price,
       used_credit: @product.effective_price
     )
@@ -248,4 +279,3 @@ class Api::ProductsController < ApplicationController
     @product.update_column(:min_weekly_payment, new_weekly_payment)
   end
 end
-

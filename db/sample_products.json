@@ -1,0 +1,42 @@
+[
+  {"success": true, "id": "col-1", "result": {"product": {
+    "title": "Samsung 55\" Class 4K UHD Smart TV", "asin": "B0SAMTV55",
+    "link": "https://www.amazon.com/dp/B0SAMTV55", "brand": "Samsung", "rating": 4.6,
+    "keywords": "Samsung 55 4K UHD Smart TV",
+    "feature_bullets": ["4K UHD resolution", "Smart TV apps", "Envio a Mexico", "Garantia"],
+    "buybox_winner": {"price": {"value": 499.99, "currency": "USD"}},
+    "color": "Black", "material": "", "dimensions": "48x28x3 in", "model_number": "UN55CU7000"
+  }}},
+  {"success": true, "id": "col-2", "result": {"product": {
+    "title": "LG 26 cu ft French Door Refrigerator", "asin": "B0LGFRIDGE1",
+    "link": "https://www.amazon.com/dp/B0LGFRIDGE1", "brand": "LG", "rating": 4.5,
+    "keywords": "LG French Door Refrigerator",
+    "feature_bullets": ["26 cubic feet", "French door", "Ice maker", "Garantia"],
+    "buybox_winner": {"price": {"value": 1299.00, "currency": "USD"}},
+    "color": "Stainless Steel", "material": "", "dimensions": "36x33x69 in", "model_number": "LRFXC2606S"
+  }}},
+  {"success": true, "id": "col-3", "result": {"product": {
+    "title": "Whirlpool 4.5 cu ft Top Load Washer", "asin": "B0WHIRLWSH1",
+    "link": "https://www.amazon.com/dp/B0WHIRLWSH1", "brand": "Whirlpool", "rating": 4.3,
+    "keywords": "Whirlpool Top Load Washer",
+    "feature_bullets": ["4.5 cubic feet", "Top load", "Auto sensing", "Garantia"],
+    "buybox_winner": {"price": {"value": 649.50, "currency": "USD"}},
+    "color": "White", "material": "", "dimensions": "27x28x42 in", "model_number": "WTW5000DW"
+  }}},
+  {"success": true, "id": "col-4", "result": {"product": {
+    "title": "HP 15.6\" Laptop, 16GB RAM, 512GB SSD", "asin": "B0HPLAP156",
+    "link": "https://www.amazon.com/dp/B0HPLAP156", "brand": "HP", "rating": 4.4,
+    "keywords": "HP 15.6 Laptop 16GB 512GB",
+    "feature_bullets": ["16GB RAM", "512GB SSD", "15.6 inch display", "Garantia"],
+    "buybox_winner": {"price": {"value": 579.99, "currency": "USD"}},
+    "color": "Silver", "material": "", "dimensions": "14x9x0.7 in", "model_number": "15-fc0000"
+  }}},
+  {"success": true, "id": "col-5", "result": {"product": {
+    "title": "Xbox Series X 1TB Console", "asin": "B0XBOXSERX1",
+    "link": "https://www.amazon.com/dp/B0XBOXSERX1", "brand": "Microsoft", "rating": 4.8,
+    "keywords": "Xbox Series X 1TB",
+    "feature_bullets": ["1TB SSD", "4K gaming", "Includes controller", "Garantia"],
+    "buybox_winner": {"price": {"value": 499.00, "currency": "USD"}},
+    "color": "Black", "material": "", "dimensions": "12x6x6 in", "model_number": "RRT-00001"
+  }}}
+]

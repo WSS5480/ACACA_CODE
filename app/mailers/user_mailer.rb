@@ -11,13 +11,13 @@ class UserMailer < ApplicationMailer
     @pwrd = params[:pwrd]
     @login_url = frontend_base_url
 
-    mail to: @user.email, subject: "Bienvenid@ a Acasa"
+    mail to: @user.email, subject: "Bienvenid@ a acasa"
   end
 
   def send_client_number
     @user = params[:user]
 
-    mail to: @user.email, subject: "Tu número de cliente Acasa"
+    mail to: @user.email, subject: "Tu número de cliente acasa"
   end
 
   def send_client_welcome
@@ -29,7 +29,7 @@ class UserMailer < ApplicationMailer
       "#{base}/confirmar-cuenta?confirmation_token=#{ERB::Util.url_encode(raw_token)}"
     end
 
-    mail to: @user.email, subject: "¡Bienvenid@ a Acasa!"
+    mail to: @user.email, subject: "¡Bienvenid@ a acasa!"
   end
 
   # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno)
@@ -38,7 +38,7 @@ class UserMailer < ApplicationMailer
     addresses = ["edcantu@hotmail.com", "diego@lagom.agency", "ruben@lagom.agency"] #ENV.fetch('NOTIFICATE_TO', '').split(',').map(&:strip).reject(&:blank?)
     return if addresses.empty?
 
-    mail to: addresses, subject: "Nueva orden ##{@order.id} - Acasa"
+    mail to: addresses, subject: "Nueva orden ##{@order.id} - acasa"
   end
 
   private

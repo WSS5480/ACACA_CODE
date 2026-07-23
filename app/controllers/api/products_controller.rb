@@ -1,3 +1,6 @@
+require 'net/http'
+require 'uri'
+
 class Api::ProductsController < ApplicationController
   include TokenAuthenticatable
   include Paginatable
@@ -65,6 +68,82 @@ class Api::ProductsController < ApplicationController
     )
 
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # POST /api/products/rainforest_category  { category_id }
+  # Vista previa de una categoría/más-vendidos de Amazon (sin importar todavía).
+  def rainforest_category
+    result = RainforestImportService.new.category_preview(
+      category_id: params[:category_id].to_s.strip,
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # POST /api/products/rainforest_search  { search_term, min_price?, max_price? }
+  # Vista previa por PALABRA CLAVE con rango de precio opcional (sin importar todavía).
+  def rainforest_search
+    result = RainforestImportService.new.search_preview(
+      search_term: params[:search_term].to_s.strip,
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
+      min_price: params[:min_price],
+      max_price: params[:max_price],
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # POST /api/products/check_sellers  { asins: [...] }
+  # Verifica vendedor/envío por Amazon (1 crédito c/u) para pintar insignias en la vista previa.
+  def check_sellers
+    result = RainforestImportService.new.check_sellers(
+      asins: params[:asins],
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx'
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # POST /api/products/import_selected  { asins: [...] }
+  # Importa como borrador SOLO los ASINs elegidos, con detalle completo.
+  def import_selected
+    if ExchangeRate.current_rate <= 0
+      return render json: { error: 'Se requiere un tipo de cambio valido antes de importar.' }, status: :unprocessable_entity
+    end
+
+    result = RainforestImportService.new.import_selected(
+      asins: params[:asins],
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
+      sold_only: params[:sold_only].to_s == 'true',
+      delivered_only: params[:delivered_only].to_s == 'true',
+      keywords: params[:keywords]
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # GET /api/products/rainforest_categories  { parent_id? }
+  # Lista las categorías de más-vendidos válidas para poblar el dropdown.
+  def rainforest_categories
+    result = RainforestImportService.new.bestseller_categories(
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
+      parent_id: params[:parent_id].presence
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
+  # POST /api/products/verify_availability  { id | ids: [...] }
+  # Revisa si cada producto SIGUE publicado en Amazon consultando su página directamente
+  # (NO usa Rainforest, NO gasta créditos). available=false => ya no está (marcar en rojo).
+  def verify_availability
+    ids = params[:ids].present? ? Array(params[:ids]) : (params[:id].present? ? [params[:id]] : nil)
+    return render json: { error: 'Falta id o ids.' }, status: :bad_request if ids.blank?
+
+    results = ids.map do |pid|
+      product = Product.find_by(id: pid)
+      next { id: pid, available: nil, reason: 'no encontrado' } unless product
+      check_amazon_availability(product).merge(id: product.id)
+    end
+    render json: { ok: true, results: results }, status: :ok
   end
 
   def import_file
@@ -158,6 +237,45 @@ class Api::ProductsController < ApplicationController
   end
 
   private
+
+  # Consulta la página de Amazon del producto SIN Rainforest (sin créditos).
+  # Devuelve { available:, code:, reason: }. available=nil => no se pudo determinar (no marcar).
+  def check_amazon_availability(product)
+    asin = product.asin.to_s.strip
+    url = product.original_link.presence || (asin.present? ? "https://www.amazon.com.mx/dp/#{asin}" : nil)
+    return { available: nil, code: 0, reason: 'sin link/asin' } if url.blank?
+
+    current = url
+    3.times do
+      uri = URI.parse(current)
+      req = Net::HTTP::Get.new(uri)
+      req['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+      req['Accept-Language'] = 'es-MX,es;q=0.9'
+      res = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', open_timeout: 8, read_timeout: 12) { |http| http.request(req) }
+
+      case res
+      when Net::HTTPNotFound
+        return { available: false, code: 404, reason: '404 no encontrado' }
+      when Net::HTTPRedirection
+        current = URI.join(current, res['location'].to_s).to_s
+        next
+      when Net::HTTPSuccess
+        low = res.body.to_s.downcase
+        gone_markers = ['página no encontrada', 'pagina no encontrada', 'no está disponible', 'no esta disponible',
+                        'currently unavailable', 'no disponible actualmente', 'dogs of amazon', 'perritos de amazon']
+        gone = gone_markers.any? { |m| low.include?(m) }
+        asin_present = asin.blank? || low.include?(asin.downcase)
+        available = !gone && asin_present
+        return { available: available, code: res.code.to_i, reason: (gone ? 'marcado no disponible' : (asin_present ? 'ok' : 'asin ausente en la página')) }
+      else
+        # 503/CAPTCHA/bloqueo => no se pudo determinar; no marcar en rojo.
+        return { available: nil, code: res.code.to_i, reason: "respuesta #{res.code}" }
+      end
+    end
+    { available: nil, code: 0, reason: 'demasiados redirecciones' }
+  rescue StandardError => e
+    { available: nil, code: 0, reason: e.message }
+  end
 
   def valid_csv_file?(file)
     return false unless file.respond_to?(:content_type)

@@ -1,9 +1,15 @@
 <!DOCTYPE html>
+<!-- ============================================================= -->
+<!-- acasa · shop.html · BUILD acasa-shop-2026-07-23-pricing-v2      -->
+<!-- Modelo de precio: Total=precio*turns · TERMS[52,39,26,13]      -->
+<!-- enganche editable (#m-dpnum) + slider · plan semanal >= $25    -->
+<!-- Si esta línea NO aparece en el archivo servido, se revirtió.   -->
+<!-- ============================================================= -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ácasa — Compra hoy, paga por semana</title>
+<title>acasa — Compra hoy, paga por semana</title>
 <style>
   :root{ --brand:#e0592a; --brand-d:#c04212; --ink:#1b2130; --mut:#6b7280; --line:#e8e9ef; --bg:#f5f6fa; --card:#fff; --good:#12925f; --gold:#f5a623; --navy:#16213f; --navy-d:#0e1730; }
   *{box-sizing:border-box;}
@@ -98,6 +104,8 @@
   .pprice{font-size:22px;font-weight:800;margin-bottom:14px;}
   .prow{display:flex;justify-content:space-between;align-items:center;}
   .eng-val{color:var(--brand);font-weight:800;font-size:16px;}
+  .eng-input{width:84px;border:1px solid var(--line);border-radius:8px;padding:3px 7px;font:inherit;color:var(--brand);font-weight:800;font-size:16px;text-align:right;outline:none;}
+  .eng-input:focus{border-color:var(--brand);}
   #m-dp{width:100%;accent-color:var(--brand);margin:6px 0 4px;}
   .plans-radio{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
   .prad{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:12px;padding:13px 16px;cursor:pointer;font-weight:600;font-size:15px;transition:.12s;}
@@ -109,6 +117,7 @@
   .field{margin:10px 0;}
   .field label{display:block;font-size:12px;color:var(--mut);margin-bottom:5px;}
   .field input{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;}
+  .field select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   .ok{color:var(--good);font-weight:700;} .bad{color:#c0392b;font-weight:700;}
   footer{background:var(--navy);color:rgba(255,255,255,.75);font-size:13px;margin-top:20px;}
@@ -144,7 +153,10 @@
 
 <div class="wrap">
   <div class="tools">
-    <div class="cats" id="cats"></div>
+    <div class="cats" id="cats" style="display:flex;gap:8px;flex-wrap:wrap">
+      <select class="sort" id="cfCat"><option value="">Categoría</option></select>
+      <select class="sort" id="cfSub"><option value="">Subcategoría</option></select>
+    </div>
     <select class="sort" id="sort">
       <option value="wk">Pago semanal: menor</option>
       <option value="pl">Precio: menor a mayor</option>
@@ -158,7 +170,7 @@
   </div>
 </div>
 
-<footer><div class="wrap"><div>Cumplir sus sueños es más fácil con <b>ácasa</b></div><div>© 2026 Ácasa · Compra hoy, paga por semana</div></div></footer>
+<footer><div class="wrap"><div>Cumplir sus sueños es más fácil con <b>acasa</b></div><div>© 2026 acasa · Compra hoy, paga por semana</div></div></footer>
 
 <!-- Product modal -->
 <div class="overlay" id="ov-prod"><div class="modal">
@@ -176,8 +188,8 @@
       <div class="pcard">
         <div class="plabel">Precio</div>
         <div class="pprice" id="m-price"></div>
-        <div class="prow"><span class="plabel" style="margin:0">Enganche</span><span class="eng-val" id="m-dpval">$0</span></div>
-        <input type="range" id="m-dp" min="0" max="100" value="100" step="10">
+        <div class="prow"><span class="plabel" style="margin:0">Enganche</span><span class="eng-val">$<input type="number" id="m-dpnum" class="eng-input" min="0" step="1"></span></div>
+        <input type="range" id="m-dp" min="0" max="100" value="100" step="1">
         <div class="plabel" style="margin-top:14px">Plan de pago</div>
         <div class="plans-radio" id="m-plans"></div>
       </div>
@@ -191,13 +203,17 @@
 <div class="overlay" id="ov-apply"><div class="modal" style="max-width:460px;">
   <div class="mhead"><button class="x" data-close>×</button></div>
   <div style="padding:0 26px 26px;">
-    <h2 style="margin:0 0 2px;font-size:20px;">Crea tu cuenta</h2>
+    <h2 style="margin:0 0 2px;font-size:20px;">Solicita tu crédito</h2>
     <p class="note" id="a-summary" style="margin-top:2px;"></p>
     <div class="field"><label>Nombre</label><input id="a-name"></div>
     <div class="field"><label>Apellido</label><input id="a-last"></div>
-    <div class="field"><label>Correo</label><input id="a-email"></div>
-    <div class="field"><label>Teléfono</label><input id="a-phone"></div>
-    <div class="field"><label>Contraseña</label><input id="a-pass" type="password"></div>
+    <div class="field"><label>Correo</label><input id="a-email" type="email"></div>
+    <div class="field"><label>Teléfono</label><input id="a-phone" type="tel"></div>
+    <div class="field"><label>¿Tu vivienda es propia o rentada?</label><select id="a-housing"><option value="owner">Propia</option><option value="tenant">Rentada</option></select></div>
+    <div class="field"><label>Meses viviendo en Estados Unidos</label><input id="a-musa" type="number" min="0" inputmode="numeric"></div>
+    <div class="field"><label>Meses en tu domicilio actual</label><input id="a-maddr" type="number" min="0" inputmode="numeric"></div>
+    <div class="field"><label>Meses en tu empleo actual</label><input id="a-mjob" type="number" min="0" inputmode="numeric"></div>
+    <div class="field"><label>Ingreso mensual estimado (USD)</label><input id="a-income" type="number" min="0" inputmode="numeric"></div>
     <button class="apply" id="a-submit">Enviar solicitud</button>
     <div class="note" id="a-note">La solicitud se crea en tu app local de prueba, no en producción.</div>
   </div>
@@ -207,9 +223,20 @@
 // Use the same app that serves this page (local app / tunnel). Falls back to
 // production only if this page is opened as a static file with no backend host.
 const API=(location.protocol==='http:'||location.protocol==='https:')&&location.host?'':'https://api.acasa.mx';
-let ALL=[], VIEW=[], SEL=null, SELPLAN=null, CATSEL='all', GAL=[];
+let ALL=[], VIEW=[], SEL=null, SELPLAN=null, GAL=[];
+const SHOP_BUILD='acasa-shop-2026-07-23-pricing-v2';console.log('[acasa] shop.html build:',SHOP_BUILD);
 const $=id=>document.getElementById(id);
 const eff=p=>(p.price_with_discount&&p.price_with_discount>0)?p.price_with_discount:p.price;
+// ── Modelo de precio (acasa) ──────────────────────────────────────────────
+// Total = precio catálogo x turns. Semanal = (Total - enganche) / semanas. Sin waiver/factor.
+const totalOf=p=>{const t=parseFloat(p.turns);return (t>0)?eff(p)*t:eff(p);};
+const cashOf=p=>{const f=parseFloat(p.decimal_factor);return (f>0)?totalOf(p)*f:totalOf(p);};  // Total x factor
+const MIN_DP=0.10;              // enganche mínimo = 10% del PRECIO DE CONTADO
+const TERMS=[52,39,26,13];      // 12 / 9 / 6 / 3 meses
+const minDpOf=p=>cashOf(p)*MIN_DP;                 // enganche mínimo = 10% del precio de contado
+const MIN_WEEKLY=25;                               // solo ofrecer planes con semanal >= esto
+// desde = semanal más bajo CALIFICADO con enganche mínimo (>= MIN_WEEKLY); si no, plazo más corto
+const desdeOf=p=>{const fin=totalOf(p)-minDpOf(p);const q=TERMS.map(w=>fin/w).filter(wk=>wk>=MIN_WEEKLY);return q.length?Math.min(...q):fin/TERMS[TERMS.length-1];};
 const money=n=>'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 function kw(t){t=(t||'').toLowerCase();if(/sof|sala|sill/.test(t))return'sofa';if(/refri|nevera/.test(t))return'refrigerator';if(/tele|pantalla|\btv\b/.test(t))return'television';if(/lavad/.test(t))return'washing-machine';if(/laptop|port[aá]til|comput/.test(t))return'laptop';if(/horno|estufa|cocina/.test(t))return'kitchen';return'furniture';}
 const PLACEHOLDER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='400'%3E%3Crect width='500' height='400' fill='%23eef0f4'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='20' fill='%239aa0ae' text-anchor='middle' dy='.3em'%3ESin foto%3C/text%3E%3C/svg%3E";
@@ -217,9 +244,10 @@ function img1(p){return (p.image&&p.image.length)?p.image[0]:PLACEHOLDER;}
 
 async function getJSON(u){const r=await fetch(u);let d=null;try{d=await r.json();}catch(e){}return{ok:r.ok,status:r.status,data:d};}
 function norm(j){let a=(j&&(j.data||j.products))||[];if(!Array.isArray(a))a=[];return a.map(p=>{const x=p.attributes||p;return{
-  id:p.id||x.id,title:x.title,brand:x.brand,model:x.model_number,price:parseFloat(x.price),
+  id:p.id||x.id,title:x.title,brand:x.brand,keywords:x.keywords,model:x.model_number,price:parseFloat(x.price),
   price_with_discount:(x.price_with_discount!=null&&x.price_with_discount!=='')?parseFloat(x.price_with_discount):null,
   min_weekly_payment:x.min_weekly_payment?parseFloat(x.min_weekly_payment):null,
+  turns:x.turns,decimal_factor:x.decimal_factor,
   cats:(x.categories||[]).map(c=>({name:c.name,ext:String(c.external_id)})),
   image:(x.image_urls&&x.image_urls.length)?x.image_urls:null};})
   .filter(p=>p.id && ((p.price>0)||(p.price_with_discount>0)));}
@@ -232,7 +260,7 @@ function card(p){
     <div class="body">
       <div class="name">${p.title||'Producto'}</div>
       <div class="price">${disc?('<s>'+money(p.price)+'</s>'):''}${money(eff(p))}</div>
-      <div class="wk">${p.min_weekly_payment?money(p.min_weekly_payment):'—'} <small>/ semana</small></div>
+      <div class="wk"><small>desde</small> ${money(desdeOf(p))} <small>/ semana</small></div>
     </div></div>`;
 }
 function renderGrid(){
@@ -244,26 +272,64 @@ function renderGrid(){
 function applyView(){
   const q=($('q').value||'').toLowerCase().trim();
   let list=ALL.slice();
-  if(CATSEL!=='all') list=list.filter(p=>p.cats.some(c=>c.ext===CATSEL));
+  const cat=$('cfCat').value, sub=$('cfSub').value;   // Categoría = 1er nivel; Subcategoría = nivel profundo
+  if(sub) list=list.filter(p=>prodCatList(p).includes(sub));
+  else if(cat) list=list.filter(p=>prodTop(p)===cat);
   if(q) list=list.filter(p=>(p.title||'').toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q));
   const s=$('sort').value;
   list.sort((a,b)=> s==='pl'?eff(a)-eff(b): s==='ph'?eff(b)-eff(a): s==='az'?(a.title||'').localeCompare(b.title||''): (a.min_weekly_payment||1e9)-(b.min_weekly_payment||1e9));
   VIEW=list;
-  $('count').textContent=`${list.length} producto${list.length===1?'':'s'}`+(CATSEL==='all'&&!q?' en el catálogo':'');
+  $('count').textContent=`${list.length} producto${list.length===1?'':'s'}`+((!cat&&!sub&&!q)?' en el catálogo':'');
   renderGrid();
 }
-function buildCats(){
-  const m={};ALL.forEach(p=>p.cats.forEach(c=>{if(c.ext&&c.ext!=='undefined')m[c.ext]=c.name;}));
-  const cats=Object.keys(m).map(e=>({ext:e,name:m[e]})).sort((a,b)=>a.name.localeCompare(b.name));
-  const bar=$('cats');
-  bar.innerHTML='<span class="chip sel" data-ext="all">Todo</span>'+cats.map(c=>`<span class="chip" data-ext="${c.ext}">${c.name}</span>`).join('');
-  bar.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{bar.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel'));ch.classList.add('sel');CATSEL=ch.dataset.ext;applyView();});
+// Mismo árbol de 3 niveles que el scraper/admin: Departamento -> Categoría -> Subcategoría.
+const RFTREE={
+  'Electrónica':{cats:{
+    'Televisión y audio':['Pantalla Smart TV','Barra de sonido','Bocina Bluetooth','Teatro en casa'],
+    'Cómputo':['Laptop','Computadora de escritorio','Monitor','Impresora','Tablet'],
+    'Celulares y wearables':['Celular smartphone','Smartwatch','Audífonos'],
+    'Cámaras':['Cámara','Cámara de seguridad','Dron']}},
+  'Electrodomésticos':{cats:{
+    'Línea blanca':['Refrigerador','Lavadora','Secadora de ropa','Estufa','Congelador'],
+    'Cocina':['Microondas','Licuadora','Freidora de aire','Cafetera','Batidora','Olla express'],
+    'Clima':['Aire acondicionado','Minisplit','Ventilador','Calefactor']}},
+  'Hogar y muebles':{cats:{
+    'Muebles':['Sala sofá','Comedor','Cama matrimonial','Ropero clóset','Escritorio','Librero'],
+    'Descanso':['Colchón matrimonial','Colchón individual','Base de cama','Almohada']}},
+  'Herramientas':{cats:{
+    'Eléctricas':['Taladro','Esmeriladora','Sierra eléctrica','Lijadora'],
+    'Kits y otros':['Kit de herramientas','Caja de herramientas','Compresor de aire']}},
+  'Cuidado personal':{cats:{
+    'Cabello':['Secadora de cabello','Plancha para cabello'],
+    'Aseo personal':['Rasuradora eléctrica','Cepillo dental eléctrico','Depiladora']}}
+};
+function sNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'');}
+function pHay(p){return sNorm((p.title||'')+' '+(p.keywords||'')+' '+(p.cats||[]).map(c=>c.name).join(' '));}
+function mSub(p,sub){const hay=pHay(p),ns=sNorm(sub);if(!ns)return false;if(hay.includes(ns))return true;const t=ns.split(' ')[0];return t.length>=4&&hay.includes(t);}
+function subsOfCat(d,c){return (RFTREE[d]&&RFTREE[d].cats[c])||[];}
+function subsOfDept(d){return RFTREE[d]?Object.values(RFTREE[d].cats).reduce((a,b)=>a.concat(b),[]):[];}
+// Filtro basado en las categorías REALES de Amazon de cada producto. Categoría = 1er nivel; Subcategoría = niveles más profundos.
+function prodCatList(p){ return (p.cats||[]).map(c=>c.name).filter(Boolean); }
+function prodTop(p){ return prodCatList(p)[0]||''; }
+// Categoría = PRIMER nivel del breadcrumb; Subcategoría = niveles más profundos.
+function buildCascade(){
+  const cats=[...new Set(ALL.map(prodTop).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  $('cfCat').innerHTML='<option value="">Categoría</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  fillCascadeSubs();
 }
+function fillCascadeSubs(){
+  const top=$('cfCat').value, s=new Set();
+  ALL.forEach(p=>{ const a=prodCatList(p); if(!top||a[0]===top){ a.slice(1).forEach(n=>s.add(n)); } });
+  const subs=[...s].sort((a,b)=>a.localeCompare(b));
+  $('cfSub').innerHTML='<option value="">Subcategoría</option>'+subs.map(x=>`<option value="${x}">${x}</option>`).join('');
+}
+$('cfCat').onchange=()=>{fillCascadeSubs();applyView();};
+$('cfSub').onchange=applyView;
 async function load(){
-  const r=await getJSON(API+'/api/products?status=active&page=1&per_page=200');
+  const r=await getJSON(API+'/api/products?status=active&page=-1');
   ALL=r.ok?norm(r.data):[];
   if(!ALL.length){$('grid').innerHTML='<div class="empty">No se pudo cargar el catálogo.</div>';$('count').textContent='';return;}
-  buildCats();applyView();
+  buildCascade();applyView();
 }
 
 function setGallery(imgs){
@@ -280,16 +346,16 @@ function renderTabs(feat,specs){
   if(specs&&specs.length){h+='<h3>Especificaciones</h3><ul>'+specs.slice(0,12).map(s=>`<li>${s}</li>`).join('')+'</ul>';}
   $('m-tabs').innerHTML=h;
 }
-const W2M={52:12,34:8,26:6,13:3};
+const W2M={52:12,39:9,26:6,13:3};
 async function openProd(id){
   SEL=ALL.find(p=>String(p.id)===String(id));SELPLAN=null;if(!SEL)return;
   $('m-crumb').innerHTML='Productos › <b>'+(SEL.cats[0]?SEL.cats[0].name:'Catálogo')+'</b>';
   $('m-title').textContent=SEL.title||'Producto';
   let b='';if(SEL.brand)b+='<li>Marca: '+SEL.brand+'</li>';if(SEL.model)b+='<li>Número de modelo: '+SEL.model+'</li>';
   $('m-bullets').innerHTML=b;
-  const disc=SEL.price_with_discount&&SEL.price_with_discount>0&&SEL.price_with_discount<SEL.price;
-  $('m-price').innerHTML=(disc?'<s style="color:#b3b6c2;font-weight:500;margin-right:8px">'+money(SEL.price)+'</s>':'')+money(eff(SEL));
-  const dp=$('m-dp');dp.max=eff(SEL);dp.value=Math.min(100,eff(SEL));$('m-dpval').textContent=money(+dp.value);
+  const total=totalOf(SEL);const minDp=minDpOf(SEL);
+  $('m-price').innerHTML=money(total);
+  const dp=$('m-dp');dp.min=minDp;dp.max=total;dp.step=1;dp.value=minDp;$('m-dpnum').value=minDp.toFixed(2);
   $('m-apply').disabled=true;$('m-tabs').style.display='none';$('m-tabs').innerHTML='';$('m-more').textContent='Más detalles';
   setGallery(SEL.image);
   $('ov-prod').classList.add('on');
@@ -302,25 +368,63 @@ async function openProd(id){
     renderTabs(feat,specs);
   }
 }
-async function simulate(){
-  if(!SEL)return;const e=eff(SEL);const dp=Math.min(+$('m-dp').value,e);$('m-dpval').textContent=money(dp);
-  const r=await getJSON(API+`/api/orders/simulate_payment_plans?product_id=${SEL.id}&product_price=${e}&downpayment=${dp}&used_credit=${e-dp}`);
+function renderPlans(total,dp){
+  const financed=Math.max(0,total-dp);
   const box=$('m-plans');SELPLAN=null;$('m-apply').disabled=true;
-  if(!r.ok||!r.data||!r.data.payment_plans){box.innerHTML='<div class="note bad">No se pudieron calcular los planes.</div>';return;}
-  box.innerHTML=r.data.payment_plans.map(pl=>{const m=W2M[pl.weeks]||Math.round(pl.weeks/4.33);return `<div class="prad" data-w="${pl.weeks}" data-a="${pl.weekly_payment}"><span class="rc"></span><span>${money(pl.weekly_payment)} Semanal x ${m} Meses</span></div>`;}).join('');
+  const rows=TERMS.map(w=>({w,wk:financed/w})).filter(o=>o.wk>=MIN_WEEKLY);
+  if(!rows.length){box.innerHTML='<div class="note">No hay planes disponibles con este enganche (el pago semanal quedaría por debajo de '+money(MIN_WEEKLY)+'). Reduce el enganche para ver opciones.</div>';return;}
+  box.innerHTML=rows.map(o=>{const m=W2M[o.w]||Math.round(o.w/4.33);return `<div class="prad" data-w="${o.w}" data-a="${o.wk.toFixed(2)}"><span class="rc"></span><span>${money(o.wk)} Semanal x ${m} Meses</span></div>`;}).join('');
   box.querySelectorAll('.prad').forEach(el=>el.onclick=()=>{box.querySelectorAll('.prad').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');SELPLAN={weeks:+el.dataset.w,weekly:+el.dataset.a};$('m-apply').disabled=false;});
+}
+// El slider mueve el enganche (mantiene su piso del 10%)
+function simulate(){
+  if(!SEL)return;
+  const total=totalOf(SEL),minDp=total*MIN_DP;
+  let dp=+$('m-dp').value;dp=Math.max(minDp,Math.min(total,dp));
+  $('m-dp').value=dp;$('m-dpnum').value=dp.toFixed(2);
+  renderPlans(total,dp);
+}
+// La caja escrita guarda el monto REAL (solo acotado 0..Total)
+function dpTyped(commit){
+  if(!SEL)return;
+  const total=totalOf(SEL),minDp=total*MIN_DP;
+  let dp=parseFloat($('m-dpnum').value);
+  if(isNaN(dp)){if(commit){dp=minDp;$('m-dpnum').value=minDp.toFixed(2);}else return;}
+  dp=Math.max(0,Math.min(total,dp));
+  if(commit)$('m-dpnum').value=dp.toFixed(2);
+  $('m-dp').value=Math.max(minDp,Math.min(total,dp));
+  renderPlans(total,dp);
 }
 function openApply(){if(!SELPLAN)return;$('a-summary').textContent=`${SEL.title} · ${SELPLAN.weeks} semanas · ${money(SELPLAN.weekly)}/semana`;$('ov-prod').classList.remove('on');$('ov-apply').classList.add('on');}
 async function submitApply(){
   const n=$('a-note');n.textContent='Enviando…';n.className='note';
-  const body={user:{name:$('a-name').value,last_name:$('a-last').value,email:$('a-email').value,phone:$('a-phone').value,password:$('a-pass').value,password_confirmation:$('a-pass').value}};
-  try{ const r=await fetch('/api/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(r.ok){ n.innerHTML='<span class="ok">¡Solicitud enviada! Un asesor te contactará pronto.</span>'; return; }
-  }catch(e){}
-  n.innerHTML='<span class="ok">¡Gracias! Tu solicitud fue registrada (demostración).</span>';
+  const body={user:{
+    name:$('a-name').value.trim(), last_name:$('a-last').value.trim(),
+    email:$('a-email').value.trim(), phone:$('a-phone').value.trim(),
+    housing_type:$('a-housing').value,
+    months_usa:$('a-musa').value||0, months_address:$('a-maddr').value||0,
+    months_job:$('a-mjob').value||0, estimated_income:$('a-income').value||0,
+    delivery_country:'México'
+  }};
+  try{
+    const r=await fetch(API+'/api/users/client_register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>null);
+    if(r.ok&&d){
+      const a=(d.data&&d.data.attributes)||{};
+      const num=a.number||'—', credit=+(a.credit_amount||0);
+      if(credit>0){
+        n.innerHTML=`<span class="ok">¡Aprobado! Tu número de cliente es <b>${num}</b> y tu línea de crédito es <b>${money(credit)}</b>. Te enviamos un correo para confirmar tu cuenta y completar tu pedido.</span>`;
+      }else{
+        n.innerHTML=`<span class="ok">Recibimos tu solicitud (número de cliente <b>${num}</b>). Está en revisión; te contactaremos por correo.</span>`;
+      }
+      return;
+    }
+    const msg=(d&&(d.errors?[].concat(d.errors).join(', '):d.error))||('Error '+r.status);
+    n.innerHTML='<span class="bad">No se pudo completar: '+msg+'</span>';
+  }catch(e){ n.innerHTML='<span class="bad">Error de red. Intenta de nuevo.</span>'; }
 }
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on')));
-$('m-dp').oninput=simulate;$('m-apply').onclick=openApply;$('a-submit').onclick=submitApply;
+$('m-dp').oninput=simulate;$('m-dpnum').oninput=()=>dpTyped(false);$('m-dpnum').onchange=()=>dpTyped(true);$('m-apply').onclick=openApply;$('a-submit').onclick=submitApply;
 $('q').oninput=applyView;$('sort').onchange=applyView;
 document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='none';});
 fetch('/up').then(function(r){ if(r.ok) document.querySelectorAll('.admin-only').forEach(function(e){e.style.display='';}); }).catch(function(){});

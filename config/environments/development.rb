@@ -37,7 +37,30 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   config.x.api_consumer_host = ENV['FRONT_HOST'] || 'http://localhost:3000'
-  config.action_mailer.delivery_method = :letter_opener
+  # Real SMTP (e.g. Titan) when SMTP_ADDRESS is set in .env; otherwise fall back
+  # to letter_opener (which just saves emails to tmp/letter_opener/).
+  if ENV['SMTP_ADDRESS'].present?
+    smtp_port = (ENV['SMTP_PORT'] || 587).to_i
+    smtp = {
+      address: ENV['SMTP_ADDRESS'],
+      port: smtp_port,
+      user_name: ENV['SMTP_USERNAME'],
+      password: ENV['SMTP_PASSWORD'],
+      domain: ENV['SMTP_DOMAIN'] || 'acasa-us.com',
+      authentication: :login
+    }
+    # Port 465 uses implicit SSL (e.g. GoDaddy smtpout.secureserver.net);
+    # 587 uses STARTTLS (e.g. standalone smtp.titan.email).
+    if smtp_port == 465
+      smtp[:ssl] = true
+    else
+      smtp[:enable_starttls_auto] = true
+    end
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = smtp
+  else
+    config.action_mailer.delivery_method = :letter_opener
+  end
 
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_deliveries = true

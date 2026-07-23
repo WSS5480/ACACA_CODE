@@ -46,6 +46,12 @@ Rails.application.routes.draw do
     resources :products, controller: 'api/products' do
       post 'manage_collection', on: :collection
       post 'import_search', on: :collection
+      post 'rainforest_category', on: :collection
+      post 'rainforest_search', on: :collection
+      post 'check_sellers', on: :collection
+      post 'verify_availability', on: :collection
+      post 'import_selected', on: :collection
+      get 'rainforest_categories', on: :collection
       post 'import_file', on: :collection
       post 'bulk_update', on: :collection
       post 'bulk_delete', on: :collection

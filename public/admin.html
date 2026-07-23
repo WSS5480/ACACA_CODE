@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ácasa — Panel de administración</title>
+<title>acasa — Panel de administración</title>
 <style>
   :root{
     --brand:#f26a2a; --brand-d:#d4531a; --navy:#16213f; --gold:#f5a623;
@@ -111,6 +111,8 @@
   .ladder .row.on{border-color:var(--brand);background:#fff5f0;font-weight:700;color:var(--brand-d);}
   .cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;} @media(max-width:640px){.cfg-grid{grid-template-columns:1fr;}}
   .btn{background:var(--brand);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;} .btn:hover{background:var(--brand-d);}
+  @keyframes rfIndet{0%{margin-left:-40%}100%{margin-left:100%}}
+  .rfbar-indet{width:40%!important;animation:rfIndet 1s linear infinite;}
   textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-height:62px;font-family:inherit;}
   .muted{color:var(--mut);font-size:12.5px;line-height:1.6;}
 </style>
@@ -202,8 +204,8 @@
         <div class="search" style="max-width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="cliSearch" placeholder="Buscar…"></div>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito</th><th>Registrado</th><th>Versión riesgo</th></tr></thead>
-        <tbody id="cliBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
+        <tbody id="cliBody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -230,7 +232,6 @@
     <!-- ---------- CATÁLOGOS ---------- -->
     <section class="view hide" data-v="catalogos">
       <div class="head"><h1>Catálogos</h1><div class="sp"></div>
-        <select class="sel" id="catFilter" title="Filtrar por categoría"><option value="">Todas las categorías</option></select>
         <button class="btn" id="catDownload" style="background:#eef0f6;color:var(--navy)">Descargar CSV</button>
         <button class="btn" id="catSave">Guardar cambios</button>
       </div>
@@ -243,41 +244,79 @@
         <span class="muted" id="catActMsg"></span>
       </div>
       <p class="muted" style="margin:-8px 0 14px">Los productos llegan del scraper (Rainforest). Aquí afinas cada uno: precio, descuento, <b>turns</b>, factor y estatus. Al guardar se genera el CSV que alimenta el catálogo y se aplica en segundo plano.</p>
-      <div class="sec" style="padding:18px">
-        <div class="stitle" style="padding:0 0 6px">Importar de Amazon (Rainforest)</div>
-        <p class="muted" style="margin:0 0 12px">Escribe lo que buscas y Ácasa lo trae de Amazon (convierte a USD y baja hasta 7 fotos). <b>Costo:</b> 1 crédito por la búsqueda + 1 por cada producto revisado. Requiere tu API key (Configuración).</p>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <input id="impTerm" placeholder="Ej.: refrigerador LG, pantalla 55 pulgadas, laptop HP…" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;">
-          <select class="sel" id="impDomain"><option value="amazon.com.mx" selected>amazon.com.mx (MX)</option><option value="amazon.com">amazon.com (EU)</option></select>
-          <input id="impLimit" type="number" min="1" max="20" value="8" title="Máx. productos a revisar (créditos)" style="width:72px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:center">
-          <button class="btn" id="impBtn">Buscar e importar</button>
+
+      <!-- Importar de Amazon (Rainforest): elegir categoría, ver productos, elegir cuáles descargar -->
+      <div class="sec" style="padding:16px 18px;margin-bottom:16px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px">Importar de Amazon</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Categoría</label>
+            <select class="sel" id="rfSCat" style="min-width:170px"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Subcategoría</label>
+            <select class="sel" id="rfSSub" style="min-width:180px"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Máx.</label>
+            <input id="rfLimit" type="number" min="1" max="100" value="30" style="width:70px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Marca / palabra (opcional)</label>
+            <input id="rfq" placeholder="Ej.: LG, Samsung…" style="width:150px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Rango de precio (MXN)</label>
+            <select class="sel" id="rfPrice" style="min-width:170px">
+              <option value="">Todos los precios</option>
+              <option value="0-2000">$0 – $2,000</option>
+              <option value="2000-5000">$2,000 – $5,000</option>
+              <option value="5000-10000">$5,000 – $10,000</option>
+              <option value="10000-20000">$10,000 – $20,000</option>
+              <option value="20000-">$20,000 o más</option>
+            </select>
+          </div>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding-bottom:9px" title="Trae los MÁS VENDIDOS de Amazon de una categoría real de Rainforest. Usa créditos."><input type="checkbox" id="rfBest"> Más vendidos de Amazon</label>
+          <div id="rfCatWrap" style="display:none">
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Categoría (Amazon MX)</label>
+            <select class="sel" id="rfCat" style="min-width:190px"></select>
+          </div>
+          <button class="btn" id="rfDoSearch" style="background:var(--navy);color:#fff">Buscar</button>
+          <span class="muted" id="rfMsg"></span>
         </div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px">
-          <label style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink);cursor:pointer">
-            <input type="checkbox" id="impSold" checked style="width:16px;height:16px;cursor:pointer"> Vendido por Amazon
-          </label>
-          <label style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink);cursor:pointer">
-            <input type="checkbox" id="impDelivered" checked style="width:16px;height:16px;cursor:pointer"> Entregado por Amazon
-          </label>
+        <p class="muted" style="margin:8px 0 0;font-size:12px">Elige <b>Subcategoría</b> (o marca/palabra) para buscar con rango de precio; o deja solo la <b>Categoría (Amazon MX)</b> para los más vendidos. El rango de precio aplica a ambos.</p>
+        <div id="rfBar" style="display:none;height:9px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-top:12px">
+          <div id="rfBarFill" style="width:0%;height:100%;background:var(--good);border-radius:6px;transition:width .2s ease"></div>
         </div>
-        <div class="muted" id="impMsg" style="margin-top:10px"></div>
-        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)">
-          <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">Opción sin créditos: subir export de Rainforest</div>
-          <p class="muted" style="margin:0 0 10px">¿Ya corriste una colección en Rainforest? Descarga el <b>JSON</b> y súbelo aquí. Se procesa con las mismas reglas (USD, hasta 7 fotos, categorías) sin gastar créditos en la app.</p>
-          <input type="file" id="impFile" accept=".json,application/json" style="font-size:13px">
-          <button class="btn" id="impFileBtn" style="margin-left:8px;background:#eef0f6;color:var(--navy)">Subir e importar</button>
-          <div class="muted" id="impFileMsg" style="margin-top:8px"></div>
+        <div id="rfResults" style="display:none;margin-top:14px">
+          <div id="rfProg" style="display:none;height:9px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-bottom:10px">
+            <div id="rfProgFill" style="width:0%;height:100%;background:var(--good);border-radius:6px;transition:width .25s ease"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap">
+            <label style="font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="rfAll"> Seleccionar todo</label>
+            <span class="muted" id="rfStageHint" style="font-size:12px">Paso 1: Verificar</span>
+            <div class="sp" style="flex:1"></div>
+            <button class="btn" id="rfImport" style="background:var(--good)" disabled>Verificar y descargar</button>
+            <button class="btn" id="rfClear" style="background:#fff;border:1px solid var(--line);color:var(--mut)" title="Vacía la lista de resultados. No borra tu catálogo ni la verificación.">Limpiar resultados</button>
+          </div>
+          <div id="rfGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:440px;overflow-y:auto"></div>
         </div>
       </div>
+
       <div class="sec">
         <div class="toolbar">
           <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="catSearch" placeholder="Buscar producto o ASIN…"></div>
+          <select class="sel" id="cfCat" title="Categoría"><option value="">Categoría</option></select>
+          <select class="sel" id="cfSub" title="Subcategoría"><option value="">Subcategoría</option></select>
+          <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="Revisa si cada producto sigue publicado en Amazon consultando su página. NO usa créditos de Rainforest.">Verificar en Amazon (sin créditos)</button>
+          <span class="muted" id="catVerMsg"></span>
           <span class="muted" id="catMsg"></span>
         </div>
         <div style="overflow-x:auto">
           <table><thead>
             <tr>
               <th style="width:26px"><input type="checkbox" id="catAll" title="Seleccionar todo"></th>
+              <th style="width:56px">Foto</th>
               <th data-sort="title" style="cursor:pointer">Producto</th>
               <th data-sort="asin" style="cursor:pointer">ASIN</th>
               <th data-sort="category" style="cursor:pointer">Categoría</th>
@@ -291,16 +330,7 @@
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-            <tr>
-              <th></th>
-              <th><input class="colf" data-col="title" placeholder="filtrar…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
-              <th><input class="colf" data-col="asin" placeholder="…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
-              <th><input class="colf" data-col="category" placeholder="…" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"></th>
-              <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-              <th><select class="colf" data-col="status" style="width:100%;padding:5px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:400"><option value="">todos</option><option value="active">En tienda</option><option value="inactive">Borrador</option></select></th>
-              <th></th>
-            </tr>
-          </thead><tbody id="catBody"><tr><td colspan="13" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="14" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -453,6 +483,7 @@ function show(view){
   if(view==='creditos' && !loaded.cre){ loadCredits(); }
   if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
   if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
+  if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
   if(view==='catalogos') loaded.cat=1;
   if(view==='riesgo' && !loaded.rk){ loadVersions(); loaded.rk=1; }
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
@@ -524,20 +555,29 @@ $('ordSort').addEventListener('change',()=>loadOrders('dashboard'));
 
 /* ---------------- Clients / Credits ---------------- */
 let CLIENTS=[];
-async function fetchClients(){ if(CLIENTS.length) return CLIENTS; const r=await api('GET','/api/users'); CLIENTS=rows(r.data); return CLIENTS; }
+async function fetchClients(){ if(CLIENTS.length) return CLIENTS; const r=await api('GET','/api/users?role=cliente'); CLIENTS=rows(r.data); return CLIENTS; }
 async function loadClients(){
   loaded.cli=1; const list=await fetchClients();
   const render=term=>{
     let l=list; if(term) l=list.filter(u=>JSON.stringify(u).toLowerCase().includes(term));
     $('cliBody').innerHTML = l.length ? l.map(u=>{
-      const name=pick(u,['name','full_name','first_name'],'—'), email=pick(u,['email'],'—');
+      const id=pick(u,['id'],''), name=pick(u,['name','full_name','first_name'],'—'), email=pick(u,['email'],'—');
       const num=pick(u,['number','client_number','phone'],'—'), credit=pick(u,['credit','available_credit','credit_amount'],null);
       return `<tr><td>${esc(name)}</td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${credit!=null?money(credit):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
-        <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
-    }).join('') : `<tr><td colspan="6" class="empty">No se encontraron clientes</td></tr>`;
+        <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
+        <td class="right"><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
+    }).join('') : `<tr><td colspan="7" class="empty">No se encontraron clientes</td></tr>`;
+    $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
   };
   render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
+}
+async function deleteClient(id, name){
+  if(!id) return;
+  if(!confirm('¿Eliminar al cliente '+(name||'')+'?\n\nEsto borra su cuenta, número de cliente y crédito. No se puede deshacer.')) return;
+  const r=await api('DELETE','/api/users/'+id);
+  if(r.ok || r.status===204){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; loadClients(); }
+  else { alert('No se pudo eliminar: '+((r.data&&(r.data.error||(r.data.errors&&[].concat(r.data.errors).join(', '))))||('Error '+r.status))); }
 }
 async function loadCredits(){
   loaded.cre=1; const list=await fetchClients();
@@ -550,15 +590,60 @@ async function loadCredits(){
 }
 
 /* ---------------- Catalog ---------------- */
-let CAT=[], CATS=[], SEL=new Set();
+let CAT=[], CATS=[], SEL=new Set(), catAvail={};
+// Verifica en Amazon (sin créditos de Rainforest) si cada producto sigue publicado.
+async function verifyCatalogAmazon(){
+  const list=currentList(); if(!list.length){ $('catVerMsg').textContent='No hay productos para verificar.'; return; }
+  if(!confirm('¿Verificar '+list.length+' producto(s) en Amazon?\n\nNo usa créditos de Rainforest. Consulta la página de cada producto, puede tardar.')) return;
+  const btn=$('catVerify'); btn.disabled=true;
+  let gone=0, unknown=0, done=0;
+  for(const p of list){
+    const id=String(pick(p,['id'],''));
+    $('catVerMsg').textContent='Verificando '+(done+1)+' de '+list.length+'…';
+    let av=null;
+    try{ const r=await api('POST','/api/products/verify_availability',{id}); if(r.ok&&r.data&&r.data.ok&&r.data.results&&r.data.results[0]) av=r.data.results[0].available; }catch(e){}
+    catAvail[id]=av;
+    if(av===false) gone++; else if(av===null) unknown++;
+    const row=$('catBody').querySelector('tr[data-rid="'+id+'"]');
+    if(row){ row.style.background = av===false?'#fde8e8':''; }
+    done++;
+  }
+  btn.disabled=false;
+  renderCat();
+  $('catVerMsg').textContent='Listo: '+gone+' ya no están en Amazon (rojo)'+(unknown?(' · '+unknown+' no se pudieron verificar'):'')+'.';
+}
 async function loadCatalog(){
   const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
   CAT=rows(pr.data); CATS=rows(cr.data);
-  const sel=$('catFilter'), cur=sel.value;
-  sel.innerHTML='<option value="">Todas las categorías</option>'+CATS.map(c=>`<option value="${pick(c,['id'],'')}">${esc(pick(c,['name'],'—'))}</option>`).join('')+'<option value="__none">— Sin categoría —</option>';
-  sel.value=cur||''; SEL.clear();
-  $('catSearch').oninput=renderCat; sel.onchange=renderCat;
+  SEL.clear();
+  cfFillCats();   // cascada Categoría (departamento) → Subcategoría, solo lo que existe en el catálogo
+  $('catSearch').oninput=renderCat;
+  $('cfCat').onchange=()=>{ cfFillSubs(); renderCat(); };
+  $('cfSub').onchange=renderCat;
   renderCat();
+}
+// ---- Filtro del catálogo con la MISMA cascada del scraper (RFTREE), podado a lo disponible ----
+function cfNorm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(new RegExp('[\u0300-\u036f]','g'),''); }
+function prodHay(p){ return cfNorm((pick(p,['title','name'],'')||'')+' '+(pick(p,['keywords'],'')||'')+' '+catNames(p)); }
+function prodMatchesSub(p,sub){ const hay=prodHay(p), ns=cfNorm(sub); if(!ns) return false; if(hay.includes(ns)) return true; const t=ns.split(' ')[0]; return t.length>=4 && hay.includes(t); }
+function subsOfCat(dep,cat){ const d=RFTREE[dep]; return (d&&d.cats[cat])||[]; }
+function subsOfDept(dep){ const d=RFTREE[dep]; return d?Object.values(d.cats).reduce((a,b)=>a.concat(b),[]):[]; }
+function anyProdInSubs(subs){ return CAT.some(p=>subs.some(s=>prodMatchesSub(p,s))); }
+// Filtro basado en las categorías REALES de Amazon de cada producto (refleja el catálogo).
+// Categoría = 1er nivel del breadcrumb; Subcategoría = niveles más profundos.
+function prodCatList(p){ return (pick(p,['categories'],[])||[]).map(c=>c.name).filter(Boolean); }
+function prodTop(p){ return prodCatList(p)[0]||''; }
+// Categoría = PRIMER nivel del breadcrumb de Amazon; Subcategoría = niveles más profundos.
+function cfFillCats(){
+  const cats=[...new Set(CAT.map(prodTop).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  $('cfCat').innerHTML='<option value="">Categoría</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  cfFillSubs();
+}
+function cfFillSubs(){
+  const top=$('cfCat').value, s=new Set();
+  CAT.forEach(p=>{ const a=prodCatList(p); if(!top||a[0]===top){ a.slice(1).forEach(n=>s.add(n)); } });
+  const subs=[...s].sort((a,b)=>a.localeCompare(b));
+  $('cfSub').innerHTML='<option value="">Subcategoría</option>'+subs.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
 }
 function catInp(v,key,id,extra){ return `<input data-id="${id}" data-key="${key}" value="${v==null?'':esc(v)}" ${extra||''} style="width:82px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;text-align:right;">`; }
 function prodCats(p){ return (pick(p,['categories'],[])||[]).map(c=>String(c.id)); }
@@ -574,9 +659,10 @@ function sortList(list){
 }
 function colFilters(){ const o={}; document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>{ if(el.value) o[el.dataset.col]=el.value.toLowerCase(); }); return o; }
 function currentList(){
-  const term=$('catSearch').value.trim().toLowerCase(), cf=$('catFilter').value; let list=CAT;
-  if(cf==='__none') list=list.filter(p=>prodCats(p).length===0);
-  else if(cf) list=list.filter(p=>prodCats(p).includes(cf));
+  const term=$('catSearch').value.trim().toLowerCase(); let list=CAT;
+  const cat=$('cfCat').value, sub=$('cfSub').value;   // Categoría = 1er nivel; Subcategoría = nivel profundo
+  if(sub) list=list.filter(p=>prodCatList(p).includes(sub));
+  else if(cat) list=list.filter(p=>prodTop(p)===cat);
   if(term) list=list.filter(p=>JSON.stringify(p).toLowerCase().includes(term));
   const f=colFilters();
   if(f.title) list=list.filter(p=>String(pick(p,['title','name'],'')).toLowerCase().includes(f.title));
@@ -585,15 +671,30 @@ function currentList(){
   if(f.status) list=list.filter(p=>String(pick(p,['status'],'active'))===f.status);
   return sortList(list);
 }
+// Insignias Sold/Delivered bajo la foto del catálogo (usan la verificación guardada por ASIN).
+function catBadges(asin){
+  const v=rfVer[String(asin||'').trim()] || rfVer[String(asin||'').trim().toUpperCase()];
+  const base='display:inline-block;font-size:9px;font-weight:700;padding:1px 4px;border-radius:5px;line-height:1.3;';
+  const one=(label,state)=>{
+    if(state===null||state===undefined) return `<span style="${base}background:#eef0f6;color:#8a8f9c">${label} ?</span>`;
+    if(state) return `<span style="${base}background:#e6f4ea;color:#137333">${label} ✓</span>`;
+    return `<span style="${base}background:#fde8e8;color:#b91c1c">${label} ✗</span>`;
+  };
+  const sold=v?!!v.sold:null, del=v?!!v.delivered:null;
+  return `<div style="display:flex;flex-direction:column;gap:2px;align-items:center;margin-top:3px">${one('Sold',sold)}${one('Del',del)}</div>`;
+}
 function renderCat(){
   const list=currentList();
-  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="12" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
+  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="14" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
   $('catBody').innerHTML=list.map(p=>{
     const id=String(pick(p,['id'],'')), asin=pick(p,['asin'],'—'), title=pick(p,['title','name'],'—');
+    const img=(pick(p,['image_urls'],[])||[])[0]||'';
     const price=pick(p,['price'],''), disc=pick(p,['price_with_discount'],''), turns=pick(p,['turns'],''), fac=pick(p,['decimal_factor'],''), st=String(pick(p,['status'],'active'));
-    return `<tr data-rid="${id}">
+    const gone=catAvail[id]===false;
+    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':''}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
-      <td style="max-width:210px">${esc(title)}</td>
+      <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>
+      <td style="max-width:210px">${esc(title)}${gone?'<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>':''}</td>
       <td class="mono">${esc(asin)}</td>
       <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>
       <td class="right">${catInp(price,'price',id,'type="number" step="0.01"')}</td>
@@ -629,20 +730,345 @@ function recalcRow(id){
   if(pg) pg.textContent = weekly ? money(weekly) : '—';
 }
 $('catAll').onchange=()=>{ const on=$('catAll').checked; currentList().forEach(p=>{const id=String(pick(p,['id'],'')); on?SEL.add(id):SEL.delete(id);}); renderCat(); };
+$('catVerify').onclick=verifyCatalogAmazon;
+// Vista ampliada de la miniatura al pasar el mouse (overlay fijo, no lo recorta la tabla).
+(function(){
+  const pop=document.createElement('div');
+  pop.style.cssText='position:fixed;z-index:9999;display:none;pointer-events:none;background:#fff;border:1px solid #d8dbe4;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.22);padding:8px';
+  pop.innerHTML='<img style="width:300px;height:300px;object-fit:contain;display:block">';
+  document.body.appendChild(pop);
+  const pimg=pop.firstChild, W=316, H=316, PAD=18;
+  function move(e){
+    let x=e.clientX+PAD, y=e.clientY+PAD;
+    if(x+W>window.innerWidth) x=e.clientX-W-PAD;
+    if(y+H>window.innerHeight) y=window.innerHeight-H-8;
+    if(y<8) y=8;
+    pop.style.left=x+'px'; pop.style.top=y+'px';
+  }
+  document.addEventListener('mouseover',e=>{
+    const t=e.target;
+    if(t&&t.classList&&t.classList.contains('cthumb')&&t.getAttribute('src')){
+      pimg.src=t.getAttribute('src'); pop.style.display='block'; move(e);
+    }
+  });
+  document.addEventListener('mousemove',e=>{ if(pop.style.display==='block') move(e); });
+  document.addEventListener('mouseout',e=>{ if(e.target&&e.target.classList&&e.target.classList.contains('cthumb')) pop.style.display='none'; });
+})();
+
+/* ---------------- Importar de Amazon (Rainforest): categoría -> elegir -> descargar ---------------- */
+let RF=[], rfVer={};
+// Persistencia en el navegador para que un refresh NO borre la verificación (y no gastes créditos de nuevo).
+try{ rfVer=JSON.parse(localStorage.getItem('acasa_rfver')||'{}')||{}; }catch(e){ rfVer={}; }
+try{ RF=JSON.parse(localStorage.getItem('acasa_rf')||'[]')||[]; }catch(e){ RF=[]; }
+function rfSaveVer(){ try{ localStorage.setItem('acasa_rfver', JSON.stringify(rfVer)); }catch(e){} }
+function rfSaveRF(){ try{ localStorage.setItem('acasa_rf', JSON.stringify(RF)); }catch(e){} }
+// Barra de progreso (igual que la de descarga): indeterminada al scrapear, por-producto al verificar.
+function rfBarIndet(){ const b=$('rfBar'),f=$('rfBarFill'); b.style.display=''; f.style.transition='none'; f.classList.add('rfbar-indet'); }
+function rfBarSet(pct){ const b=$('rfBar'),f=$('rfBarFill'); b.style.display=''; f.classList.remove('rfbar-indet'); f.style.transition='width .2s ease'; f.style.width=Math.max(0,Math.min(100,pct))+'%'; }
+function rfBarDone(){ rfBarSet(100); setTimeout(()=>{ $('rfBar').style.display='none'; $('rfBarFill').classList.remove('rfbar-indet'); $('rfBarFill').style.width='0%'; }, 500); }
+function rfCategoryId(){ return ($('rfBest')&&$('rfBest').checked) ? ($('rfCat').value||'').trim() : ''; }
+function rfSelected(){ return [...document.querySelectorAll('.rfChk:checked')].filter(cb=>!cb.disabled).map(cb=>cb.dataset.asin); }
+// Productos que YA están en el catálogo (por ASIN) — no se pueden verificar ni descargar.
+let rfCatSet=new Set();
+function rfBuildCatSet(){ try{ rfCatSet=new Set((CAT||[]).map(p=>String(pick(p,['asin'],'')).trim().toUpperCase()).filter(Boolean)); }catch(e){ rfCatSet=new Set(); } }
+function rfInCat(asin){ return rfCatSet.has(String(asin||'').trim().toUpperCase()); }
+// Botón en 2 pasos: 0 = falta verificar, 1 = verificado (ya se puede descargar lo seleccionado).
+let rfStage=0;
+function rfUpdate(){
+  const b=$('rfImport'), h=$('rfStageHint');
+  if(rfStage===0){
+    const sel=rfSelected().length;
+    const pend=RF.filter(p=>!rfInCat(p.asin)).length;
+    b.textContent='Verificar y descargar';
+    b.disabled = pend===0;
+    if(h) h.textContent = sel ? ('Paso 1: Verificar '+sel+' seleccionado(s)') : ('Paso 1: Verificar todos ('+pend+')');
+  } else {
+    const n=rfSelected().length;
+    b.textContent = n?('Descargar seleccionados ('+n+')'):'Descargar seleccionados';
+    b.disabled = n===0;
+    if(h) h.textContent='Paso 2: selecciona y descarga';
+  }
+}
+// Pinta la insignia de vendedor en una tarjeta (en el sitio, sin re-render, para no perder la selección).
+function rfSetBadge(asin,v){
+  const esc2=(window.CSS&&CSS.escape)?CSS.escape(asin):asin;
+  const sEl=$('rfGrid').querySelector('.rfb-sold[data-asin="'+esc2+'"]');
+  const dEl=$('rfGrid').querySelector('.rfb-del[data-asin="'+esc2+'"]');
+  const base='display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;';
+  const paint=(el,label,state,tip)=>{
+    if(!el) return; el.title=tip||'';
+    if(state===null||state===undefined){ el.textContent=label+' ?'; el.style.cssText=base+'background:#eef0f6;color:#8a8f9c'; }
+    else if(state){ el.textContent=label+' ✓'; el.style.cssText=base+'background:#e6f4ea;color:#137333'; }
+    else { el.textContent=label+' ✗'; el.style.cssText=base+'background:#fde8e8;color:#b91c1c'; }
+  };
+  if(!v){ paint(sEl,'Sold',null); paint(dEl,'Delivered',null); return; }
+  if(v.error){ paint(sEl,'Sold',null,'No se pudo verificar'); paint(dEl,'Delivered',null,'No se pudo verificar'); if(sEl){sEl.textContent='error';sEl.style.cssText=base+'background:#fde8e8;color:#b91c1c';} return; }
+  paint(sEl,'Sold', !!v.sold, v.sold?'Vendido por Amazon':('No vendido por Amazon'+(v.seller?' · '+v.seller:'')));
+  paint(dEl,'Delivered', !!v.delivered, v.delivered?'Entregado por Amazon':'No entregado por Amazon');
+}
+function renderRf(){
+  rfBuildCatSet();
+  rfStage=0;   // resultados nuevos → hay que verificar antes de descargar
+  $('rfGrid').innerHTML=RF.map(p=>{
+    const inCat=rfInCat(p.asin);
+    const slash = inCat
+      ? '<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, transparent calc(50% - 1.5px), #d11 calc(50% - 1.5px), #d11 calc(50% + 1.5px), transparent calc(50% + 1.5px))"></div>'
+        + '<div style="position:absolute;top:6px;left:6px;background:#d11;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px">Ya en catálogo</div>'
+      : '';
+    return `
+    <label style="border:1px solid var(--line);border-radius:10px;padding:8px;cursor:${inCat?'not-allowed':'pointer'};display:block;background:#fff;position:relative;${inCat?'opacity:.6':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <input type="checkbox" class="rfChk" data-asin="${esc(p.asin)}" ${inCat?'disabled':''}>
+        <span style="font-size:11px;color:var(--mut)">${p.price_raw?esc(p.price_raw):(p.price_value?('$'+esc(p.price_value)):'—')}</span>
+      </div>
+      <div style="margin:4px 0 2px;display:flex;gap:4px;flex-wrap:wrap">
+        <span class="rfb-sold" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Sold ?</span>
+        <span class="rfb-del" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Delivered ?</span>
+      </div>
+      <img src="${esc(p.image||'')}" onerror="this.style.visibility='hidden'" style="width:100%;height:90px;object-fit:contain;margin:6px 0">
+      <div style="font-size:11.5px;line-height:1.3;height:46px;overflow:hidden">${esc(p.title||p.asin)}</div>
+      <div style="font-size:10px;color:var(--mut);font-family:monospace;margin-top:2px">ASIN: ${esc(p.asin)}</div>
+      ${slash}
+    </label>`;
+  }).join('');
+  $('rfResults').style.display='';
+  $('rfGrid').querySelectorAll('.rfChk').forEach(cb=>cb.addEventListener('change',rfUpdate));
+  RF.forEach(p=>{ if(rfVer[p.asin]) rfSetBadge(p.asin, rfVer[p.asin]); });
+  $('rfAll').checked=false; rfUpdate();
+  rfSaveRF();
+}
+// Verifica los productos mostrados que NO están ya en el catálogo. Devuelve true si quedó verificado.
+async function rfVerify(){
+  // Verifica SOLO los seleccionados; si no hay ninguno seleccionado, verifica todos los mostrados.
+  const sel=rfSelected();
+  const onlySel = sel.length>0;
+  const all=(onlySel ? sel : RF.map(p=>p.asin).filter(Boolean)).filter(a=>!rfInCat(a));
+  if(!all.length){ $('rfMsg').textContent='No hay productos por verificar (selecciona algunos; los que ya están en el catálogo se omiten).'; return false; }
+  // Si elegiste items específicos, deja SOLO esos en la vista/caché (descarta el resto del scrapeo).
+  function rfKeepSelected(){
+    if(!onlySel) return;
+    RF=RF.filter(p=>all.includes(p.asin));
+    renderRf();
+    document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=true; });
+    rfUpdate();
+  }
+  const pending=all.filter(a=>!(rfVer[a] && !rfVer[a].error));
+  const cached=all.length-pending.length;
+  if(!pending.length){
+    all.forEach(a=>rfSetBadge(a,rfVer[a]));
+    rfKeepSelected();
+    $('rfMsg').textContent='Todos ya estaban verificados (0 créditos). Selecciona y toca Descargar.';
+    return true;
+  }
+  if(!confirm('¿Verificar '+pending.length+' producto(s)?'+(cached?(' ('+cached+' ya verificados, sin costo)'):'')+'\n\nUsa 1 crédito de Rainforest por producto NUEVO.')) return false;
+  $('rfImport').disabled=true;
+  // Verifica de a uno para llenar la barra de progreso (mismo costo por producto).
+  rfBarSet(0);
+  let done=0, errs=0;
+  for(const asin of pending){
+    $('rfMsg').textContent='Verificando '+(done+1)+' de '+pending.length+'…';
+    const r=await api('POST','/api/products/check_sellers',{asins:[asin], amazon_domain:'amazon.com.mx'});
+    if(r.ok && r.data && r.data.ok && r.data.results){ rfVer=Object.assign(rfVer, r.data.results); rfSetBadge(asin, rfVer[asin]); }
+    else { errs++; }
+    done++;
+    rfBarSet(Math.round(done/pending.length*100));
+  }
+  rfSaveVer();   // guarda en el navegador; un refresh ya NO borra la verificación
+  rfBarDone();
+  $('rfImport').disabled=false;
+  let amz=0; all.forEach(a=>{ const v=rfVer[a]; rfSetBadge(a,v); if(v&&v.sold&&v.delivered) amz++; });
+  rfKeepSelected();
+  const err=errs?(' · '+errs+' con error'):'';
+  $('rfMsg').textContent='Verificados: '+amz+' de '+all.length+' son de Amazon (verde)'+(cached?(' · '+cached+' reusados sin costo'):'')+err+'. Selecciona y toca Descargar.';
+  return errs<pending.length; // true si al menos uno se verificó
+}
+// Vacía la lista de resultados del scraper (no toca el catálogo ni la caché de verificación).
+function rfClear(){
+  RF=[]; rfSaveRF();
+  $('rfGrid').innerHTML='';
+  $('rfResults').style.display='none';
+  $('rfMsg').textContent='Resultados limpiados. Haz una nueva búsqueda cuando quieras.';
+}
+// Rango de precio del dropdown → [min,max] (null = sin límite).
+function rfPriceRange(){
+  const p=($('rfPrice').value||'').split('-');
+  const mn=(p[0]!=null&&p[0]!=='')?parseFloat(p[0]):null;
+  const mx=(p[1]!=null&&p[1]!=='')?parseFloat(p[1]):null;
+  return [isNaN(mn)?null:mn, isNaN(mx)?null:mx];
+}
+// Router de la búsqueda combinada: si hay subcategoría/palabra → búsqueda por palabra (con precio);
+// si solo hay Categoría (Amazon MX) → más vendidos de esa categoría (también filtra por precio).
+async function rfDoSearch(){
+  if($('rfBest').checked) return rfLoad();   // modo más-vendidos: usa la categoría de Amazon
+  const term=[$('rfSSub').value||'', $('rfq').value.trim()].filter(Boolean).join(' ').trim();
+  if(term) return rfSearch();
+  $('rfMsg').textContent='Elige una Subcategoría (o escribe marca/palabra).';
+}
+async function rfLoad(){
+  const cat=rfCategoryId(); if(!cat){ $('rfMsg').textContent='Elige una Categoría (Amazon MX).'; return; }
+  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  $('rfDoSearch').disabled=true; $('rfMsg').textContent='Buscando más vendidos en Amazon…'; rfBarIndet();
+  const r=await api('POST','/api/products/rainforest_category',{category_id:cat, amazon_domain:'amazon.com.mx', limit:lim});
+  $('rfDoSearch').disabled=false; rfBarDone();
+  if(!(r.ok && r.data && r.data.ok)){ $('rfMsg').textContent='Error: '+((r.data&&r.data.error)||('HTTP '+r.status)); $('rfResults').style.display='none'; return; }
+  RF=r.data.items||[];
+  const [mn,mx]=rfPriceRange();
+  if(mn!=null||mx!=null){ RF=RF.filter(p=>{ const v=p.price_value; if(v==null) return false; if(mn!=null&&v<mn) return false; if(mx!=null&&v>mx) return false; return true; }); }
+  $('rfMsg').textContent=RF.length+' productos encontrados. Elige cuáles descargar.';
+  renderRf();
+}
+// Botón en 2 pasos: 1er clic verifica (obligatorio), 2º clic descarga lo seleccionado.
+async function rfImport(){
+  if(rfStage===0){ const ok=await rfVerify(); if(ok){ rfStage=1; rfUpdate(); } return; }
+  await rfDownload();
+}
+async function rfDownload(){
+  const asins=rfSelected(); if(!asins.length){ $('rfMsg').textContent='No hay productos seleccionados (los que ya están en el catálogo no se pueden elegir). Marca algunos y toca Descargar.'; return; }
+  if(!confirm('¿Descargar '+asins.length+' producto(s) al catálogo como borrador?\n\nLos ya verificados NO recobran crédito; los demás usan 1 crédito c/u.')) return;
+  $('rfImport').disabled=true;
+  const total=asins.length, sold=false, deliv=false;   // sin filtro extra: bajas lo que seleccionaste
+  const prog=$('rfProg'), fill=$('rfProgFill');
+  prog.style.display=''; fill.style.width='0%';
+  const subTag=$('rfBest').checked ? '' : ($('rfSSub').value||'');   // etiqueta la subcategoría para el filtro del catálogo
+  let imported=0, skipped=0, errors=0, done=0; const importedAsins=[];
+  for(const asin of asins){
+    $('rfMsg').textContent='Descargando '+(done+1)+' de '+total+'…';
+    const r=await api('POST','/api/products/import_selected',{asins:[asin], amazon_domain:'amazon.com.mx', sold_only:sold, delivered_only:deliv, keywords:subTag});
+    if(r.ok && r.data && r.data.ok){
+      if(r.data.imported){ imported+=r.data.imported; importedAsins.push(asin); }
+      skipped+=(r.data.skipped||0);
+    } else { errors++; }
+    done++;
+    fill.style.width=Math.round(done/total*100)+'%';
+  }
+  // Los que sí entraron al catálogo se quitan de la lista; los omitidos/errores se quedan para reintentar.
+  RF=RF.filter(p=>!importedAsins.includes(p.asin));
+  const skip=skipped?(' · '+skipped+' omitido(s) por filtro Amazon (siguen en la lista)'):'';
+  const err=errors?(' · '+errors+' con error'):'';
+  $('rfMsg').textContent='Listo: '+imported+' importado(s) como borrador'+skip+err+'. Publícalos abajo cuando quieras.';
+  loaded.cat=0; loadCatalog();
+  $('rfImport').disabled=false;
+  // Deja ver la barra llena un instante, luego la limpia y refresca el grid (los importados desaparecen).
+  setTimeout(function(){
+    prog.style.display='none'; fill.style.width='0%';
+    if(RF.length){ renderRf(); } else { $('rfResults').style.display='none'; rfSaveRF(); $('rfMsg').textContent=$('rfMsg').textContent+' (lista vacía)'; }
+  }, 600);
+}
+// Menú curado de categorías -> subcategorías (cada subcategoría es el término de búsqueda en Amazon MX).
+// Árbol de 3 niveles: Departamento (Amazon MX) → Categoría → Subcategoría. Los tres dropdowns
+// salen de aquí y se enlazan en cascada. 'node' = categoría de más-vendidos de Amazon (si aplica).
+const RFTREE={
+  'Electrónica':{ node:'bestsellers_electronics', cats:{
+    'Televisión y audio':['Pantalla Smart TV','Barra de sonido','Bocina Bluetooth','Teatro en casa'],
+    'Cómputo':['Laptop','Computadora de escritorio','Monitor','Impresora','Tablet'],
+    'Celulares y wearables':['Celular smartphone','Smartwatch','Audífonos'],
+    'Cámaras':['Cámara','Cámara de seguridad','Dron']
+  }},
+  'Electrodomésticos':{ node:'', cats:{
+    'Línea blanca':['Refrigerador','Lavadora','Secadora de ropa','Estufa','Congelador'],
+    'Cocina':['Microondas','Licuadora','Freidora de aire','Cafetera','Batidora','Olla express'],
+    'Clima':['Aire acondicionado','Minisplit','Ventilador','Calefactor']
+  }},
+  'Hogar y muebles':{ node:'', cats:{
+    'Muebles':['Sala sofá','Comedor','Cama matrimonial','Ropero clóset','Escritorio','Librero'],
+    'Descanso':['Colchón matrimonial','Colchón individual','Base de cama','Almohada']
+  }},
+  'Herramientas':{ node:'', cats:{
+    'Eléctricas':['Taladro','Esmeriladora','Sierra eléctrica','Lijadora'],
+    'Kits y otros':['Kit de herramientas','Caja de herramientas','Compresor de aire']
+  }},
+  'Cuidado personal':{ node:'', cats:{
+    'Cabello':['Secadora de cabello','Plancha para cabello'],
+    'Aseo personal':['Rasuradora eléctrica','Cepillo dental eléctrico','Depiladora']
+  }}
+};
+// Scraper (modo palabra): Categoría = departamento, Subcategoría = hoja. Muestra TODAS (no se poda).
+function rfFillCats(){
+  $('rfSCat').innerHTML='<option value="">Categoría</option>'+Object.keys(RFTREE).map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  rfFillSubs();
+}
+function rfFillSubs(){
+  const subs=subsOfDept($('rfSCat').value);
+  $('rfSSub').innerHTML='<option value="">Subcategoría</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+// Modo "Más vendidos de Amazon": llena "Categoría (Amazon MX)" con categorías REALES de Rainforest
+// (las que funcionan con el endpoint de bestsellers) y desactiva los dropdowns de palabra.
+let rfBestCats=null;
+const RF_BEST_FALLBACK=[
+  {id:'bestsellers_electronics',name:'Electrónica (todo)'},
+  {id:'9687925011',name:'Televisión y Vídeo'},
+  {id:'9687880011',name:'Computadoras y Accesorios'},
+  {id:'9687422011',name:'Celulares y Accesorios'},
+  {id:'24035342011',name:'Audífonos y auriculares'},
+  {id:'9687605011',name:'Cámaras y Fotografía'},
+  {id:'10189676011',name:'Tablets'}
+];
+function rfFillBestCats(){
+  const list=(rfBestCats&&rfBestCats.length)?rfBestCats:RF_BEST_FALLBACK;
+  $('rfCat').innerHTML=list.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  $('rfMsg').textContent=(rfBestCats&&rfBestCats.length)?'Elige una categoría y toca Buscar para ver los más vendidos.':'Lista básica de categorías. Elige y busca.';
+}
+async function rfApplyBestMode(on){
+  $('rfCatWrap').style.display = on ? '' : 'none';   // el dropdown Amazon MX solo aparece con el check
+  ['rfSCat','rfSSub','rfq'].forEach(id=>{ const el=$(id); if(el){ el.disabled=on; el.style.opacity=on?0.5:1; } });
+  if(!on){ $('rfMsg').textContent=''; return; }
+  if(rfBestCats){ rfFillBestCats(); return; }
+  $('rfMsg').textContent='Cargando categorías de Amazon…';
+  try{
+    const r=await api('GET','/api/products/rainforest_categories?amazon_domain=amazon.com.mx');
+    if(r.ok && r.data && r.data.ok && r.data.categories && r.data.categories.length){ rfBestCats=r.data.categories; }
+  }catch(e){}
+  rfFillBestCats();
+}
+// Búsqueda por categoría/subcategoría + rango de precio (reutiliza el mismo grid y descarga).
+async function rfSearch(){
+  const sub=$('rfSSub').value||'';
+  const extra=$('rfq').value.trim();
+  const q=[sub,extra].filter(Boolean).join(' ').trim();
+  if(!q){ $('rfMsg').textContent='Elige una categoría y subcategoría.'; return; }
+  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  const range=($('rfPrice').value||'').split('-');
+  const min_price=range[0]!==''&&range[0]!=null?range[0]:'';
+  const max_price=range[1]!==''&&range[1]!=null?range[1]:'';
+  $('rfDoSearch').disabled=true; $('rfMsg').textContent='Buscando "'+q+'" en Amazon…'; rfBarIndet();
+  const r=await api('POST','/api/products/rainforest_search',{search_term:q, amazon_domain:'amazon.com.mx', min_price, max_price, limit:lim});
+  $('rfDoSearch').disabled=false; rfBarDone();
+  if(!(r.ok && r.data && r.data.ok)){ $('rfMsg').textContent='Error: '+((r.data&&r.data.error)||('HTTP '+r.status)); $('rfResults').style.display='none'; return; }
+  RF=r.data.items||[];
+  $('rfMsg').textContent = RF.length ? (RF.length+' productos encontrados. Elige cuáles descargar.') : 'Sin resultados en ese rango de precio. Prueba otro rango o palabra.';
+  renderRf();
+}
+$('rfBest').onchange=()=>rfApplyBestMode($('rfBest').checked);
+$('rfAll').onchange=()=>{ document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=$('rfAll').checked; }); rfUpdate(); };
+$('rfDoSearch').onclick=rfDoSearch; $('rfImport').onclick=rfImport;
+$('rfClear').onclick=rfClear;
+$('rfSCat').onchange=rfFillSubs;
+$('rfq').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rfDoSearch(); } });
+rfFillCats();
+// Si había una búsqueda/verificación antes del refresh, la restaura (sin gastar créditos).
+if(RF && RF.length) renderRf();
+// (Desactivado) Antes cargaba categorías reales de Amazon y reemplazaba el dropdown; ahora
+// los tres dropdowns salen de RFTREE en cascada, así que no lo sobrescribimos.
+async function rfLoadCategories(){ return; }
 document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(th=>{ th.dataset.label=th.textContent; th.onclick=()=>{
   const k=th.dataset.sort; SORT.dir=(SORT.key===k)?-SORT.dir:1; SORT.key=k;
   document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(t=>t.textContent=t.dataset.label);
   th.textContent=th.dataset.label+(SORT.dir>0?' ↑':' ↓'); renderCat();
 };});
 document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>el.addEventListener('input',renderCat));
+function cfActive(){ return !!($('cfCat').value || $('cfSub').value); }
 function updateCatActions(){
-  const cf=$('catFilter'), catName=(cf.value&&cf.value!=='__none')?cf.options[cf.selectedIndex].text:null, n=SEL.size;
-  if(n===0 && !catName){ $('catActions').style.display='none'; return; }
+  const filterActive=cfActive(), n=SEL.size;
+  if(n===0 && !filterActive){ $('catActions').style.display='none'; return; }
   $('catActions').style.display='flex';
-  $('catSelInfo').textContent = n>0 ? (n+' seleccionado(s)') : ('Categoría: '+catName+' ('+currentList().length+')');
+  $('catSelInfo').textContent = n>0 ? (n+' seleccionado(s)') : ('Filtro activo ('+currentList().length+')');
   $('catActMsg').textContent='';
 }
-function bulkPayload(){ return SEL.size>0 ? {ids:[...SEL]} : (($('catFilter').value&&$('catFilter').value!=='__none') ? {category_id:$('catFilter').value} : null); }
+function bulkPayload(){
+  if(SEL.size>0) return {ids:[...SEL]};
+  if(cfActive()){ const ids=currentList().map(p=>String(pick(p,['id'],''))).filter(Boolean); return ids.length?{ids}:null; }
+  return null;
+}
 async function bulkStatus(status){
   const p=bulkPayload(); if(!p){ return; }
   $('catActMsg').textContent='Aplicando…';
@@ -764,33 +1190,6 @@ async function testRf(){
   $('rfMsg').textContent = (r.data&&r.data.ok) ? ('✓ '+r.data.message) : ('✗ '+((r.data&&r.data.error)||'falló'));
 }
 $('rfSave').onclick=saveRf; $('rfTest').onclick=testRf;
-
-/* ---------------- Importar de Amazon (Catálogos) ---------------- */
-async function importSearch(){
-  const term=$('impTerm').value.trim(); if(!term){ $('impMsg').textContent='Escribe qué buscar.'; return; }
-  const btn=$('impBtn'), old=btn.textContent; btn.textContent='Buscando…'; btn.disabled=true;
-  btn.textContent='Buscando… (puede tardar)';
-  const r=await api('POST','/api/products/import_search',{search_term:term, amazon_domain:$('impDomain').value, sold_only:$('impSold').checked, delivered_only:$('impDelivered').checked, limit:$('impLimit').value});
-  btn.textContent=old; btn.disabled=false;
-  console.log('[import] respuesta:', r.data);
-  if(r.data&&r.data.ok){ $('impMsg').textContent='✓ Importados '+r.data.imported+' de '+r.data.checked+' revisados ('+r.data.skipped+' descartados). Entran como BORRADOR — revísalos y publica por categoría abajo. Precios en USD, fotos en 2° plano.'; loaded.cat=0; setTimeout(loadCatalog,3500); }
-  else { $('impMsg').textContent='✗ '+((r.data&&r.data.error)||'No se pudo importar'); }
-}
-$('impBtn').onclick=importSearch;
-
-async function uploadFile(){
-  const f=$('impFile').files[0]; if(!f){ $('impFileMsg').textContent='Elige un archivo JSON primero.'; return; }
-  const btn=$('impFileBtn'), old=btn.textContent; btn.textContent='Subiendo…'; btn.disabled=true;
-  const fd=new FormData(); fd.append('file', f);
-  const h={}; if(TOKEN) h.Authorization=TOKEN;
-  let d=null;
-  try{ const r=await fetch('/api/products/import_file',{method:'POST',headers:h,body:fd}); d=await r.json().catch(()=>null); }
-  catch(e){ d={error:e.message}; }
-  btn.textContent=old; btn.disabled=false;
-  if(d&&d.ok){ $('impFileMsg').textContent='✓ Recibidos '+d.received+' productos. Procesando (USD, fotos, categorías) en segundo plano…'; loaded.cat=0; setTimeout(loadCatalog,5000); }
-  else { $('impFileMsg').textContent='✗ '+((d&&d.error)||'No se pudo importar el archivo'); }
-}
-$('impFileBtn').onclick=uploadFile;
 
 /* ================= RISK ENGINE (versioning) ================= */
 const DEFAULTS={housing:{owner:5},months:[[48,20],[24,15],[12,10],[6,5]],income:[[750,30],[500,25],[400,20],[300,15],[200,10],[100,5]],kinship:{conyuge:20,'cónyuge':20,esposo:20,esposa:20,hijo:20,hija:20,padre:20,madre:20,hermano:15,hermana:15,otro:10},kinship_default:20,delivery:5,credit:[[79,750],[69,600],[59,500],[49,400],[45,300]]};

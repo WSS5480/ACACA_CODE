@@ -319,6 +319,7 @@
               <th style="width:56px">Foto</th>
               <th data-sort="title" style="cursor:pointer">Producto</th>
               <th data-sort="asin" style="cursor:pointer">ASIN</th>
+              <th data-sort="model_number" style="cursor:pointer">Modelo</th>
               <th data-sort="category" style="cursor:pointer">Categoría</th>
               <th data-sort="price" class="right" style="cursor:pointer">Precio USD</th>
               <th data-sort="price_with_discount" class="right" style="cursor:pointer">Con desc.</th>
@@ -330,7 +331,7 @@
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-          </thead><tbody id="catBody"><tr><td colspan="14" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="15" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -685,7 +686,7 @@ function catBadges(asin){
 }
 function renderCat(){
   const list=currentList();
-  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="14" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
+  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="15" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
   $('catBody').innerHTML=list.map(p=>{
     const id=String(pick(p,['id'],'')), asin=pick(p,['asin'],'—'), title=pick(p,['title','name'],'—');
     const img=(pick(p,['image_urls'],[])||[])[0]||'';
@@ -696,6 +697,7 @@ function renderCat(){
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>
       <td style="max-width:210px">${esc(title)}${gone?'<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>':''}</td>
       <td class="mono">${esc(asin)}</td>
+      <td class="mono" style="max-width:130px;font-size:12.5px;white-space:normal;word-break:break-word">${esc(pick(p,['model_number','model'],'—')||'—')}</td>
       <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>
       <td class="right">${catInp(price,'price',id,'type="number" step="0.01"')}</td>
       <td class="right">${catInp(disc,'price_with_discount',id,'type="number" step="0.01"')}</td>

@@ -355,7 +355,7 @@ async function openProd(id){
   let b='';if(SEL.brand)b+='<li>Marca: '+SEL.brand+'</li>';if(SEL.model)b+='<li>Número de modelo: '+SEL.model+'</li>';
   $('m-bullets').innerHTML=b;
   const total=totalOf(SEL);const minDp=minDpOf(SEL);
-  $('m-price').innerHTML=money(eff(SEL));   // Precio mostrado = costo base (NO costo x turns)
+  $('m-price').innerHTML=money(total);      // Precio mostrado = Total = costo x turns
   const dp=$('m-dp');dp.min=minDp;dp.max=total;dp.step=1;dp.value=minDp;$('m-dpnum').value=minDp.toFixed(2);
   $('m-apply').disabled=true;$('m-tabs').style.display='none';$('m-tabs').innerHTML='';$('m-more').textContent='Más detalles';
   setGallery(SEL.image);

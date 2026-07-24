@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!-- ============================================================= -->
-<!-- acasa · shop.html · BUILD acasa-shop-2026-07-23-pricing-v2      -->
+<!-- acasa · shop.html · BUILD acasa-shop-2026-07-24-pricing-v3      -->
 <!-- Modelo de precio: Total=precio*turns · TERMS[52,39,26,13]      -->
+<!-- enganche mínimo = 10% del precio de contado (minDpOf) en TODO  -->
 <!-- enganche editable (#m-dpnum) + slider · plan semanal >= $25    -->
 <!-- Si esta línea NO aparece en el archivo servido, se revirtió.   -->
 <!-- ============================================================= -->
@@ -224,7 +225,7 @@
 // production only if this page is opened as a static file with no backend host.
 const API=(location.protocol==='http:'||location.protocol==='https:')&&location.host?'':'https://api.acasa.mx';
 let ALL=[], VIEW=[], SEL=null, SELPLAN=null, GAL=[];
-const SHOP_BUILD='acasa-shop-2026-07-23-pricing-v2';console.log('[acasa] shop.html build:',SHOP_BUILD);
+const SHOP_BUILD='acasa-shop-2026-07-24-pricing-v3';console.log('[acasa] shop.html build:',SHOP_BUILD);
 const $=id=>document.getElementById(id);
 const eff=p=>(p.price_with_discount&&p.price_with_discount>0)?p.price_with_discount:p.price;
 // ── Modelo de precio (acasa) ──────────────────────────────────────────────
@@ -354,7 +355,7 @@ async function openProd(id){
   let b='';if(SEL.brand)b+='<li>Marca: '+SEL.brand+'</li>';if(SEL.model)b+='<li>Número de modelo: '+SEL.model+'</li>';
   $('m-bullets').innerHTML=b;
   const total=totalOf(SEL);const minDp=minDpOf(SEL);
-  $('m-price').innerHTML=money(total);
+  $('m-price').innerHTML=money(eff(SEL));   // Precio mostrado = costo base (NO costo x turns)
   const dp=$('m-dp');dp.min=minDp;dp.max=total;dp.step=1;dp.value=minDp;$('m-dpnum').value=minDp.toFixed(2);
   $('m-apply').disabled=true;$('m-tabs').style.display='none';$('m-tabs').innerHTML='';$('m-more').textContent='Más detalles';
   setGallery(SEL.image);
@@ -379,7 +380,7 @@ function renderPlans(total,dp){
 // El slider mueve el enganche (mantiene su piso del 10%)
 function simulate(){
   if(!SEL)return;
-  const total=totalOf(SEL),minDp=total*MIN_DP;
+  const total=totalOf(SEL),minDp=minDpOf(SEL);
   let dp=+$('m-dp').value;dp=Math.max(minDp,Math.min(total,dp));
   $('m-dp').value=dp;$('m-dpnum').value=dp.toFixed(2);
   renderPlans(total,dp);
@@ -387,7 +388,7 @@ function simulate(){
 // La caja escrita guarda el monto REAL (solo acotado 0..Total)
 function dpTyped(commit){
   if(!SEL)return;
-  const total=totalOf(SEL),minDp=total*MIN_DP;
+  const total=totalOf(SEL),minDp=minDpOf(SEL);
   let dp=parseFloat($('m-dpnum').value);
   if(isNaN(dp)){if(commit){dp=minDp;$('m-dpnum').value=minDp.toFixed(2);}else return;}
   dp=Math.max(0,Math.min(total,dp));

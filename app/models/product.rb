@@ -13,10 +13,10 @@ class Product < ApplicationRecord
   def image_urls
     return [] unless images.attached?
 
-    # En desarrollo usamos rutas relativas para que las fotos carguen tanto en
-    # localhost como a través de un túnel público (mismo origen que sirve la página).
-    # En producción se generan URLs absolutas (S3 / host configurado).
-    images.map { |image| Rails.env.development? ? rails_blob_path(image) : rails_blob_url(image) }
+    # URLs absolutas en todos los entornos. En desarrollo el host está configurado
+    # como localhost:3000 (ver development.rb), así el front en :3001 (Vercel) puede
+    # cargar las fotos. En producción usa el host/S3 configurado.
+    images.map { |image| rails_blob_url(image) }
   rescue StandardError => e
     Rails.logger.warn("[product #{id}] no se pudo generar image_urls: #{e.message}")
     []

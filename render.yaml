@@ -17,7 +17,6 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /up
-    dockerCommand: "bash -c 'bundle exec rails db:prepare && bundle exec puma -C config/puma.rb'"
     envVars:
       - key: RAILS_ENV
         value: production

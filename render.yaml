@@ -1,4 +1,3 @@
-# Render Blueprint - full Acasa stack (web + Sidekiq worker + PostgreSQL + Redis).
 databases:
   - name: acasa-db
     databaseName: acasa_production
@@ -6,21 +5,19 @@ databases:
     plan: free
 
 services:
-  # Redis (used by Sidekiq)
   - type: keyvalue
     name: acasa-redis
     plan: free
     ipAllowList: []
     maxmemoryPolicy: noeviction
 
-  # Rails web service
   - type: web
     name: acasa-web
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /up
-    dockerCommand: "bundle exec rails db:prepare && bundle exec puma -C config/puma.rb"
+    dockerCommand: "bash -c 'bundle exec rails db:prepare && bundle exec puma -C config/puma.rb'"
     envVars:
       - key: RAILS_ENV
         value: production
@@ -28,32 +25,6 @@ services:
         value: "true"
       - key: RAILS_LOG_TO_STDOUT
         value: "true"
-      - key: SECRET_KEY_BASE
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: acasa-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: acasa-redis
-          property: connectionString
-      - key: SIDEKIQ_USERNAME
-        value: admin
-      - key: SIDEKIQ_PASSWORD
-        generateValue: true
-
-  # Sidekiq background worker
-  - type: worker
-    name: acasa-sidekiq
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: bundle exec sidekiq
-    plan: free
-    envVars:
-      - key: RAILS_ENV
-        value: production
       - key: SECRET_KEY_BASE
         generateValue: true
       - key: DATABASE_URL

@@ -1,27 +1,16 @@
 # Render Blueprint - full Acasa stack (web + Sidekiq worker + PostgreSQL + Redis).
-#
-# Deploy:
-#   1. Push this file to your repo (git add render.yaml; git commit; git push).
-#   2. On Render: New + -> Blueprint -> pick the WSS5480/ACACA_CODE repo -> Apply.
-#   3. Render builds from your Dockerfile, provisions the DB + Redis, and runs
-#      the migrations automatically on first boot (via the Dockerfile entrypoint).
-#
-# Everything below starts on FREE plans so you can see it working at $0
-# (services sleep when idle -> slow first request). To make it always-on,
-# change the "plan:" lines (web/worker -> starter, db -> basic-256mb, redis -> starter).
-
 databases:
   - name: acasa-db
     databaseName: acasa_production
     user: acasa
-    plan: free            # 30-day free DB; use basic-256mb ($6/mo) to keep it
+    plan: free
 
 services:
   # Redis (used by Sidekiq)
   - type: keyvalue
     name: acasa-redis
-    plan: free            # 25 MB free; use starter ($10/mo) for more
-    ipAllowList: []       # reachable only from your Render services
+    plan: free
+    ipAllowList: []
     maxmemoryPolicy: noeviction
 
   # Rails web service
@@ -29,16 +18,13 @@ services:
     name: acasa-web
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: free            # sleeps when idle; use starter ($7/mo) for always-on
+    plan: free
     healthCheckPath: /up
-    # Run DB setup + migrations as a clear, separate step (not in the container
-    # entrypoint), then start Puma directly so boot doesn't depend on db:prepare.
-    preDeployCommand: "bundle exec rails db:prepare && bundle exec rails db:migrate"
-    dockerCommand: "bundle exec puma -C config/puma.rb"
+    dockerCommand: "bundle exec rails db:prepare && bundle exec puma -C config/puma.rb"
     envVars:
       - key: RAILS_ENV
         value: production
-      - key: RAILS_SERVE_STATIC_FILES   # serve the public/*.html pages
+      - key: RAILS_SERVE_STATIC_FILES
         value: "true"
       - key: RAILS_LOG_TO_STDOUT
         value: "true"
@@ -58,7 +44,7 @@ services:
       - key: SIDEKIQ_PASSWORD
         generateValue: true
 
-  # Sidekiq background worker (mailers, catalog jobs, exchange-rate job)
+  # Sidekiq background worker
   - type: worker
     name: acasa-sidekiq
     runtime: docker

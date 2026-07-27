@@ -17,6 +17,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /up
+    dockerCommand: "./bin/rails server"
     envVars:
       - key: RAILS_ENV
         value: production

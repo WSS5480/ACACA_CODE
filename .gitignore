@@ -33,3 +33,7 @@
 /config/master.key
 
 /vendor/bundle
+# nested frontend repo (separate git repo) & local junk
+www-acasa-main/
+/ACACA_CODE/
+MAIL_FROM=*.txt

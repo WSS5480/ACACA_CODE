@@ -3,8 +3,16 @@ class ProductSerializer
 
   attributes :id, :title, :keywords, :asin, :original_link, :brand, :rating,
              :feature_bullets, :price, :price_with_discount, :currency, :color, :material,
-             :dimensions, :model_number, :external_id, :status, :min_weekly_payment, :turns, :decimal_factor,
+             :dimensions, :model_number, :external_id, :status, :turns, :decimal_factor,
              :original_price, :created_at, :updated_at
+
+  attribute :min_weekly_payment do |product|
+    product.recalculated_min_weekly_payment
+  end
+
+  attribute :total_price do |product|
+    product.total_price
+  end
 
   attribute :image_urls do |product|
     product.image_urls

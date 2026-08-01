@@ -23,7 +23,7 @@ class Api::GuarantorsController < ApplicationController
     @guarantor = Guarantor.new(guarantor_params)
 
     # Si la autenticación es por ClientNumber, verificar que la orden pertenezca al cliente
-    if authenticated_by_client_number?
+    if acting_as_client?
       order = Order.find_by(id: guarantor_params[:order_id])
       unless order && order.user_id == @current_user.id
         return render json: { error: 'No autorizado para crear aval en esta orden' }, status: :forbidden
@@ -61,7 +61,7 @@ class Api::GuarantorsController < ApplicationController
   end
 
   def current_user_guarantors
-    if authenticated_by_client_number?
+    if acting_as_client?
       # Clientes solo ven garantes de sus propias órdenes
       Guarantor.joins(:order).where(orders: { user_id: @current_user.id })
     else
@@ -72,7 +72,7 @@ class Api::GuarantorsController < ApplicationController
 
   def authorize_client_own_guarantor
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a garantes de sus propias órdenes
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
 
     # Para index, ya se filtra en current_user_guarantors
     return if action_name == 'index'

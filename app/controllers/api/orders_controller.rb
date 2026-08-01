@@ -66,7 +66,7 @@ class Api::OrdersController < ApplicationController
     @order = Order.new(order_params)
 
     # Validar que el usuario y el producto existan
-    order_user = authenticated_by_client_number? ? @current_user : User.find_by(id: order_params[:user_id])
+    order_user = acting_as_client? ? @current_user : User.find_by(id: order_params[:user_id])
     unless order_user
       return render json: { error: 'Usuario no encontrado' }, status: :not_found
     end
@@ -75,18 +75,18 @@ class Api::OrdersController < ApplicationController
       return render json: { error: 'Producto no encontrado' }, status: :not_found
     end
 
-    # Usar precio efectivo (price_with_discount si está definido y > 0, sino price)
+    # SINGLE SOURCE OF TRUTH: total = costo x turns x factor. used_credit = monto financiado.
     current_credit = order_user.credit_amount
-    effective_price = order_product.effective_price
-    price_to_pay = effective_price - order_params[:downpayment].to_f
-    # Validar que el usuario tenga suficiente crédito
-    if current_credit < price_to_pay || current_credit < order_params[:used_credit].to_f
+    total = order_product.total_price
+    down = order_params[:downpayment].to_f
+    used = order_params[:used_credit].to_f
+    # El crédito usado (financiado) no puede exceder el crédito disponible
+    if current_credit < used
       return render json: { error: 'El usuario no tiene suficiente crédito' }, status: :unprocessable_entity
     end
-
-    # Validar que la suma de downpayment y used_credit no sea menor al precio del producto
-    unless money_equal?(order_params[:downpayment].to_f + order_params[:used_credit].to_f, effective_price)
-      return render json: { error: 'La suma de downpayment y used_credit no puede ser diferente al precio del producto' }, status: :unprocessable_entity
+    # Enganche + crédito usado == total
+    unless money_equal?(down + used, total)
+      return render json: { error: 'La suma del enganche y el crédito usado debe ser igual al total del producto' }, status: :unprocessable_entity
     end
 
     # Asignar los valores a order
@@ -138,9 +138,9 @@ class Api::OrdersController < ApplicationController
         @order.product_decimal_factor = @order.product.decimal_factor
       end
 
-      # SEGURIDAD: revalidar la invariante de dinero (enganche + credito usado == precio efectivo).
-      effective_price = order_effective_price
-      unless money_equal?(@order.downpayment.to_f + @order.used_credit.to_f, effective_price)
+      # SEGURIDAD: revalidar la invariante de dinero (enganche + credito usado == total).
+      total = @order.product&.total_price.to_f
+      unless money_equal?(@order.downpayment.to_f + @order.used_credit.to_f, total)
         @order.errors.add(:base, 'La suma del enganche y el credito usado debe ser igual al precio del producto')
         raise ActiveRecord::RecordInvalid, @order
       end
@@ -176,7 +176,7 @@ class Api::OrdersController < ApplicationController
     end
 
     # Si la autenticación es por ClientNumber, validar que el beneficiario pertenezca al cliente
-    if authenticated_by_client_number? && beneficiary.user_id != @current_user.id
+    if acting_as_client? && beneficiary.user_id != @current_user.id
       return render json: { error: 'No autorizado para asignar este beneficiario' }, status: :forbidden
     end
 
@@ -248,35 +248,21 @@ class Api::OrdersController < ApplicationController
       return render json: { error: 'El precio del producto debe ser mayor a 0' }, status: :unprocessable_entity
     end
 
-    # Usar precio efectivo (price_with_discount si está definido y > 0, sino price)
-    effective_price = product.effective_price
+    # SINGLE SOURCE OF TRUTH: todo se calcula desde el modelo (Total = costo x turns x factor).
+    total = product.total_price
+    min_down = product.min_downpayment
+    downpayment = min_down if downpayment < min_down
+    downpayment = total if downpayment > total
 
-    # Validar que product_price sea igual al precio efectivo del producto
-    unless money_equal?(product_price, effective_price)
-      return render json: { error: 'El precio del producto no coincide con el precio registrado' }, status: :unprocessable_entity
-    end
+    payment_plans = product.available_payment_plans(downpayment)
 
-    # Validar que la suma de downpayment y used_credit sea igual al precio efectivo
-    unless money_equal?(downpayment + used_credit, effective_price)
-      return render json: { error: 'La suma de downpayment y used_credit debe ser igual al precio del producto' }, status: :unprocessable_entity
-    end
-
-    # Calcular pagos semanales para los 4 plazos
-    payment_plans = [52, 34, 26, 13].map do |weeks|
-      weekly_payment = product.calculate_weekly_payment(
-        weeks: weeks,
-        downpayment: downpayment,
-        product_cost_usd: effective_price,
-        used_credit: used_credit
-      )
-
-      {
-        weeks: weeks,
-        weekly_payment: weekly_payment
-      }
-    end
-
-    render json: { payment_plans: payment_plans }, status: :ok
+    render json: {
+      payment_plans: payment_plans,
+      total: total,
+      min_downpayment: min_down,
+      downpayment: downpayment.round(2),
+      financed: (total - downpayment).round(2)
+    }, status: :ok
   end
 
   private
@@ -294,7 +280,7 @@ class Api::OrdersController < ApplicationController
   end
 
   def current_user_orders
-    if authenticated_by_client_number?
+    if acting_as_client?
       # Clientes solo ven sus propias órdenes
       @current_user.orders.includes(product: { images_attachments: :blob })
     else
@@ -311,7 +297,7 @@ class Api::OrdersController < ApplicationController
 
   def authorize_client_own_order
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a sus propias órdenes
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
 
     # Para index, ya se filtra en current_user_orders
     return if action_name == 'index'

@@ -23,7 +23,7 @@ class Api::ReferralsController < ApplicationController
     @referral = Referral.new(referral_params)
 
     # Si la autenticación es por ClientNumber, verificar que la orden pertenezca al cliente
-    if authenticated_by_client_number?
+    if acting_as_client?
       order = Order.find_by(id: referral_params[:order_id])
       unless order && order.user_id == @current_user.id
         return render json: { error: 'No autorizado para crear referencia en esta orden' }, status: :forbidden
@@ -61,7 +61,7 @@ class Api::ReferralsController < ApplicationController
   end
 
   def current_user_referrals
-    if authenticated_by_client_number?
+    if acting_as_client?
       # Clientes solo ven referencias de sus propias órdenes
       Referral.joins(:order).where(orders: { user_id: @current_user.id })
     else
@@ -72,7 +72,7 @@ class Api::ReferralsController < ApplicationController
 
   def authorize_client_own_referral
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a referencias de sus propias órdenes
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
 
     # Para index, ya se filtra en current_user_referrals
     return if action_name == 'index'

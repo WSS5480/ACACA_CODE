@@ -24,7 +24,7 @@ class Api::BuyersController < ApplicationController
     @buyer = Buyer.new(buyer_params)
 
     # Si la autenticación es por ClientNumber, verificar que la orden pertenezca al cliente
-    if authenticated_by_client_number?
+    if acting_as_client?
       order = Order.find_by(id: buyer_params[:order_id])
       unless order && order.user_id == @current_user.id
         return render json: { error: 'No autorizado para crear comprador en esta orden' }, status: :forbidden
@@ -67,7 +67,7 @@ class Api::BuyersController < ApplicationController
   end
 
   def current_user_buyers
-    if authenticated_by_client_number?
+    if acting_as_client?
       # Clientes solo ven buyers de sus propias órdenes
       Buyer.joins(:order).where(orders: { user_id: @current_user.id })
     else
@@ -78,7 +78,7 @@ class Api::BuyersController < ApplicationController
 
   def authorize_client_own_buyer
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a buyers de sus propias órdenes
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
 
     # Para index, ya se filtra en current_user_buyers
     return if action_name == 'index'

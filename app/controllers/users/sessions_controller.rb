@@ -28,8 +28,8 @@ class Users::SessionsController < Devise::SessionsController
 
       # Autenticar directamente sin contraseña para clientes
       # Usar warden para establecer la sesión y generar el token JWT
-      warden.set_user(user, scope: :user)
-      sign_in(resource_name, user)
+      # SEGURIDAD: el acceso solo con número (sin contraseña) está deshabilitado.
+      return render json: { code: 401, message: 'Se requiere email y contraseña.', error: 'El acceso solo con número fue deshabilitado. Inicia sesión con tu email y contraseña.' }, status: :unauthorized
       
       # El token JWT se genera automáticamente por devise-jwt después de sign_in
       yield user if block_given?

@@ -67,7 +67,10 @@ class Api::UsersController < ApplicationController
     @user = User.new(user_params)
     @user.role = client_role
     @user.number = generate_client_number
-    @user.password = Devise.friendly_token[0, 20] # Generar una contraseña aleatoria que no será usada ya que el cliente se autoriza por su número y no la necesita
+    # SEGURIDAD: el cliente define su propia contraseña (login por email + contraseña).
+    if @user.password.blank?
+      return render json: { error: 'La contraseña es requerida' }, status: :unprocessable_entity
+    end
 
     ActiveRecord::Base.transaction do
       @user.save!
@@ -115,7 +118,7 @@ class Api::UsersController < ApplicationController
 
   def authorize_client_own_profile
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a su propio perfil
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
     return if @user.number == request.headers['ClientNumber']
 
     render json: { error: 'No autorizado para ver este perfil' }, status: :forbidden
@@ -135,8 +138,7 @@ class Api::UsersController < ApplicationController
       :months_job,
       :estimated_income,
       :delivery_country,
-      :shared_income,
-      :role_id
+      :shared_income
     )
   end
 

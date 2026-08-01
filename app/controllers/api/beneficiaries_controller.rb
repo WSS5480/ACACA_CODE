@@ -23,7 +23,7 @@ class Api::BeneficiariesController < ApplicationController
     @beneficiary = Beneficiary.new(beneficiary_params)
 
     # Si la autenticación es por ClientNumber, asignar el user_id del cliente autenticado
-    if authenticated_by_client_number?
+    if acting_as_client?
       @beneficiary.user_id = @current_user.id
     end
 
@@ -58,7 +58,7 @@ class Api::BeneficiariesController < ApplicationController
   end
 
   def current_user_beneficiaries
-    if authenticated_by_client_number?
+    if acting_as_client?
       # Clientes solo ven sus propios beneficiarios
       @current_user.beneficiaries
     else
@@ -69,7 +69,7 @@ class Api::BeneficiariesController < ApplicationController
 
   def authorize_client_own_beneficiary
     # Si la autenticación fue por ClientNumber, verificar que solo acceda a sus propios beneficiarios
-    return unless authenticated_by_client_number?
+    return unless acting_as_client?
 
     # Para index, ya se filtra en current_user_beneficiaries
     return if action_name == 'index'

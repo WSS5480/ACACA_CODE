@@ -16,7 +16,8 @@ class Product < ApplicationRecord
     # Rutas RELATIVAS en desarrollo: así las fotos cargan por el MISMO origen que
     # sirve la página (shop.html vía el túnel de Cloudflare -> tu colega las ve).
     # En producción se generan URLs absolutas (S3 / host configurado).
-    images.map { |image| Rails.env.development? ? rails_blob_path(image) : rails_blob_url(image) }
+    # URLs absolutas en todos los entornos: el front en :3001 (u otro origen) puede cargar las fotos.
+    images.map { |image| rails_blob_url(image) }
   rescue StandardError => e
     Rails.logger.warn("[product #{id}] no se pudo generar image_urls: #{e.message}")
     []
@@ -26,19 +27,42 @@ class Product < ApplicationRecord
     price_with_discount.present? && price_with_discount > 0 ? price_with_discount : price
   end
 
-  def calculate_weekly_payment(weeks:, downpayment:, product_cost_usd: nil, used_credit: 0, turns: nil, decimal_factor: nil)
-    product_cost_usd ||= effective_price
-    turns ||= self.turns
-    decimal_factor ||= self.decimal_factor
-    weeks ||= 52
-    return 0 if product_cost_usd.blank?
-    differential = product_cost_usd - used_credit
-    cash_price = product_cost_usd * turns * decimal_factor
-    downpayment ||= 0.1 * cash_price
-    financed_amount = (product_cost_usd * turns) - downpayment - differential
-    weekly_no_waiver = financed_amount / weeks.to_f
-    waiver = weekly_no_waiver * 0.1
-    weekly_payment = weekly_no_waiver + waiver
-    weekly_payment.round(2)
+  TERMS = { 52 => 12, 39 => 9, 26 => 6, 13 => 3 }.freeze  # semanas => meses (12/9/6/3)
+  MIN_WEEKLY = 20                                          # solo se ofrecen plazos cuyo pago semanal supera $20
+
+  # "Total" / Precio (constante) = costo x turns x factor
+  def total_price
+    return 0 if effective_price.blank?
+    (effective_price.to_f * (turns || 3.5).to_f * (decimal_factor || 0.75).to_f).round(2)
+  end
+
+  # Enganche mínimo = 10% del total
+  def min_downpayment
+    (total_price * 0.10).round(2)
+  end
+
+  # Pago semanal = (Total - enganche) / semanas. Sin waiver.
+  def calculate_weekly_payment(weeks:, downpayment: nil, product_cost_usd: nil, used_credit: 0, turns: nil, decimal_factor: nil)
+    cost = (product_cost_usd || effective_price).to_f
+    t = (turns || self.turns || 3.5).to_f
+    f = (decimal_factor || self.decimal_factor || 0.75).to_f
+    return 0 if cost <= 0 || weeks.to_f <= 0
+    total = cost * t * f
+    dp = (downpayment || total * 0.10).to_f
+    ((total - dp) / weeks.to_f).round(2)
+  end
+
+  # Plazos disponibles (solo los que superan $20 semanales) para un enganche dado
+  def available_payment_plans(downpayment = nil)
+    dp = downpayment || min_downpayment
+    TERMS.map do |weeks, months|
+      { weeks: weeks, months: months, weekly_payment: calculate_weekly_payment(weeks: weeks, downpayment: dp) }
+    end.select { |p| p[:weekly_payment] > MIN_WEEKLY }
+  end
+
+  # "Pago x sem": el pago semanal mínimo entre los plazos ofrecidos
+  def recalculated_min_weekly_payment
+    plans = available_payment_plans
+    plans.empty? ? 0 : plans.map { |p| p[:weekly_payment] }.min
   end
 end

@@ -20,15 +20,8 @@ module ClientOrTokenAuthenticatable
   end
 
   def authenticate_client_or_user!
-    client_number = request.headers['ClientNumber']
-
-    # Si hay header de cliente, autenticar por número (no intentar JWT)
-    if client_number.present?
-      authenticate_by_client_number(client_number)
-      return
-    end
-
-    # Si no hay número de cliente, intentar autenticación por JWT
+    # SEGURIDAD: autenticación siempre por JWT (email + contraseña).
+    # El acceso solo con número de cliente (ClientNumber) fue deshabilitado.
     authenticate_by_jwt_token
   end
 
@@ -79,5 +72,11 @@ module ClientOrTokenAuthenticatable
   # Helper para saber si la autenticación fue por ClientNumber
   def authenticated_by_client_number?
     request.headers['ClientNumber'].present?
+  end
+
+  # SEGURIDAD: scoping por ROL (no por método de auth). Un cliente solo ve lo suyo,
+  # se autentique por token o (legado) por número.
+  def acting_as_client?
+    @current_user&.role&.name == 'cliente'
   end
 end

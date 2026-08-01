@@ -127,7 +127,26 @@ class Api::OrdersController < ApplicationController
 
     ActiveRecord::Base.transaction do
       @order.update!(order_params)
-      recalculate_weekly_payment_if_needed
+
+      # SEGURIDAD: los campos de precio SIEMPRE se toman del producto real,
+      # nunca de lo que envie el cliente (evita bajar turns/price para pagar de menos).
+      if @order.product.present?
+        @order.product_price = @order.product.price
+        @order.product_price_with_discount = @order.product.price_with_discount
+        @order.product_original_price = @order.product.original_price
+        @order.product_turns = @order.product.turns
+        @order.product_decimal_factor = @order.product.decimal_factor
+      end
+
+      # SEGURIDAD: revalidar la invariante de dinero (enganche + credito usado == precio efectivo).
+      effective_price = order_effective_price
+      unless money_equal?(@order.downpayment.to_f + @order.used_credit.to_f, effective_price)
+        @order.errors.add(:base, 'La suma del enganche y el credito usado debe ser igual al precio del producto')
+        raise ActiveRecord::RecordInvalid, @order
+      end
+
+      set_weekly_payment
+      @order.save!
       recalculate_user_credit(previous_used_credit)
     end
 

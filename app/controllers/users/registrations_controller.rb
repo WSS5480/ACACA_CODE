@@ -17,6 +17,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   private
 
+  # SEGURIDAD: los registros públicos SIEMPRE son rol 'cliente'.
+  # Las cuentas de staff/admin se crean por seeds o por un admin autenticado (nunca por signup público).
+  def build_resource(hash = {})
+    super
+    resource.role = Role.find_or_create_by!(name: 'cliente') if resource.role.blank?
+  end
+
   def respond_with(current_user, _opts = {})
     if resource.persisted?
       render json: {
@@ -36,7 +43,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def configure_sign_up_params
-    devise_parameter_sanitizer.permit(:sign_up, keys: [:name, :last_name, :number, :email, :password, :password_confirmation, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :role_id])
+    devise_parameter_sanitizer.permit(:sign_up, keys: [:name, :last_name, :number, :email, :password, :password_confirmation, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income])
   end
 end
 

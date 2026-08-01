@@ -6,10 +6,10 @@ class Api::ProductsController < ApplicationController
   include Paginatable
   include Searchable
 
-  skip_before_action :authenticate_entity!, only: [:index, :show, :manage_collection]
+  skip_before_action :authenticate_entity!, only: [:index, :show]
 
   before_action :set_product, only: [:show, :update, :destroy]
-  before_action :authorize_master!, only: [:reset]
+  before_action :authorize_master!, only: [:reset, :manage_collection]
 
   def index
     render_paginated(filtered_products(Product.all), ProductSerializer, 'title')

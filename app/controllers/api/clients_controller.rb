@@ -5,6 +5,7 @@ class Api::ClientsController < ApplicationController
   skip_before_action :authenticate_entity!, only: [:forgot_number]
   # Autenticación JWT requerida para update_credit
   before_action :authenticate_entity!, only: [:update_credit]
+  before_action :authorize_admin!, only: [:update_credit]
   before_action :set_client, only: [:update_credit]
 
   # POST /api/clients/forgot_number
@@ -57,6 +58,13 @@ class Api::ClientsController < ApplicationController
   end
 
   private
+
+  # SEGURIDAD: exige rol admin/master. @current_user lo setea authenticate_entity!.
+  def authorize_admin!
+    unless %w[master admin].include?(@current_user&.role&.name)
+      render json: { error: 'No autorizado. Se requiere rol de administrador.' }, status: :forbidden
+    end
+  end
 
   def set_client
     @client = User.joins(:role).find_by(id: params[:id], roles: { name: 'cliente' })

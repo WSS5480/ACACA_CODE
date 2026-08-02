@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_10_000003) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_02_034918) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -105,11 +105,41 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_10_000003) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "contract_installments", force: :cascade do |t|
+    t.bigint "contract_id", null: false
+    t.integer "number", null: false
+    t.date "due_date"
+    t.decimal "amount", precision: 10, scale: 2, default: "0.0"
+    t.decimal "paid_amount", precision: 10, scale: 2, default: "0.0"
+    t.string "status", default: "pending", null: false
+    t.datetime "paid_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "number"], name: "index_contract_installments_on_contract_id_and_number", unique: true
+  end
+
+  create_table "contracts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "contract_number", null: false
+    t.string "status", default: "active", null: false
+    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
+    t.decimal "downpayment", precision: 10, scale: 2, default: "0.0"
+    t.decimal "financed_amount", precision: 10, scale: 2, default: "0.0"
+    t.decimal "weekly_payment", precision: 10, scale: 2, default: "0.0"
+    t.integer "weeks"
+    t.date "start_date"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_number"], name: "index_contracts_on_contract_number", unique: true
+    t.index ["user_id"], name: "index_contracts_on_user_id"
+  end
+
   create_table "credits", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.decimal "amount", precision: 10, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "credit_limit", precision: 10, scale: 2
     t.index ["user_id"], name: "index_credits_on_user_id"
   end
 
@@ -158,10 +188,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_10_000003) do
     t.bigint "beneficiary_id"
     t.decimal "product_price_with_discount", precision: 10, scale: 2
     t.decimal "waiver", precision: 10, scale: 2, default: "0.0"
+    t.bigint "contract_id"
     t.index ["beneficiary_id"], name: "index_orders_on_beneficiary_id"
+    t.index ["contract_id"], name: "index_orders_on_contract_id"
     t.index ["hightouch_id"], name: "index_orders_on_hightouch_id"
     t.index ["product_id"], name: "index_orders_on_product_id"
     t.index ["user_id"], name: "index_orders_on_user_id"
+  end
+
+  create_table "payments", force: :cascade do |t|
+    t.bigint "contract_id", null: false
+    t.bigint "user_id"
+    t.decimal "amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.datetime "paid_at"
+    t.string "method"
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id"], name: "index_payments_on_contract_id"
+    t.index ["user_id"], name: "index_payments_on_user_id"
   end
 
   create_table "product_categories", force: :cascade do |t|
@@ -263,11 +308,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_10_000003) do
     t.datetime "confirmed_at"
     t.datetime "confirmation_sent_at"
     t.integer "risk_version"
+    t.string "whatsapp_verify_token"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role_id"], name: "index_users_on_role_id"
+    t.index ["whatsapp_verify_token"], name: "index_users_on_whatsapp_verify_token", unique: true
   end
 
   create_table "zip_codes", force: :cascade do |t|

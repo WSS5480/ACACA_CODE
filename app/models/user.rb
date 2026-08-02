@@ -44,6 +44,8 @@ class User < ApplicationRecord
 
   def outstanding_balance
     contracts.where(status: 'active').to_a.sum { |c| c.balance }.round(2)
+  rescue StandardError
+    0
   end
 
   def available_credit

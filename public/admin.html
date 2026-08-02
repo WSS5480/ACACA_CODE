@@ -602,11 +602,18 @@ async function loadClients(){
       return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
-        <td class="right"><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
+        <td class="right"><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
     }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
+    $('cliBody').querySelectorAll('.recalccli').forEach(b=>b.onclick=()=>recalcClient(b.dataset.id));
   };
   render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
+}
+async function recalcClient(id){
+  if(!confirm('Recalcular el credito de este cliente con la version ACTIVA del motor de riesgo?')) return;
+  const r=await api('POST','/api/risk_engine/recalc_credit',{user_ids:[id]});
+  if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; await loadClients(); alert('Credito recalculado (v'+r.data.active_version+').'); }
+  else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo recalcular.'); }
 }
 async function deleteClient(id, name){
   if(!id) return;

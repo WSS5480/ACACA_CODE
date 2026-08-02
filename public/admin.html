@@ -714,7 +714,7 @@ function renderCat(){
     </tr>`;
   }).join('');
   $('catBody').querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('change',()=>{el.dataset.dirty='1'; el.style.borderColor='var(--brand)';}));
-  $('catBody').querySelectorAll('input[data-key="price"],input[data-key="turns"],input[data-key="decimal_factor"]').forEach(el=>el.addEventListener('input',()=>recalcRow(el.dataset.id)));
+  $('catBody').querySelectorAll('input[data-key="price"],input[data-key="price_with_discount"],input[data-key="turns"],input[data-key="decimal_factor"]').forEach(el=>el.addEventListener('input',()=>recalcRow(el.dataset.id)));
   $('catBody').querySelectorAll('.csel').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?SEL.add(cb.dataset.id):SEL.delete(cb.dataset.id); updateCatActions(); }));
   $('catBody').querySelectorAll('.delone').forEach(b=>b.onclick=()=>deleteProducts([b.dataset.id]));
   list.forEach(p=>recalcRow(String(pick(p,['id'],''))));
@@ -723,12 +723,16 @@ function renderCat(){
 function recalcRow(id){
   const row=$('catBody').querySelector('tr[data-rid="'+id+'"]'); if(!row) return;
   const g=k=>parseFloat((row.querySelector('input[data-key="'+k+'"]')||{}).value)||0;
-  const price=g('price'), turns=g('turns'), fac=g('decimal_factor');
-  const total=price*turns;        // total a plazos (con pagos)
-  const cash=price*turns*fac;     // precio de contado
-  const weekly=turns ? (total - 0.1*cash)/52*1.1 : 0;
-  const fin=cash*0.9;            // financiado = contado menos enganche minimo (10%)
-  const net=price ? cash/price : 0;   // net turns = contado / costo
+  const price=g('price'), disc=g('price_with_discount'), turns=g('turns'), fac=g('decimal_factor');
+  const eff=(disc>0?disc:price);                 // precio efectivo (descuento si aplica) = effective_price
+  const total=price*turns;                        // "Total" (Precio x Turns) informativo
+  const cash=eff*turns*fac;                       // Al Contado = effective_price x turns x factor (= total_price)
+  const dp=cash*0.10;                             // enganche minimo (10%)
+  const TERMS=[52,39,26,13], MINW=20;             // plazos 12/9/6/3; solo pagos > $20/sem
+  const weeklies=TERMS.map(w=>Math.round((cash-dp)/w*100)/100).filter(wk=>wk>MINW);
+  const weekly=weeklies.length?Math.min(...weeklies):0;   // Pago x sem = pago semanal minimo (= "Desde" en tienda)
+  const fin=cash-dp;                              // Financiado = Al Contado - enganche
+  const net=eff?cash/eff:0;                       // Net Turns = Al Contado / costo efectivo = turns x factor
   const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago'), fn=row.querySelector('.cell-fin'), nt=row.querySelector('.cell-net');
   if(t) t.textContent = total ? money(total) : '—';
   if(c) c.textContent = cash ? money(cash) : '—';

@@ -53,8 +53,9 @@ module Api
 
       freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
       weekly = (financed / weeks).round(2)
-      if financed > 0 && weekly < Product::MIN_WEEKLY
-        return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{Product::MIN_WEEKLY}. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
+      min_wk = Product.min_weekly_for(weeks)
+      if financed > 0 && weekly < min_wk
+        return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{min_wk} para este plazo. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
       end
 
       contract = nil

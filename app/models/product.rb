@@ -28,7 +28,12 @@ class Product < ApplicationRecord
   end
 
   TERMS = { 52 => 12, 39 => 9, 26 => 6, 13 => 3 }.freeze  # semanas => meses (12/9/6/3)
-  MIN_WEEKLY = 20                                          # solo se ofrecen plazos cuyo pago semanal supera $20
+  MIN_WEEKLY = 20                                          # pago semanal minimo estandar
+
+  # Minimo semanal por plazo: 3 meses o menos (<=13 sem) puede bajar a $10/sem; mayor plazo $20/sem.
+  def self.min_weekly_for(weeks)
+    weeks.to_i <= 13 ? 10 : 20
+  end
 
   # "Total" / Precio (constante) = costo x turns x factor
   def total_price
@@ -57,7 +62,7 @@ class Product < ApplicationRecord
     dp = downpayment || min_downpayment
     TERMS.map do |weeks, months|
       { weeks: weeks, months: months, weekly_payment: calculate_weekly_payment(weeks: weeks, downpayment: dp) }
-    end.select { |p| p[:weekly_payment] > MIN_WEEKLY }
+    end.select { |p| p[:weekly_payment] > Product.min_weekly_for(p[:weeks]) }
   end
 
   # "Pago x sem": el pago semanal mínimo entre los plazos ofrecidos

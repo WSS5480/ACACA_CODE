@@ -58,6 +58,8 @@ module Api
       return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if financed > available + 0.01
 
       freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
+      # Beneficiario (opcional pero recomendado): debe pertenecer al cliente.
+      beneficiary_id = params[:beneficiary_id].present? ? user.beneficiaries.where(id: params[:beneficiary_id]).pick(:id) : nil
       weekly = (financed / weeks).round(2)
       min_wk = Product.min_weekly_for(weeks)
       if financed > 0 && weekly < min_wk
@@ -88,6 +90,7 @@ module Api
             product_original_price: prod.original_price,
             product_turns: prod.turns, product_decimal_factor: prod.decimal_factor,
             used_credit: 0, downpayment: 0, weekly_payment: 0, credit_duration: weeks,
+            beneficiary_id: beneficiary_id,
             status: 'approved'
           )
         end

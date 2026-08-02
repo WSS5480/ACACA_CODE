@@ -9,5 +9,13 @@ class OrderSerializer
   attribute :product_image_url do |order|
     order.product&.image_urls&.first
   end
+
+  attribute :contract_id do |order|
+    order.respond_to?(:contract_id) ? order.contract_id : nil
+  end
+
+  attribute :contract_number do |order|
+    order.respond_to?(:contract) ? order.contract&.contract_number : nil
+  end
 end
 

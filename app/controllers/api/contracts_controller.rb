@@ -4,18 +4,24 @@ module Api
   class ContractsController < ApplicationController
     include TokenAuthenticatable
 
-    before_action :authorize_staff!, only: [:record_payment, :destroy]
+    before_action :authorize_staff!, only: [:destroy]
 
     # GET /api/contracts?user_id=
     def index
       scope = Contract.includes(:user).order(created_at: :desc)
-      scope = scope.where(user_id: params[:user_id]) if params[:user_id].present?
+      if client?
+        # Un cliente solo ve SUS contratos.
+        scope = scope.where(user_id: @current_user.id)
+      elsif params[:user_id].present?
+        scope = scope.where(user_id: params[:user_id])
+      end
       render json: ContractSerializer.new(scope).serializable_hash, status: :ok
     end
 
     # GET /api/contracts/:id  -> contrato + articulos + tabla de amortizacion
     def show
       contract = Contract.includes(:user, :orders, :contract_installments).find(params[:id])
+      return render(json: { error: 'No autorizado' }, status: :forbidden) if client? && contract.user_id != @current_user.id
       data = ContractSerializer.new(contract).serializable_hash[:data][:attributes]
       data[:items] = contract.orders.map { |o| OrderSerializer.new(o).serializable_hash[:data][:attributes] }
       data[:installments] = contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
@@ -101,6 +107,9 @@ module Api
     # POST /api/contracts/:id/record_payment  { amount, method, note }
     def record_payment
       contract = Contract.find(params[:id])
+      unless staff? || (client? && contract.user_id == @current_user.id)
+        return render(json: { error: 'No autorizado' }, status: :forbidden)
+      end
       amount = params[:amount].to_f
       return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if amount <= 0
 
@@ -143,9 +152,15 @@ module Api
     private
 
     def authorize_staff!
-      role = @current_user&.role&.name
-      return if %w[master admin].include?(role)
-      render json: { error: 'No autorizado' }, status: :forbidden
+      render json: { error: 'No autorizado' }, status: :forbidden unless staff?
+    end
+
+    def staff?
+      %w[master admin].include?(@current_user&.role&.name)
+    end
+
+    def client?
+      @current_user&.role&.name == 'cliente'
     end
   end
 end

@@ -15,8 +15,11 @@ class Api::UsersController < ApplicationController
   before_action :set_user, only: [:show, :update, :destroy]
   before_action :authorize_client_own_profile, only: [:show, :update]
 
-  # GET /api/users
+  # GET /api/users  (solo staff)
   def index
+    unless %w[master admin].include?(@current_user&.role&.name)
+      return render json: { error: 'No autorizado' }, status: :forbidden
+    end
     users = User.includes(:role)
     users = users.joins(:role).where(roles: { name: params[:role] }) if params[:role].present?
     users = apply_search_filter(users, columns: %w[name last_name email number])

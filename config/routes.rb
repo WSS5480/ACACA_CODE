@@ -89,6 +89,7 @@ Rails.application.routes.draw do
 
     resources :contracts, controller: 'api/contracts', only: [:index, :show, :create, :destroy] do
       post 'record_payment', on: :member
+      post 'autopay', on: :member
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'
@@ -116,5 +117,7 @@ Rails.application.routes.draw do
 
     get  'whatsapp/messages', to: 'api/whatsapp_messages#index'
     post 'whatsapp/send',     to: 'api/whatsapp_messages#create'
+
+    post 'autopay/run', to: 'api/autopay#run'
   end
 end

@@ -40,6 +40,9 @@ class ContractSerializer
   attribute :initial_payment do |c|
     c.initial_payment
   end
+  attribute :autopay do |c|
+    c.respond_to?(:autopay) ? c.autopay : false
+  end
   attribute :waiver do |c|
     c.orders.first&.waiver
   end

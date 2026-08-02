@@ -167,6 +167,31 @@ module Api
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
     end
 
+    # POST /api/contracts/:id/autopay  { enabled: true|false }
+    # Activa/desactiva el cobro automatico (requiere tarjeta guardada en Stripe).
+    def autopay
+      contract = Contract.find(params[:id])
+      unless staff? || (client? && contract.user_id == @current_user.id)
+        return render(json: { error: 'No autorizado' }, status: :forbidden)
+      end
+
+      enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
+      if enabled
+        cid = contract.user&.stripe_customer_id
+        has_card = false
+        if cid.present? && StripeClient.configured?
+          pms = StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' }) rescue { 'data' => [] }
+          has_card = (pms['data'] || []).any?
+        end
+        return render(json: { error: 'Necesitas una tarjeta guardada: realiza un pago con tarjeta primero.' }, status: :unprocessable_entity) unless has_card
+      end
+
+      contract.update!(autopay: enabled, autopay_last_error: nil)
+      render json: { ok: true, autopay: contract.autopay }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
     # DELETE /api/contracts/:id  -> herramienta de limpieza (pruebas). Restaura el saldo al credito.
     def destroy
       contract = Contract.find(params[:id])

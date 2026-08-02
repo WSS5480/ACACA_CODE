@@ -562,13 +562,15 @@ let ordStatus='';
 function orderRow(o,withStatus){
   const cliente = ([pick(o,['user_name','client_name'],''),pick(o,['user_last_name'],'')].filter(Boolean).join(' ')) || pick(o,['user_email','client_email','email'],'—');
   const prod = pick(o,['product_title','product_name','product','title'],'—');
+  const asin = pick(o,['product_asin','asin'],null);
+  const prodCell = asin ? `<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" title="Abrir en Amazon para comprar" style="color:var(--brand-d)">${esc(prod)}</a>` : esc(prod);
   const precio = pick(o,['product_cost_usd','price','product_price','total'],null);
   const plazo = pick(o,['weeks','term_weeks','installments'],null);
   const credito = pick(o,['used_credit','credit','credit_used'],null);
   const waiver = pick(o,['waiver_percentage','waiver','waiver_percent'],null);
   const pago = pick(o,['weekly_payment','payment_per_week','weekly'],null);
   const id = pick(o,['id','order_id','number'],'—');
-  return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
+  return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${prodCell}</td>
     <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
     <td class="right mono">${credito!=null?money(credito):'—'}</td><td class="right mono">${waiver!=null?esc(waiver)+'%':'—'}</td>
     <td class="right mono">${pago!=null?money(pago):'—'}</td>${withStatus?`<td>${statusPill(pick(o,['status','state'],''))}</td>`:''}</tr>`;
@@ -576,13 +578,14 @@ function orderRow(o,withStatus){
 async function loadOrders(where){
   const body = where==='all' ? $('allOrdBody') : $('ordBody');
   const cols = where==='all'?9:8;
-  const q = where==='dashboard' && ordStatus ? ('?status='+ordStatus) : '';
-  const r=await api('GET','/api/orders'+q);
+  const q = where==='dashboard' && ordStatus ? ('&status='+ordStatus) : '';
+  const r=await api('GET','/api/orders?page=-1'+q);
   if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
   let list=rows(r.data);
   if(where==='dashboard' && ordStatus) list=list.filter(o=>String(pick(o,['status','state'],'')).toLowerCase().includes(ordStatus.slice(0,4)));
   const term=(where==='dashboard'?$('ordSearch').value:'').trim().toLowerCase();
   if(term) list=list.filter(o=>JSON.stringify(o).toLowerCase().includes(term));
+  if(where==='all') list=list.slice().reverse();
   if(where==='dashboard' && $('ordSort').value==='asc') list.reverse();
   body.innerHTML = list.length ? list.map(o=>orderRow(o,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
 }
@@ -758,9 +761,11 @@ async function openContract(id){
   const r=await api('GET','/api/contracts/'+encodeURIComponent(id));
   if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar el contrato.</p>'; return; }
   const c=r.data.data, items=c.items||[], ist=c.installments||[];
-  const itemRows=items.map(o=>`<tr><td>${esc(pick(o,['product_title','product_name','title'],'-'))}</td>
-      <td class="mono">${esc(pick(o,['product_asin','asin'],'-'))}</td>
-      <td class="right mono">${money(pick(o,['product_price','price'],0))}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin articulos</td></tr>';
+  const itemRows=items.map(o=>{const asin=pick(o,['product_asin','asin'],null);
+    return `<tr><td>${esc(pick(o,['product_title','product_name','title'],'-'))}</td>
+      <td class="mono">${esc(asin||'-')}</td>
+      <td class="right mono">${money(pick(o,['product_price','price'],0))}</td>
+      <td class="right">${asin?`<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" class="btn" style="display:inline-block;padding:6px 12px;font-size:12.5px;background:#ff9900;color:#111;text-decoration:none">Comprar en Amazon</a>`:'-'}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty">Sin articulos</td></tr>';
   const istRows=ist.map(i=>`<tr><td class="mono">${esc(pick(i,['number'],'-'))}</td>
       <td>${fdate(pick(i,['due_date'],null))}</td>
       <td class="right mono">${money(pick(i,['amount'],0))}</td>
@@ -781,7 +786,7 @@ async function openContract(id){
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 8px">Articulos (${items.length})</div>
-      <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th></tr></thead><tbody>${itemRows}</tbody></table>
+      <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th><th class="right">Compra</th></tr></thead><tbody>${itemRows}</tbody></table>
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 10px">Registrar pago</div>

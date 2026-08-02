@@ -79,20 +79,20 @@ class Api::UsersController < ApplicationController
       @user.create_credit!(amount: @user.calculate_initial_credit)
     end
 
-    # Generar token de confirmación y enviar correo de bienvenida con link de confirmación
-    if @user.email.present?
-      raw_token, encrypted_token = Devise.token_generator.generate(User, :confirmation_token)
-      @user.confirmation_token = encrypted_token
-      @user.confirmation_sent_at = Time.current
-      @user.save(validate: false)
+    # Token de verificacion por WhatsApp (se incrusta en el enlace/QR que el cliente nos envia).
+    @user.ensure_whatsapp_verify_token!
 
+    # Correo de bienvenida (solo bienvenida).
+    if @user.email.present?
       begin
-        UserMailer.with(user: @user, confirmation_token: raw_token).send_client_welcome.deliver_now
+        UserMailer.with(user: @user).send_client_welcome.deliver_now
       rescue StandardError => mail_error
         Rails.logger.error "Error enviando correo de bienvenida: #{mail_error.message}"
       end
-    else
-      # Sin email: activar cuenta de inmediato para que pueda iniciar sesión por otros medios
+    end
+
+    # Sin WhatsApp configurado (sin numero de negocio) activamos la cuenta para no bloquear el acceso.
+    unless ENV['WHATSAPP_BUSINESS_NUMBER'].present?
       @user.update_column(:confirmed_at, Time.current)
     end
 

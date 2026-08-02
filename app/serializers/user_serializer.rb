@@ -9,6 +9,16 @@ class UserSerializer
   end
 
   # Versión del motor de riesgo con la que se evaluó al cliente (protegido por si aún no existe la columna).
+  # Estado de verificacion (confirmacion por WhatsApp). El front decide si pide el codigo.
+  attribute :confirmed do |user|
+    user.confirmed?
+  end
+
+  # Enlace wa.me con el token para que el cliente nos escriba y active su cuenta.
+  attribute :whatsapp_verify_url do |user|
+    user.whatsapp_verify_url
+  end
+
   attribute :risk_version do |user|
     user.has_attribute?(:risk_version) ? user.risk_version : nil
   end

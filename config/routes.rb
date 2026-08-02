@@ -69,6 +69,11 @@ Rails.application.routes.draw do
 
     get 'current_user', to: 'api/users#current_user'
 
+    # Verificacion de cuenta por WhatsApp (mensaje entrante del cliente)
+    get  'verifications/status', to: 'api/verifications#status'
+    get  'whatsapp/webhook',     to: 'api/whatsapp_webhook#verify'
+    post 'whatsapp/webhook',     to: 'api/whatsapp_webhook#receive'
+
     resources :exchange_rates, controller: 'api/exchange_rates', only: [:index, :show, :create, :destroy] do
       post 'refresh', on: :collection
     end

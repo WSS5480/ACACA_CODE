@@ -103,7 +103,7 @@ Rails.application.configure do
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
   #REPLACE THIS BY THE CORRECT FRONT-END APP URL!!
-  config.action_mailer.default_url_options = { host: ENV['FRONT_HOST'] || 'https://www-acasa.vercel.app' }
+  config.action_mailer.default_url_options = { host: ENV['FRONT_HOST'] || 'https://acasa-frontend.vercel.app' }
 
   #This sets the default URL options for the entire Rails application. This includes any URL helpers used in controllers, views, and other parts of the application, outside of the mailers
   Rails.application.routes.default_url_options = {
@@ -112,21 +112,28 @@ Rails.application.configure do
   }
 
   #Custom configuration to save consuming host
-  config.x.api_consumer_host = ENV['FRONT_HOST'] || 'https://www-acasa.vercel.app'
+  config.x.api_consumer_host = ENV['FRONT_HOST'] || 'https://acasa-frontend.vercel.app'
 
   config.action_mailer.perform_deliveries = true
   
-  # SMTP2GO Configuration
+  # SMTP via env vars (Titan/GoDaddy secureserver.net, or any provider).
   config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = {
-    address: 'mail.smtp2go.com',
-    port: 2525,
-    domain: ENV['SMTP_DOMAIN'] || 'acasa.com',
-    user_name: ENV['SMTP2GO_USERNAME'],
-    password: ENV['SMTP2GO_PASSWORD'],
-    authentication: 'plain',
-    enable_starttls_auto: true,
+  smtp_port = (ENV['SMTP_PORT'] || 465).to_i
+  smtp = {
+    address: ENV['SMTP_ADDRESS'] || 'smtpout.secureserver.net',
+    port: smtp_port,
+    user_name: ENV['SMTP_USERNAME'] || ENV['SMTP2GO_USERNAME'],
+    password: ENV['SMTP_PASSWORD'] || ENV['SMTP2GO_PASSWORD'],
+    domain: ENV['SMTP_DOMAIN'] || 'acasa-us.com',
+    authentication: :login,
     open_timeout: 30,
     read_timeout: 30
   }
+  # Port 465 = implicit SSL (secureserver); 587 = STARTTLS (smtp.titan.email)
+  if smtp_port == 465
+    smtp[:ssl] = true
+  else
+    smtp[:enable_starttls_auto] = true
+  end
+  config.action_mailer.smtp_settings = smtp
 end

@@ -23,6 +23,25 @@ class User < ApplicationRecord
     true
   end
 
+  # --- Verificacion por WhatsApp ---
+  def ensure_whatsapp_verify_token!
+    return whatsapp_verify_token if whatsapp_verify_token.present?
+    token = nil
+    loop do
+      token = SecureRandom.alphanumeric(10)
+      break unless User.exists?(whatsapp_verify_token: token)
+    end
+    update_column(:whatsapp_verify_token, token)
+    token
+  end
+
+  def whatsapp_verify_url
+    num = ENV['WHATSAPP_BUSINESS_NUMBER'].to_s.gsub(/[^0-9]/, '')
+    return nil if whatsapp_verify_token.blank? || num.blank?
+    text = "Hola, quiero verificar mi cuenta acasa. Codigo: #{whatsapp_verify_token}"
+    "https://wa.me/#{num}?text=#{ERB::Util.url_encode(text)}"
+  end
+
   def send_reset_password_instructions
     # Generate token using Devise's method
     raw_token, encrypted_token = Devise.token_generator.generate(self.class, :reset_password_token)

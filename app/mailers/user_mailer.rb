@@ -22,12 +22,8 @@ class UserMailer < ApplicationMailer
 
   def send_client_welcome
     @user = params[:user]
-    raw_token = params[:confirmation_token]
-    # Enlace al frontend: la página /confirmar-cuenta recibe el token y llama al API para confirmar.
-    @confirmation_url = if raw_token.present?
-      base = frontend_base_url
-      "#{base}/confirmar-cuenta?confirmation_token=#{ERB::Util.url_encode(raw_token)}"
-    end
+    # Enlace de WhatsApp con el token: el cliente nos escribe y su cuenta se activa (verificacion gratuita).
+    @whatsapp_url = @user.whatsapp_verify_url
 
     mail to: @user.email, subject: "¡Bienvenid@ a acasa!"
   end

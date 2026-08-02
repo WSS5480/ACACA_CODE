@@ -19,6 +19,10 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/api/password"
   end
 
+  throttle("verify-status/ip", limit: 60, period: 1.minute) do |req|
+    req.ip if req.get? && req.path == "/api/verifications/status"
+  end
+
   # Respuesta cuando se supera un límite (rack-attack 6.x usa throttled_responder).
   self.throttled_responder = lambda do |request|
     match_data  = request.env["rack.attack.match_data"] || {}

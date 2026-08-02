@@ -51,6 +51,7 @@ module Api
       available = user.credit&.amount.to_f
       return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if financed > available + 0.01
 
+      freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
       weekly = (financed / weeks).round(2)
       if financed > 0 && weekly < Product::MIN_WEEKLY
         return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{Product::MIN_WEEKLY}. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
@@ -61,7 +62,7 @@ module Api
         contract = Contract.create!(
           user: user, status: 'active',
           total_amount: total, downpayment: down, financed_amount: financed,
-          weekly_payment: weekly, weeks: weeks,
+          weekly_payment: weekly, weeks: weeks, frequency: freq,
           start_date: (params[:start_date].present? ? ((Date.parse(params[:start_date].to_s) rescue Date.current)) : Date.current)
         )
         products.each do |prod|

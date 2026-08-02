@@ -53,18 +53,69 @@ class Contract < ApplicationRecord
 
   # ----- amortizacion -----
   # Genera la tabla semanal: N cuotas, cada una = pago semanal, sumando el monto financiado.
+  FREQUENCIES = %w[weekly biweekly monthly].freeze
+
+  def freq
+    frequency.presence || 'weekly'
+  end
+
+  # Numero de cuotas y monto por cuota segun la frecuencia elegida (mismo plazo total).
+  def schedule_periods_and_amount
+    fin = financed_amount.to_f
+    wk = weeks.to_i
+    n = case freq
+        when 'monthly'  then [(wk / 4.333).round, 1].max
+        when 'biweekly' then [(wk / 2.0).ceil, 1].max
+        else                 [wk, 1].max
+        end
+    [n, (fin / n)]
+  end
+
+  # Primera fecha de vencimiento alineada: sabado (semanal/quincenal) o dia 1 (mensual),
+  # siempre un periodo completo adelante (si el proximo sabado esta demasiado cerca, se corre).
+  def self.aligned_first_due(frequency, from = Date.current)
+    if frequency.to_s == 'monthly'
+      (from >> 1).beginning_of_month
+    else
+      d = from
+      d += 1 until d.saturday?
+      d += 7 if (d - from) < 7
+      d
+    end
+  end
+
+  def due_date_for_period(i)
+    base = first_due_date || self.class.aligned_first_due(freq, start_date || Date.current)
+    case freq
+    when 'monthly'  then (base >> (i - 1))
+    when 'biweekly' then base + (i - 1) * 14
+    else                 base + (i - 1) * 7
+    end
+  end
+
+  # Pago del primer periodo (primera cuota).
+  def first_period_payment
+    _n, amt = schedule_periods_and_amount
+    amt.round(2)
+  end
+
+  # Pago inicial en el checkout = enganche + primer pago del periodo.
+  def initial_payment
+    (downpayment.to_f + first_period_payment).round(2)
+  end
+
   def build_amortization!(start: nil)
-    start ||= start_date || Date.current
     contract_installments.delete_all
-    n = weeks.to_i
+    self.first_due_date ||= self.class.aligned_first_due(freq, start_date || Date.current)
+    save!(validate: false) if changed?
+    n, per = schedule_periods_and_amount
     return if n <= 0
     total = financed_amount.to_f
-    wk = weekly_payment.to_f > 0 ? weekly_payment.to_f : (total / n)
     acc = 0.0
     rows = (1..n).map do |i|
-      amt = (i == n) ? (total - acc).round(2) : wk.round(2)
+      amt = (i == n) ? (total - acc).round(2) : per.round(2)
       acc = (acc + amt).round(2)
-      { number: i, due_date: start + (i * 7), amount: amt, paid_amount: 0, status: 'pending' }
+      { number: i, due_date: due_date_for_period(i), amount: amt, paid_amount: 0, status: 'pending' }
     end
     contract_installments.create!(rows)
   end

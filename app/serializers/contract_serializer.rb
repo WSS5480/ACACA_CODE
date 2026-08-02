@@ -28,4 +28,13 @@ class ContractSerializer
   attribute :next_due_date do |c|
     c.next_due_date
   end
+  attribute :frequency do |c|
+    c.freq
+  end
+  attribute :first_due_date do |c|
+    c.first_due_date
+  end
+  attribute :initial_payment do |c|
+    c.initial_payment
+  end
 end

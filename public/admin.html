@@ -223,8 +223,8 @@
       <div id="ordTableWrap"><div class="sec"><div style="overflow-x:auto">
         <table><thead><tr>
           <th>Orden</th><th>Cliente</th><th>Producto</th><th class="right">Precio</th><th>Plazo</th>
-          <th class="right">Pago x Semana</th><th>Estado</th><th>Verificación</th>
-        </tr></thead><tbody id="allOrdBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
+          <th class="right">Pago x Semana</th><th>Estado</th><th>Verificación</th><th>WA</th>
+        </tr></thead><tbody id="allOrdBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
       </div></div></div>
     </section>
 
@@ -585,9 +585,11 @@ function orderRow(o,withStatus){
   const pago = pick(o,['weekly_payment','payment_per_week','weekly'],null);
   const id = pick(o,['id','order_id','number'],'—');
   if(withStatus){
+    const uid=pick(o,['user_id'],null);
     return `<tr class="ord-row" data-oid="${esc(id)}" style="cursor:pointer"><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${prodCell}</td>
       <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
-      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td><td>${fulfillPill(o)}</td></tr>`;
+      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td><td>${fulfillPill(o)}</td>
+      <td>${uid?`<button class="wabtn" data-uid="${esc(uid)}" data-name="${esc(cliente)}" onclick="event.stopPropagation()" title="WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:15px">✆</button>`:''}</td></tr>`;
   }
   return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
     <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
@@ -596,7 +598,7 @@ function orderRow(o,withStatus){
 }
 async function loadOrders(where){
   const body = where==='all' ? $('allOrdBody') : $('ordBody');
-  const cols = where==='all'?8:8;
+  const cols = where==='all'?9:8;
   const r=await api('GET','/api/orders?page=-1');
   if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
   let list=rows(r.data);
@@ -613,7 +615,8 @@ async function loadOrders(where){
   if(where==='all') list=list.slice().reverse();
   if(where==='dashboard' && $('ordSort').value==='asc') list.reverse();
   body.innerHTML = list.length ? list.map(o=>orderRow(o,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
-  if(where==='all') body.querySelectorAll('.ord-row').forEach(tr=>tr.onclick=()=>openOrderVerify(tr.dataset.oid));
+  if(where==='all'){ body.querySelectorAll('.ord-row').forEach(tr=>tr.onclick=()=>openOrderVerify(tr.dataset.oid));
+    body.querySelectorAll('.wabtn').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); waChatOpen(b.dataset.uid, b.dataset.name);}); }
 }
 $('ordTabs').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
   $('ordTabs').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); ordStatus=b.dataset.st; loadOrders('dashboard');});
@@ -657,6 +660,7 @@ async function openOrderVerify(id){
     ${vSection('buyer','Comprador',buyInner,o.buyer_verified,o.buyer_comment)}
     ${vSection('references','Referencias ('+refs.length+')',refInner,o.references_verified,o.references_comment)}
     <div class="sec" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="ovWa" style="background:#25D366">WhatsApp al cliente</button>
       <button class="btn" id="ovSave" style="background:#eef0f6;color:var(--navy)">Guardar verificación</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="background:var(--good)">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${approved&&asin?`<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" class="btn" style="display:inline-block;background:#ff9900;color:#111;text-decoration:none">Comprar en Amazon</a>`:''}
@@ -666,6 +670,7 @@ async function openOrderVerify(id){
     </div>
     ${!approved?'<p class="muted" style="font-size:12.5px">La compra en Amazon se habilita hasta que las tres secciones estén verificadas y la orden aprobada.</p>':''}`;
   $('ovBack').onclick=(e)=>{e.preventDefault(); d.style.display='none'; d.innerHTML=''; if(wrap) wrap.style.display=''; loadOrders('all');};
+  if($('ovWa')) $('ovWa').onclick=()=>waChatOpen(pick(o,['user_id'],null), [o.user_name,o.user_last_name].filter(Boolean).join(' '));
   const collect=()=>{ const b={};
     d.querySelectorAll('.vchk').forEach(c=>b[c.dataset.k+'_verified']=c.checked);
     d.querySelectorAll('.vcom').forEach(c=>b[c.dataset.k+'_comment']=c.value);
@@ -686,6 +691,64 @@ async function openOrderVerify(id){
     const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/confirm_delivery',{});
     if(r2.ok){ openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo confirmar.'; }
   };
+}
+
+/* ---------------- WhatsApp chat (archivo del cliente) ---------------- */
+let WA_UID=null, WA_TIMER=null;
+function waChatOpen(uid, name){
+  if(!uid){ alert('Esta orden no tiene cliente ligado.'); return; }
+  WA_UID=uid;
+  let ov=$('waOverlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='waOverlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.45);z-index:999;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML=`<div style="background:#fff;border-radius:16px;width:min(480px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:#25D366;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">✆</span><b id="waName" style="flex:1;font-size:15px"></b>
+        <button id="waClose" style="border:0;background:none;color:#fff;font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div id="waMsgs" style="flex:1;overflow-y:auto;padding:14px;background:#efe7dd;min-height:260px;max-height:52vh"></div>
+      <div style="display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)">
+        <input id="waInput" placeholder="Escribe un mensaje…" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+        <button id="waSend" class="btn" style="background:#25D366">Enviar</button>
+      </div>
+      <div class="muted" id="waStatus" style="padding:0 14px 10px;font-size:12px"></div></div>`;
+    document.body.appendChild(ov);
+    $('waClose').onclick=()=>{ ov.style.display='none'; WA_UID=null; if(WA_TIMER){clearInterval(WA_TIMER);WA_TIMER=null;} };
+    $('waSend').onclick=waSendMsg;
+    $('waInput').addEventListener('keydown',e=>{ if(e.key==='Enter') waSendMsg(); });
+  }
+  ov.style.display='flex'; $('waName').textContent=name||('Cliente #'+uid); $('waMsgs').innerHTML='<p class="muted">Cargando…</p>'; $('waStatus').textContent='';
+  waLoad();
+  if(WA_TIMER) clearInterval(WA_TIMER);
+  WA_TIMER=setInterval(()=>{ if(WA_UID) waLoad(true); }, 15000);
+}
+async function waLoad(silent){
+  if(!WA_UID) return;
+  const r=await api('GET','/api/whatsapp/messages?user_id='+encodeURIComponent(WA_UID));
+  const box=$('waMsgs'); if(!box) return;
+  if(!r.ok){ if(!silent) box.innerHTML='<p class="empty">No se pudo cargar la conversación.</p>'; return; }
+  const list=(r.data&&r.data.messages)||[];
+  box.innerHTML = list.length ? list.map(m=>{
+    const mine=m.direction==='out';
+    const media = m.media_url ? (String(m.media_type)==='image'
+      ? `<a href="${esc(m.media_url)}" target="_blank" rel="noopener"><img src="${esc(m.media_url)}" style="max-width:200px;border-radius:8px;display:block;margin-bottom:4px"></a>`
+      : `<a href="${esc(m.media_url)}" target="_blank" rel="noopener" style="font-weight:700">📎 ${esc(m.media_type||'archivo')}</a><br>`) : '';
+    return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin-bottom:8px">
+      <div style="max-width:78%;background:${mine?'#d9fdd3':'#fff'};border-radius:10px;padding:8px 11px;font-size:13.5px;box-shadow:0 1px 1px rgba(0,0,0,.08)">
+        ${media}${m.body?esc(m.body):''}
+        <div class="muted" style="font-size:10.5px;text-align:right;margin-top:3px">${fdate(m.created_at)} ${new Date(m.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div></div>`;
+  }).join('') : '<p class="muted" style="text-align:center">Sin mensajes todavía. Los mensajes y fotos que envíe el cliente quedan archivados aquí.</p>';
+  box.scrollTop=box.scrollHeight;
+}
+async function waSendMsg(){
+  const inp=$('waInput'); const txt=(inp.value||'').trim(); if(!txt||!WA_UID) return;
+  $('waStatus').textContent='Enviando…'; $('waSend').disabled=true;
+  const r=await api('POST','/api/whatsapp/send',{user_id:WA_UID,message:txt});
+  $('waSend').disabled=false;
+  if(r.ok){ inp.value=''; $('waStatus').textContent=''; waLoad(); }
+  else { $('waStatus').textContent=(r.data&&r.data.error)||'No se pudo enviar.'; }
 }
 
 /* ---------------- Clients / Credits ---------------- */

@@ -24,6 +24,7 @@ module Api
         from = msg['from'].to_s
         body = msg.dig('text', 'body').to_s
         WhatsappVerification.process_incoming(from: from, body: body)
+        archive_message(msg, from, body)
       end
       head :ok
     rescue StandardError => e
@@ -32,6 +33,41 @@ module Api
     end
 
     private
+
+    # Archiva TODO mensaje entrante (texto y fotos/documentos) en el expediente del cliente.
+    def archive_message(msg, from, body)
+      return if msg['id'].present? && WhatsappMessage.exists?(wa_message_id: msg['id'])
+
+      user = match_user(from)
+      mtype = msg['type'].to_s
+      caption = body.presence
+      media_id = nil
+      if %w[image document video audio sticker].include?(mtype)
+        media_id = msg.dig(mtype, 'id')
+        caption ||= msg.dig(mtype, 'caption').to_s.presence || msg.dig(mtype, 'filename').to_s.presence
+      end
+
+      record = WhatsappMessage.create!(
+        user: user, direction: 'in', wa_phone: from,
+        body: caption, media_type: (media_id ? mtype : nil), wa_message_id: msg['id']
+      )
+
+      if media_id && WhatsappCloud.configured?
+        data = WhatsappCloud.new.download_media(media_id)
+        if data
+          bin, mime, fname = data
+          record.media.attach(io: StringIO.new(bin), filename: fname, content_type: mime)
+        end
+      end
+    rescue StandardError => e
+      Rails.logger.error "[WhatsappWebhook] archive: #{e.class}: #{e.message}"
+    end
+
+    def match_user(from)
+      tail = from.to_s.gsub(/[^0-9]/, '')[-10..]
+      return nil if tail.blank?
+      User.where.not(phone: [nil, '']).find { |u| u.phone.to_s.gsub(/[^0-9]/, '')[-10..] == tail }
+    end
 
     def incoming_messages
       payload = params.to_unsafe_h

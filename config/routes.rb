@@ -113,5 +113,8 @@ Rails.application.routes.draw do
     post 'stripe/finalize',        to: 'api/stripe#finalize'
     get  'stripe/payment_methods', to: 'api/stripe#payment_methods'
     post 'stripe/webhook',         to: 'api/stripe#webhook'
+
+    get  'whatsapp/messages', to: 'api/whatsapp_messages#index'
+    post 'whatsapp/send',     to: 'api/whatsapp_messages#create'
   end
 end

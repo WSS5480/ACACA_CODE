@@ -47,7 +47,36 @@ class WhatsappCloud
     post_message(messaging_product: 'whatsapp', recipient_type: 'individual', to: to, type: 'text', text: { body: body.to_s })
   end
 
+  # Descarga un medio (imagen/documento) recibido: devuelve [binario, mime_type, filename] o nil.
+  def download_media(media_id)
+    return nil if media_id.blank?
+    meta = get_json("https://#{GRAPH_HOST}/#{@version}/#{media_id}")
+    url = meta['url']
+    mime = meta['mime_type'].to_s
+    return nil if url.blank?
+
+    uri = URI(url)
+    req = Net::HTTP::Get.new(uri)
+    req['Authorization'] = "Bearer #{@token}"
+    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 60) { |http| http.request(req) }
+    return nil unless res.is_a?(Net::HTTPSuccess)
+
+    ext = { 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'application/pdf' => 'pdf' }[mime] || 'bin'
+    [res.body, mime.presence || 'application/octet-stream', "wa_#{media_id}.#{ext}"]
+  rescue StandardError => e
+    Rails.logger.error "[WhatsappCloud] download_media #{media_id}: #{e.message}"
+    nil
+  end
+
   private
+
+  def get_json(url)
+    uri = URI(url)
+    req = Net::HTTP::Get.new(uri)
+    req['Authorization'] = "Bearer #{@token}"
+    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 30) { |http| http.request(req) }
+    safe_json(res.body)
+  end
 
   def post_message(payload)
     uri = URI("https://#{GRAPH_HOST}/#{@version}/#{@phone_number_id}/messages")

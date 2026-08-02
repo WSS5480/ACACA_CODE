@@ -4,23 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>acasa — Panel de administración</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+  @font-face{font-family:'a-font';src:url('/fonts/a-font.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
+  @font-face{font-family:'no-font';src:url('/fonts/no-font.otf') format('opentype');font-weight:normal;font-style:normal;font-display:swap;}
   :root{
     --brand:#FF6B35; --brand-d:#E55A2B; --navy:#141C50; --gold:#FF7517;
     --ink:#1b2130; --mut:#6b7280; --line:#eceef3; --bg:#f7f8fa; --card:#fff;
     --good:#12925f; --bad:#d64545; --sb:#ffffff;
   }
   *{box-sizing:border-box;} html,body{margin:0;height:100%;}
-  body{font-family:'Geist',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
+  body{font-family:'a-font',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
   a{color:inherit;text-decoration:none;}
   .app{display:flex;min-height:100vh;}
 
   /* ---------- Sidebar ---------- */
   .sb{width:212px;background:var(--sb);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
-  .sb .brand{display:flex;align-items:center;gap:9px;padding:20px 20px 14px;font-weight:800;font-size:20px;color:var(--navy);}
+  .sb .brand{display:flex;align-items:center;gap:9px;padding:20px 20px 14px;font-weight:800;font-size:20px;color:var(--navy);font-family:'no-font';}
   .sb .brand svg{flex:none;}
   .sb nav{padding:6px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
   .sb nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:#525a6b;font-weight:600;font-size:14px;cursor:pointer;}
@@ -37,7 +36,7 @@
   /* ---------- Main ---------- */
   main{flex:1;min-width:0;padding:26px 32px 60px;}
   .head{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
-  h1{font-size:26px;font-weight:800;margin:0;color:var(--navy);}
+  h1{font-size:26px;font-weight:800;margin:0;color:var(--navy);font-family:'no-font';}
   .head .sp{flex:1;}
   .sel{appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 10px center;border:1px solid var(--line);border-radius:10px;padding:9px 32px 9px 12px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;}
 
@@ -76,7 +75,7 @@
   /* ---------- Login ---------- */
   .lock{position:fixed;inset:0;background:linear-gradient(160deg,#16213f,#0e1730);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
   .lock .box{background:#fff;border-radius:18px;padding:30px 30px 26px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
-  .lock .lg{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;color:var(--navy);margin-bottom:4px;}
+  .lock .lg{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;color:var(--navy);margin-bottom:4px;font-family:'no-font';}
   .lock p{color:var(--mut);font-size:13px;margin:0 0 18px;}
   .lock label{display:block;font-size:12.5px;color:var(--mut);margin:12px 0 5px;}
   .lock input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;}
@@ -133,7 +132,6 @@
     <input id="lg-pass" type="password" value="admin123" autocomplete="current-password">
     <button id="lg-btn">Ingresar</button>
     <div class="msg" id="lg-msg"></div>
-    <div class="hint">Cuenta de prueba local precargada · el cliente entra por la tienda</div>
   </div>
 </div>
 
@@ -326,11 +324,12 @@
               <th data-sort="decimal_factor" class="right" style="cursor:pointer">Factor</th>
               <th class="right" title="Precio × Turns">Total</th>
               <th class="right" title="Precio de contado — Precio × Turns × Factor">Al Contado · Cash Price</th>
+              <th class="right" title="Financiado = Al Contado menos enganche mínimo (10%)">Financiado</th>
               <th data-sort="min_weekly_payment" class="right" style="cursor:pointer">Pago x sem</th>
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-          </thead><tbody id="catBody"><tr><td colspan="15" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="16" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -704,6 +703,7 @@ function renderCat(){
       <td class="right">${catInp(fac,'decimal_factor',id,'type="number" step="0.01"')}</td>
       <td class="right mono cell-total">—</td>
       <td class="right mono cell-cash">—</td>
+      <td class="right mono cell-fin">—</td>
       <td class="right mono cell-pago">—</td>
       <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
         <option value="active" ${st==='active'?'selected':''}>En tienda</option>
@@ -725,10 +725,12 @@ function recalcRow(id){
   const total=price*turns;        // total a plazos (con pagos)
   const cash=price*turns*fac;     // precio de contado
   const weekly=turns ? (total - 0.1*cash)/52*1.1 : 0;
-  const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago');
+  const fin=cash*0.9;            // financiado = contado menos enganche minimo (10%)
+  const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago'), fn=row.querySelector('.cell-fin');
   if(t) t.textContent = total ? money(total) : '—';
   if(c) c.textContent = cash ? money(cash) : '—';
   if(pg) pg.textContent = weekly ? money(weekly) : '—';
+  if(fn) fn.textContent = fin ? money(fin) : '—';
 }
 $('catAll').onchange=()=>{ const on=$('catAll').checked; currentList().forEach(p=>{const id=String(pick(p,['id'],'')); on?SEL.add(id):SEL.delete(id);}); renderCat(); };
 $('catVerify').onclick=verifyCatalogAmazon;

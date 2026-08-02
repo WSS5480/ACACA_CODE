@@ -40,4 +40,10 @@ class ContractSerializer
   attribute :initial_payment do |c|
     c.initial_payment
   end
+  attribute :waiver do |c|
+    c.orders.first&.waiver
+  end
+  attribute :first_order_id do |c|
+    c.orders.first&.id
+  end
 end

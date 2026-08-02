@@ -560,6 +560,11 @@ $('dashFilter').onchange=()=>{ loadDash(); loadOrders('dashboard'); };
 
 /* ---------------- Orders ---------------- */
 let ordStatus='';
+function estadoPill(o){
+  const st=String(pick(o,['status','state'],'')).toLowerCase();
+  if(st.includes('appr') && !pick(o,['admin_approved'],false)) return '<span class="pill p-pend">Pre-aprobado</span>';
+  return statusPill(st);
+}
 function fulfillPill(o){
   const fs=String(pick(o,['fulfillment_status'],'pendiente'));
   const map={pendiente:['p-pend','Pendiente'],por_entregar:['p-other','Aprobado · por entregar'],entregado:['p-appr','Entregado']};
@@ -582,7 +587,7 @@ function orderRow(o,withStatus){
   if(withStatus){
     return `<tr class="ord-row" data-oid="${esc(id)}" style="cursor:pointer"><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${prodCell}</td>
       <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
-      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${statusPill(pick(o,['status','state'],''))}</td><td>${fulfillPill(o)}</td></tr>`;
+      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td><td>${fulfillPill(o)}</td></tr>`;
   }
   return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
     <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
@@ -592,11 +597,17 @@ function orderRow(o,withStatus){
 async function loadOrders(where){
   const body = where==='all' ? $('allOrdBody') : $('ordBody');
   const cols = where==='all'?8:8;
-  const q = where==='dashboard' && ordStatus ? ('&status='+ordStatus) : '';
-  const r=await api('GET','/api/orders?page=-1'+q);
+  const r=await api('GET','/api/orders?page=-1');
   if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
   let list=rows(r.data);
-  if(where==='dashboard' && ordStatus) list=list.filter(o=>String(pick(o,['status','state'],'')).toLowerCase().includes(ordStatus.slice(0,4)));
+  if(where==='dashboard' && ordStatus) list=list.filter(o=>{
+    const st=String(pick(o,['status','state'],'')).toLowerCase();
+    const adminOk=!!pick(o,['admin_approved'],false);
+    if(ordStatus==='pending')   return st.includes('pend') || (st.includes('appr') && !adminOk); // pendiente o Pre-aprobado
+    if(ordStatus==='approved')  return st.includes('appr') && adminOk;
+    if(ordStatus==='cancelled') return st.includes('canc');
+    return true;
+  });
   const term=(where==='dashboard'?$('ordSearch').value:'').trim().toLowerCase();
   if(term) list=list.filter(o=>JSON.stringify(o).toLowerCase().includes(term));
   if(where==='all') list=list.slice().reverse();

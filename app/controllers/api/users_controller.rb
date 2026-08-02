@@ -55,8 +55,18 @@ class Api::UsersController < ApplicationController
 
   # DELETE /api/users/:id
   def destroy
-    @user.destroy
+    unless %w[master admin].include?(@current_user&.role&.name)
+      return render json: { error: 'No autorizado' }, status: :forbidden
+    end
+
+    ActiveRecord::Base.transaction do
+      # Contratos exigen usuario (NOT NULL): se eliminan primero (cascada pagos/cuotas; ordenes quedan sueltas).
+      @user.contracts.find_each(&:destroy!) if @user.respond_to?(:contracts)
+      @user.destroy!
+    end
     head :no_content
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   # POST /api/users/client_register

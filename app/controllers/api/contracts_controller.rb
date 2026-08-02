@@ -61,7 +61,8 @@ module Api
         contract = Contract.create!(
           user: user, status: 'active',
           total_amount: total, downpayment: down, financed_amount: financed,
-          weekly_payment: weekly, weeks: weeks, start_date: Date.current
+          weekly_payment: weekly, weeks: weeks,
+          start_date: (params[:start_date].present? ? ((Date.parse(params[:start_date].to_s) rescue Date.current)) : Date.current)
         )
         products.each do |prod|
           contract.orders.create!(
@@ -94,7 +95,8 @@ module Api
       amount = params[:amount].to_f
       return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if amount <= 0
 
-      contract.payments.create!(amount: amount, method: params[:method], note: params[:note])
+      paid_at = params[:paid_on].present? ? ((Time.zone.parse(params[:paid_on].to_s) rescue nil)) : nil
+      contract.payments.create!(amount: amount, method: params[:method], note: params[:note], paid_at: paid_at)
       contract.reload
       render json: {
         ok: true,

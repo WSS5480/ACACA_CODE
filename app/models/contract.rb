@@ -33,6 +33,17 @@ class Contract < ApplicationRecord
     contract_installments.where.not(status: 'paid').where('due_date < ?', Date.current).exists?
   end
 
+  # Monto vencido: suma del saldo de cuotas no pagadas cuya fecha ya paso.
+  def past_due_amount
+    contract_installments.where.not(status: 'paid').where('due_date < ?', Date.current)
+                         .sum { |i| (i.amount.to_f - i.paid_amount.to_f) }.round(2)
+  end
+
+  # Proxima fecha de vencimiento pendiente.
+  def next_due_date
+    contract_installments.where.not(status: 'paid').order(:due_date).first&.due_date
+  end
+
   # current / past_due / paid / cancelled
   def payment_status
     return 'cancelled' if status == 'cancelled'

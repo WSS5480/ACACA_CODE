@@ -157,7 +157,7 @@ module Api
       total = (pi['amount'].to_i / 100.0).round(2)
       base = total if base <= 0
       note = "Stripe #{pi_id}"
-      note += " | seguro $#{'%.2f' % fee}" if fee > 0
+      note += " | cargos adicionales (enganche/seguro) $#{'%.2f' % fee}" if fee > 0
       note += " | total cobrado $#{'%.2f' % total}"
 
       contract.payments.create!(amount: base, method: 'stripe', note: note, stripe_payment_intent_id: pi_id)

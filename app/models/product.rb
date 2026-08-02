@@ -63,6 +63,20 @@ class Product < ApplicationRecord
     TERMS.map do |weeks, months|
       { weeks: weeks, months: months, weekly_payment: calculate_weekly_payment(weeks: weeks, downpayment: dp) }
     end.select { |p| p[:weekly_payment] > Product.min_weekly_for(p[:weeks]) }
+    if plans_empty_fallback?(dp)
+      fin = (total_price - dp).round(2)
+      weeks_r = [(fin / 10.0).ceil, 1].max
+      return [{ weeks: weeks_r, months: [(weeks_r / 4.333).round, 1].max, weekly_payment: [10.0, fin].min.round(2) }]
+    end
+    TERMS.map do |weeks, months|
+      { weeks: weeks, months: months, weekly_payment: calculate_weekly_payment(weeks: weeks, downpayment: dp) }
+    end.select { |p| p[:weekly_payment] > Product.min_weekly_for(p[:weeks]) }
+  end
+
+  def plans_empty_fallback?(dp)
+    fin = (total_price - dp).round(2)
+    return false if fin <= 0
+    TERMS.none? { |weeks, _m| calculate_weekly_payment(weeks: weeks, downpayment: dp) > Product.min_weekly_for(weeks) }
   end
 
   # "Pago x sem": el pago semanal mínimo entre los plazos ofrecidos

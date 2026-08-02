@@ -59,16 +59,29 @@ class Contract < ApplicationRecord
     frequency.presence || 'weekly'
   end
 
-  # Numero de cuotas y monto por cuota segun la frecuencia elegida (mismo plazo total).
+  # Pago por periodo = pago semanal escalado a la frecuencia (quincenal x2, mensual x4.333).
+  def period_payment
+    fin = financed_amount.to_f
+    wp = weekly_payment.to_f
+    per = case freq
+          when 'monthly'  then wp * 4.333
+          when 'biweekly' then wp * 2
+          else                 wp
+          end
+    per = fin / [weeks.to_i, 1].max if per <= 0
+    [per.round(2), fin].min
+  end
+
+  # Numero de cuotas segun el pago por periodo: se mantiene el pago fijo y la ULTIMA cuota
+  # liquida el resto del saldo (si el resto es menor a $1 se une a la cuota anterior).
   def schedule_periods_and_amount
     fin = financed_amount.to_f
-    wk = weeks.to_i
-    n = case freq
-        when 'monthly'  then [(wk / 4.333).round, 1].max
-        when 'biweekly' then [(wk / 2.0).ceil, 1].max
-        else                 [wk, 1].max
-        end
-    [n, (fin / n)]
+    per = period_payment
+    return [1, fin.round(2)] if per <= 0 || fin <= 0
+    n = (fin / per).ceil
+    last = (fin - (n - 1) * per).round(2)
+    n -= 1 if n > 1 && last < 1.0
+    [[n, 1].max, per]
   end
 
   # Primera fecha de vencimiento alineada: sabado (semanal/quincenal) o dia 1 (mensual),

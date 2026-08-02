@@ -55,7 +55,14 @@ module Api
       weekly = (financed / weeks).round(2)
       min_wk = Product.min_weekly_for(weeks)
       if financed > 0 && weekly < min_wk
-        return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{min_wk} para este plazo. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
+        if min_wk <= 10
+          # Plazo corto: se mantiene el pago de $10/sem y se reducen las semanas;
+          # la ultima semana liquida el resto del saldo.
+          weeks = [(financed / 10.0).ceil, 1].max
+          weekly = [10.0, financed].min.round(2)
+        else
+          return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{min_wk} para este plazo. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
+        end
       end
 
       contract = nil

@@ -202,7 +202,7 @@
         <div class="search" style="max-width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="cliSearch" placeholder="Buscar…"></div>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Disponible</th><th class="right">Crédito Utilizado</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Utilizado</th><th class="right">Crédito Disponible</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
         <tbody id="cliBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
@@ -601,7 +601,7 @@ async function loadClients(){
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null);
       const bal=(line!=null&&avail!=null)?Math.round((Number(line)-Number(avail))*100)/100:pick(u,['account_balance'],null);
       return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
-        <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
+        <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
         <td class="right"><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
     }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;

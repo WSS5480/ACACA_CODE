@@ -44,6 +44,12 @@ class Contract < ApplicationRecord
     contract_installments.where.not(status: 'paid').order(:due_date).first&.due_date
   end
 
+  # Dias de atraso (desde la cuota vencida mas antigua sin pagar).
+  def days_past_due
+    d = contract_installments.where.not(status: 'paid').where('due_date < ?', Date.current).minimum(:due_date)
+    d ? (Date.current - d).to_i : 0
+  end
+
   # current / past_due / paid / cancelled
   def payment_status
     return 'cancelled' if status == 'cancelled'

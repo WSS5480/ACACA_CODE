@@ -232,13 +232,16 @@
     <section class="view hide" data-v="contratos">
       <div class="head"><h1 id="conTitle">Gestion de Contratos</h1><div class="sp"></div>
         <button class="btn" id="conNewBtn" style="margin-right:10px">+ Nuevo contrato</button>
+        <button class="btn" id="conAgingBtn" style="margin-right:10px;background:#eef0f6;color:var(--navy)">Account Aging</button>
         <a href="#" id="conClearFilter" style="display:none;color:var(--brand-d);font-weight:700">Ver todos</a>
       </div>
+      <div id="conStats" style="display:none;gap:14px;flex-wrap:wrap;margin:0 0 14px"></div>
+      <div id="conAging" style="display:none"></div>
       <div id="conTableWrap"><div class="sec"><div style="overflow-x:auto">
         <table><thead><tr>
           <th>Contrato</th><th>Cliente</th><th class="right">Total</th><th class="right">Financiado</th>
-          <th class="right">Pago x sem</th><th class="right">Saldo</th><th>Plazo</th><th>Estatus</th><th class="right">Articulos</th>
-        </tr></thead><tbody id="conBody"><tr><td colspan="9" class="empty">Cargando...</td></tr></tbody></table>
+          <th class="right">Pago x sem</th><th class="right">Saldo</th><th>Próximo Venc.</th><th>Plazo</th><th>Estatus</th><th class="right">Articulos</th>
+        </tr></thead><tbody id="conBody"><tr><td colspan="10" class="empty">Cargando...</td></tr></tbody></table>
       </div></div></div>
       <div id="conDetail" style="display:none"></div>
     </section>
@@ -658,30 +661,84 @@ async function loadContracts(userId){
   const dt=$('conDetail'); if(dt){ dt.style.display='none'; dt.innerHTML=''; }
   const wrap=$('conTableWrap'); if(wrap) wrap.style.display='';
   const body=$('conBody'); if(!body) return;
-  body.innerHTML='<tr><td colspan="9" class="empty">Cargando...</td></tr>';
+  body.innerHTML='<tr><td colspan="10" class="empty">Cargando...</td></tr>';
   $('conTitle').textContent = userId ? 'Contratos del cliente' : 'Gestion de Contratos';
   const cf=$('conClearFilter'); if(cf){ cf.style.display = userId ? '' : 'none'; cf.onclick=(e)=>{e.preventDefault(); loadContracts(null);}; }
   const r=await api('GET','/api/contracts'+(userId?('?user_id='+encodeURIComponent(userId)):''));
-  if(!r.ok){ body.innerHTML='<tr><td colspan="9" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
+  if(!r.ok){ body.innerHTML='<tr><td colspan="10" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
   const list=rows(r.data);
   body.innerHTML = list.length ? list.map(c=>{
     const num=pick(c,['contract_number'],'-'), cli=pick(c,['client_name'],'-');
     const total=pick(c,['total_amount'],null), fin=pick(c,['financed_amount'],null);
     const wk=pick(c,['weekly_payment'],null), bal=pick(c,['balance'],null);
     const weeks=pick(c,['weeks'],null), items=pick(c,['items_count'],0), ps=pick(c,['payment_status'],'');
+    const ndd=pick(c,['next_due_date'],null), dpd=Number(pick(c,['days_past_due'],0))||0;
     return `<tr class="con-row" data-id="${esc(c.id)}" style="cursor:pointer">
       <td class="mono">${esc(num)}</td><td>${esc(cli)}</td>
       <td class="right mono">${total!=null?money(total):'-'}</td>
       <td class="right mono">${fin!=null?money(fin):'-'}</td>
       <td class="right mono">${wk!=null?money(wk):'-'}</td>
       <td class="right mono">${bal!=null?money(bal):'-'}</td>
+      <td>${fdate(ndd)}${dpd>0?` <span style="color:var(--bad);font-size:11.5px;font-weight:700">(${dpd}d)</span>`:''}</td>
       <td>${weeks!=null?esc(weeks)+' sem':'-'}</td>
       <td>${conStatusPill(ps)}</td><td class="right">${esc(items)}</td></tr>`;
-  }).join('') : '<tr><td colspan="9" class="empty">No hay contratos todavia</td></tr>';
+  }).join('') : '<tr><td colspan="10" class="empty">No hay contratos todavia</td></tr>';
   body.querySelectorAll('.con-row').forEach(tr=>tr.onclick=()=>openContract(tr.dataset.id));
+  CONLIST=list; renderConStats(list);
 }
+let CONLIST=[];
+function conStatCard(label,val,color){ return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px"><div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.03em">${label}</div><div style="font-size:20px;font-weight:800;${color?('color:'+color):''}">${val}</div></div>`; }
+function renderConStats(list){
+  const el=$('conStats'); if(!el) return;
+  const act=list.filter(c=>['current','past_due'].includes(String(pick(c,['payment_status'],''))));
+  const pd=act.filter(c=>String(pick(c,['payment_status'],''))==='past_due');
+  const saldo=act.reduce((s,c)=>s+(Number(pick(c,['balance'],0))||0),0);
+  const vencido=act.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0);
+  const pct=act.length?Math.round(pd.length/act.length*1000)/10:0;
+  el.style.display='flex';
+  el.innerHTML = conStatCard('Contratos activos',act.length)
+    + conStatCard('Al corriente',act.length-pd.length,'var(--good)')
+    + conStatCard('Vencidos',pd.length,pd.length?'var(--bad)':'')
+    + conStatCard('% Vencidos',pct.toFixed(1)+'%',pd.length?'var(--bad)':'')
+    + conStatCard('Saldo total',money(saldo))
+    + conStatCard('Monto vencido',money(vencido),vencido>0?'var(--bad)':'');
+}
+async function openAging(){
+  const wrap=$('conTableWrap'), d=$('conDetail'), ag=$('conAging'), st=$('conStats');
+  if(wrap) wrap.style.display='none'; if(d){d.style.display='none';} if(st) st.style.display='none';
+  ag.style.display=''; ag.innerHTML='<p class="muted">Cargando...</p>';
+  const r=await api('GET','/api/contracts');
+  if(!r.ok){ ag.innerHTML='<p class="empty">No se pudo cargar.</p>'; return; }
+  const list=rows(r.data);
+  const act=list.filter(c=>['current','past_due'].includes(String(pick(c,['payment_status'],''))));
+  const totalActive=act.length||0;
+  const outstanding=act.reduce((s,c)=>s+(Number(pick(c,['balance'],0))||0),0);
+  const B=[{k:'1 a 7',lo:1,hi:7},{k:'8 a 14',lo:8,hi:14},{k:'15 a 30',lo:15,hi:30},{k:'31 a 60',lo:31,hi:60},{k:'61+',lo:61,hi:100000}];
+  const agg=B.map(b=>{const cs=act.filter(c=>{const d=Number(pick(c,['days_past_due'],0))||0;return d>=b.lo&&d<=b.hi;});
+    return { k:b.k, n:cs.length, dol:cs.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0) };});
+  const tn=agg.reduce((s,b)=>s+b.n,0), td=agg.reduce((s,b)=>s+b.dol,0);
+  const pctN=v=>totalActive?(Math.round(v/totalActive*1000)/10).toFixed(1):'0.0';
+  const pctD=v=>outstanding?(Math.round(v/outstanding*1000)/10).toFixed(1):'0.0';
+  const th='padding:10px 14px;border:1px solid var(--line);background:#e9ebf0;font-weight:700;text-align:center';
+  const td_=' style="padding:9px 14px;border:1px solid var(--line);text-align:right" class="mono"';
+  const tl=' style="padding:9px 14px;border:1px solid var(--line);font-weight:700"';
+  ag.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="agBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a contratos</a></div>
+    <div class="head"><h1 style="font-size:20px">Account Aging</h1><div class="sp"></div><span class="muted">Contratos activos: ${totalActive} &nbsp;|&nbsp; Saldo total: ${money(outstanding)}</span></div>
+    <div class="sec" style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">
+      <tr><th style="${th};text-align:left">Cierre de Contrato</th>${agg.map(b=>`<th style="${th}">${b.k}</th>`).join('')}<th style="${th}">Total</th></tr>
+      <tr><td${tl}>Contratos Totales</td>${agg.map(b=>`<td${td_}>${b.n}</td>`).join('')}<td${td_}><b>${tn}</b></td></tr>
+      <tr><td${tl}>Contratos Pct</td>${agg.map(b=>`<td${td_}>${pctN(b.n)}</td>`).join('')}<td${td_}><b>${pctN(tn)}</b></td></tr>
+      <tr><td${tl}>Float Dollars</td>${agg.map(b=>`<td${td_}>${money(b.dol)}</td>`).join('')}<td${td_}><b>${money(td)}</b></td></tr>
+      <tr><td${tl}>Float Pct</td>${agg.map(b=>`<td${td_}>${pctD(b.dol)}</td>`).join('')}<td${td_}><b>${pctD(td)}</b></td></tr>
+    </table></div>
+    <p class="muted" style="font-size:12.5px">Pct de contratos = contratos del rango / contratos activos. Float = monto vencido del rango; Float Pct = sobre el saldo total activo. (Fila Roll/Open pendiente de definicion.)</p>`;
+  $('agBack').onclick=(e)=>{e.preventDefault(); ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; const s2=$('conStats'); if(s2) s2.style.display='flex'; };
+}
+if($('conAgingBtn')) $('conAgingBtn').onclick=openAging;
 async function openContract(id){
   const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
+  const st=$('conStats'); if(st) st.style.display='none'; const ag=$('conAging'); if(ag) ag.style.display='none';
   d.style.display=''; d.innerHTML='<p class="muted">Cargando contrato...</p>';
   const r=await api('GET','/api/contracts/'+encodeURIComponent(id));
   if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar el contrato.</p>'; return; }
@@ -743,7 +800,7 @@ async function deleteContract(id){
   if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContractsList(); alert('Contrato eliminado; credito restaurado.'); }
   else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo eliminar el contrato.'); }
 }
-function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
+function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const ag=$('conAging'); if(ag) ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
 
 /* ---------------- Catalog ---------------- */
 let CAT=[], CATS=[], SEL=new Set(), catAvail={};
@@ -1472,6 +1529,7 @@ function ncRenderCart(){
 }
 async function newContractForm(){
   const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
+  const st=$('conStats'); if(st) st.style.display='none'; const ag=$('conAging'); if(ag) ag.style.display='none';
   d.style.display=''; d.innerHTML='<p class="muted">Cargando...</p>'; NC_CART=[];
   const clients=await fetchClients(); const prods=await ncLoadProducts();
   const PMAP={}; prods.forEach(p=>PMAP[String(p.id)]=p);

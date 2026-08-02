@@ -28,6 +28,9 @@ class ContractSerializer
   attribute :next_due_date do |c|
     c.next_due_date
   end
+  attribute :days_past_due do |c|
+    c.days_past_due
+  end
   attribute :frequency do |c|
     c.freq
   end

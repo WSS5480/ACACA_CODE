@@ -105,5 +105,11 @@ Rails.application.routes.draw do
     post 'risk_engine/versions', to: 'api/risk_engine_configs#create'
     post 'risk_engine/versions/:version/activate', to: 'api/risk_engine_configs#activate'
     post 'risk_engine/recalc_credit', to: 'api/risk_engine_configs#recalc_credit'
+
+    post 'stripe/payment_intent',  to: 'api/stripe#payment_intent'
+    post 'stripe/charge_saved',    to: 'api/stripe#charge_saved'
+    post 'stripe/finalize',        to: 'api/stripe#finalize'
+    get  'stripe/payment_methods', to: 'api/stripe#payment_methods'
+    post 'stripe/webhook',         to: 'api/stripe#webhook'
   end
 end

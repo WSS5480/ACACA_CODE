@@ -80,7 +80,12 @@ class Api::UsersController < ApplicationController
     end
 
     # Token de verificacion por WhatsApp (se incrusta en el enlace/QR que el cliente nos envia).
-    @user.ensure_whatsapp_verify_token!
+    # Defensivo: si algo falla aqui (p.ej. la columna aun no migro), NO debe impedir crear la cuenta.
+    begin
+      @user.ensure_whatsapp_verify_token!
+    rescue StandardError => wa_token_error
+      Rails.logger.error "No se pudo generar el token de WhatsApp: #{wa_token_error.message}"
+    end
 
     # Correo de bienvenida (solo bienvenida).
     if @user.email.present?

@@ -37,9 +37,13 @@ class User < ApplicationRecord
 
   def whatsapp_verify_url
     num = ENV['WHATSAPP_BUSINESS_NUMBER'].to_s.gsub(/[^0-9]/, '')
-    return nil if whatsapp_verify_token.blank? || num.blank?
-    text = "Hola, quiero verificar mi cuenta acasa. Codigo: #{whatsapp_verify_token}"
+    return nil if num.blank?
+    token = has_attribute?(:whatsapp_verify_token) ? whatsapp_verify_token : nil
+    return nil if token.blank?
+    text = "Hola, quiero verificar mi cuenta acasa. Codigo: #{token}"
     "https://wa.me/#{num}?text=#{ERB::Util.url_encode(text)}"
+  rescue StandardError
+    nil
   end
 
   def send_reset_password_instructions

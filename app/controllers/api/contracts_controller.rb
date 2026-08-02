@@ -4,7 +4,7 @@ module Api
   class ContractsController < ApplicationController
     include TokenAuthenticatable
 
-    before_action :authorize_staff!, only: [:create, :record_payment]
+    before_action :authorize_staff!, only: [:record_payment]
 
     # GET /api/contracts?user_id=
     def index
@@ -27,7 +27,13 @@ module Api
     # POST /api/contracts  { user_id, product_ids:[], downpayment, weeks }
     # Crea un contrato con UNO O VARIOS articulos y UN pago semanal combinado.
     def create
-      user = User.find_by(id: params[:user_id])
+      role_name = @current_user&.role&.name
+      is_client = role_name == 'cliente'
+      is_staff  = %w[master admin].include?(role_name)
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless is_client || is_staff
+
+      # Un cliente solo crea contratos para si mismo; el staff puede indicar user_id.
+      user = is_client ? @current_user : User.find_by(id: params[:user_id])
       return render(json: { error: 'Usuario no encontrado' }, status: :not_found) unless user
 
       product_ids = Array(params[:product_ids]).map(&:to_i).reject(&:zero?)
@@ -46,6 +52,9 @@ module Api
       return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if financed > available + 0.01
 
       weekly = (financed / weeks).round(2)
+      if financed > 0 && weekly < Product::MIN_WEEKLY
+        return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{Product::MIN_WEEKLY}. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
+      end
 
       contract = nil
       ActiveRecord::Base.transaction do

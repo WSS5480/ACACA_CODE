@@ -717,6 +717,13 @@ async function openAging(){
   const agg=B.map(b=>{const cs=act.filter(c=>{const d=Number(pick(c,['days_past_due'],0))||0;return d>=b.lo&&d<=b.hi;});
     return { k:b.k, n:cs.length, dol:cs.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0) };});
   const tn=agg.reduce((s,b)=>s+b.n,0), td=agg.reduce((s,b)=>s+b.dol,0);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const open_=B.map(b=>{const cs=act.filter(c=>{
+      if(String(pick(c,['payment_status'],''))==='past_due') return false;
+      const nd=pick(c,['next_due_date'],null); if(!nd) return false;
+      const days=Math.round((new Date(nd)-today)/86400000);
+      return days>=b.lo&&days<=b.hi; });
+    return cs.length; });
   const pctN=v=>totalActive?(Math.round(v/totalActive*1000)/10).toFixed(1):'0.0';
   const pctD=v=>outstanding?(Math.round(v/outstanding*1000)/10).toFixed(1):'0.0';
   const th='padding:10px 14px;border:1px solid var(--line);background:#e9ebf0;font-weight:700;text-align:center';
@@ -731,8 +738,9 @@ async function openAging(){
       <tr><td${tl}>Contratos Pct</td>${agg.map(b=>`<td${td_}>${pctN(b.n)}</td>`).join('')}<td${td_}><b>${pctN(tn)}</b></td></tr>
       <tr><td${tl}>Float Dollars</td>${agg.map(b=>`<td${td_}>${money(b.dol)}</td>`).join('')}<td${td_}><b>${money(td)}</b></td></tr>
       <tr><td${tl}>Float Pct</td>${agg.map(b=>`<td${td_}>${pctD(b.dol)}</td>`).join('')}<td${td_}><b>${pctD(td)}</b></td></tr>
+      <tr><td${tl}>Roll/Open Pct</td>${open_.map(n=>`<td style="padding:9px 14px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mono">${n}</span><span class="mono">${pctN(n)}</span></div></td>`).join('')}<td style="padding:9px 14px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mono"><b>${open_[0]}</b></span><span class="mono"><b>${(parseFloat(pctN(tn))+parseFloat(pctN(open_[0]))).toFixed(1)}</b></span></div></td></tr>
     </table></div>
-    <p class="muted" style="font-size:12.5px">Pct de contratos = contratos del rango / contratos activos. Float = monto vencido del rango; Float Pct = sobre el saldo total activo. (Fila Roll/Open pendiente de definicion.)</p>`;
+    <p class="muted" style="font-size:12.5px">Pct de contratos = contratos del rango / activos. Float = monto vencido del rango; Float Pct = sobre el saldo activo total. Roll/Open = contratos al corriente con vencimiento en los proximos dias del rango; Total = vencidos Pct + por vencer esta semana Pct (exposicion combinada).</p>`;
   $('agBack').onclick=(e)=>{e.preventDefault(); ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; const s2=$('conStats'); if(s2) s2.style.display='flex'; };
 }
 if($('conAgingBtn')) $('conAgingBtn').onclick=openAging;

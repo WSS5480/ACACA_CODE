@@ -84,6 +84,10 @@ Rails.application.routes.draw do
       put 'assign_beneficiary', on: :member
     end
 
+    resources :contracts, controller: 'api/contracts', only: [:index, :show, :create] do
+      post 'record_payment', on: :member
+    end
+
     resources :beneficiaries, controller: 'api/beneficiaries'
     resources :buyers, controller: 'api/buyers'
     resources :referrals, controller: 'api/referrals'

@@ -522,7 +522,7 @@ $('dashFilter').onchange=()=>{ loadDash(); loadOrders('dashboard'); };
 /* ---------------- Orders ---------------- */
 let ordStatus='';
 function orderRow(o,withStatus){
-  const cliente = pick(o,['client_email','user_email','email','client_name','buyer_name'],'—');
+  const cliente = ([pick(o,['user_name','client_name'],''),pick(o,['user_last_name'],'')].filter(Boolean).join(' ')) || pick(o,['user_email','client_email','email'],'—');
   const prod = pick(o,['product_title','product_name','product','title'],'—');
   const precio = pick(o,['product_cost_usd','price','product_price','total'],null);
   const plazo = pick(o,['weeks','term_weeks','installments'],null);
@@ -585,7 +585,7 @@ async function loadCredits(){
   const withCredit=list.filter(u=>{const c=pick(u,['credit','available_credit','credit_amount'],0);return Number(c)>0;});
   $('creBody').innerHTML = withCredit.length ? withCredit.map(u=>{
     const c=pick(u,['credit','available_credit','credit_amount'],0);
-    return `<tr><td>${esc(pick(u,['name','full_name'],'—'))}</td><td>${esc(pick(u,['email'],'—'))}</td>
+    return `<tr><td>${esc([pick(u,['name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||'—')}</td><td>${esc(pick(u,['email'],'—'))}</td>
       <td class="right mono">${money(c)}</td><td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
   }).join('') : `<tr><td colspan="4" class="empty">Ningún cliente con crédito disponible todavía</td></tr>`;
 }

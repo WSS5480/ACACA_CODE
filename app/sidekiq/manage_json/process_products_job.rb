@@ -248,7 +248,13 @@ class ManageJson::ProcessProductsJob
     image_urls = images.map { |img| img['link'] }.compact
     return if image_urls.blank?
 
-    ManageJson::DownloadProductImagesJob.perform_async(product.id, image_urls)
+    # Descarga de imagenes INLINE (sin worker de Sidekiq): las fotos se bajan durante la importacion
+    # y quedan guardadas en el almacenamiento persistente (R2). Antes se encolaba y no corria nadie.
+    begin
+      ManageJson::DownloadProductImagesJob.new.perform(product.id, image_urls)
+    rescue StandardError => img_err
+      Rails.logger.error "[images] producto #{product.id}: #{img_err.message}"
+    end
   end
 
   def format_feature_bullets(bullets)

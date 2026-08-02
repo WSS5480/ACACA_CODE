@@ -46,4 +46,18 @@ class ContractSerializer
   attribute :first_order_id do |c|
     c.orders.first&.id
   end
+
+  # pendiente (falta aprobar en Ordenes) -> por_entregar -> entregado
+  attribute :fulfillment do |c|
+    orders = c.orders.to_a
+    if orders.empty?
+      nil
+    elsif orders.any? { |o| !(o.respond_to?(:admin_approved) && o.admin_approved) }
+      'pendiente'
+    elsif orders.all? { |o| o.respond_to?(:delivered_at) && o.delivered_at.present? }
+      'entregado'
+    else
+      'por_entregar'
+    end
+  end
 end

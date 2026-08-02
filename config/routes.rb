@@ -80,6 +80,8 @@ Rails.application.routes.draw do
     end
 
     resources :orders, controller: 'api/orders' do
+      post 'verify', on: :member
+      post 'confirm_delivery', on: :member
       get 'simulate_payment_plans', on: :collection
       get 'dashboard', on: :collection
       put 'assign_beneficiary', on: :member

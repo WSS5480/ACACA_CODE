@@ -28,6 +28,43 @@ class Api::OrdersController < ApplicationController
   end
 
   # GET /api/orders/:id
+  # POST /api/orders/:id/verify  (solo staff)
+  # { beneficiary_verified, beneficiary_comment, buyer_verified, buyer_comment,
+  #   references_verified, references_comment, admin_approved }
+  def verify
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff_user?
+
+    order = Order.find_by(id: params[:id])
+    return render(json: { error: 'Orden no encontrada' }, status: :not_found) unless order
+
+    fields = {}
+    %w[beneficiary_verified buyer_verified references_verified admin_approved].each do |f|
+      fields[f] = ActiveModel::Type::Boolean.new.cast(params[f]) if params.key?(f) && order.respond_to?(f)
+    end
+    %w[beneficiary_comment buyer_comment references_comment].each do |f|
+      fields[f] = params[f].to_s if params.key?(f) && order.respond_to?(f)
+    end
+    if fields.key?('admin_approved')
+      fields['approved_at'] = fields['admin_approved'] ? Time.current : nil
+    end
+    order.update!(fields)
+    render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+  end
+
+  # POST /api/orders/:id/confirm_delivery  (solo staff)
+  def confirm_delivery
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff_user?
+
+    order = Order.find_by(id: params[:id])
+    return render(json: { error: 'Orden no encontrada' }, status: :not_found) unless order
+    return render(json: { error: 'La orden debe estar aprobada primero' }, status: :unprocessable_entity) unless order.respond_to?(:admin_approved) && order.admin_approved
+
+    order.update!(delivered_at: Time.current)
+    render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
+  end
+
   def show
     response = OrderSerializer.new(@order).serializable_hash
     
@@ -266,6 +303,10 @@ class Api::OrdersController < ApplicationController
   end
 
   private
+
+  def staff_user?
+    %w[master admin].include?(@current_user&.role&.name)
+  end
 
   # Compara dos montos monetarios de forma segura (evita errores de punto flotante).
   # Redondea a centavos y permite una diferencia menor a 1 centavo.

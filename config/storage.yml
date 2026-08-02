@@ -13,6 +13,10 @@ amazon:
   secret_access_key: <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
   region: <%= ENV['AWS_REGION'] || 'us-east-1' %>
   bucket: <%= ENV['AWS_S3_BUCKET'] %>
+  # R2/S3-compat: el SDK nuevo agrega un checksum extra (CRC32) que R2 rechaza.
+  # 'when_required' evita el checksum de mas y deja pasar la subida.
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required
 <% if ENV['AWS_S3_ENDPOINT'].present? %>
   endpoint: <%= ENV['AWS_S3_ENDPOINT'] %>
   force_path_style: true

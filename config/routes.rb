@@ -65,6 +65,7 @@ Rails.application.routes.draw do
 
     resources :users, controller: 'api/users' do
       post 'client_register', on: :collection
+      post 'set_credit', on: :member
     end
 
     get 'current_user', to: 'api/users#current_user'

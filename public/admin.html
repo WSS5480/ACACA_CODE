@@ -602,10 +602,11 @@ async function loadClients(){
       return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
-        <td class="right"><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
+        <td class="right"><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
     }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
     $('cliBody').querySelectorAll('.recalccli').forEach(b=>b.onclick=()=>recalcClient(b.dataset.id));
+    $('cliBody').querySelectorAll('.setcredit').forEach(b=>b.onclick=()=>setClientCredit(b.dataset.id));
   };
   render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
 }
@@ -614,6 +615,14 @@ async function recalcClient(id){
   const r=await api('POST','/api/risk_engine/recalc_credit',{user_ids:[id]});
   if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; await loadClients(); alert('Credito recalculado (v'+r.data.active_version+').'); }
   else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo recalcular.'); }
+}
+async function setClientCredit(id){
+  const v=prompt('Fijar linea de credito (disponible = limite) para PRUEBAS:');
+  if(v==null) return;
+  const amt=parseFloat(v); if(isNaN(amt)||amt<0){ alert('Monto invalido'); return; }
+  const r=await api('POST','/api/users/'+encodeURIComponent(id)+'/set_credit',{amount:amt});
+  if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; await loadClients(); alert('Credito fijado en $'+amt.toLocaleString()); }
+  else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo fijar el credito.'); }
 }
 async function deleteClient(id, name){
   if(!id) return;

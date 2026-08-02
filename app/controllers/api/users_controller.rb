@@ -8,7 +8,7 @@ class Api::UsersController < ApplicationController
   skip_before_action :authenticate_entity!
   skip_before_action :authenticate_client_or_user!
   # Nivel 2: Solo JWT para index, create, destroy
-  before_action :authenticate_entity!, only: [:index, :create, :destroy]
+  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit]
   # Nivel 3: Cliente o JWT para show, update, current_user
   before_action :authenticate_client_or_user!, only: [:show, :update, :current_user]
   # Otros callbacks
@@ -114,6 +114,24 @@ class Api::UsersController < ApplicationController
   # GET /api/current_user
   def current_user
     render json: UserSerializer.new(@current_user).serializable_hash, status: :ok
+  end
+
+  # POST /api/users/:id/set_credit  { amount }
+  # Herramienta de PRUEBAS (solo staff): fija la linea de credito (disponible = limite).
+  def set_credit
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless %w[master admin].include?(@current_user&.role&.name)
+
+    user = User.find_by(id: params[:id])
+    return render(json: { error: 'Usuario no encontrado' }, status: :not_found) unless user
+
+    amt = params[:amount].to_f
+    return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if amt < 0
+
+    cr = user.credit || user.build_credit(amount: 0)
+    cr.amount = amt.round(2)
+    cr.credit_limit = amt.round(2) if Credit.column_names.include?('credit_limit')
+    cr.save!
+    render json: { ok: true, credit_amount: cr.amount, credit_limit: (cr.respond_to?(:credit_limit) ? cr.credit_limit : cr.amount) }, status: :ok
   end
 
   private

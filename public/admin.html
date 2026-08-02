@@ -718,12 +718,19 @@ async function openAging(){
     return { k:b.k, n:cs.length, dol:cs.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0) };});
   const tn=agg.reduce((s,b)=>s+b.n,0), td=agg.reduce((s,b)=>s+b.dol,0);
   const today=new Date(); today.setHours(0,0,0,0);
-  const open_=B.map(b=>{const cs=act.filter(c=>{
-      if(String(pick(c,['payment_status'],''))==='past_due') return false;
-      const nd=pick(c,['next_due_date'],null); if(!nd) return false;
-      const days=Math.round((new Date(nd)-today)/86400000);
-      return days>=b.lo&&days<=b.hi; });
-    return cs.length; });
+  // Roll: lo que CRUZA a cada rango esta noche si no paga hoy.
+  // Vence HOY -> 1 a 7; exactamente 7 dias vencido -> 8 a 14; 14 -> 15 a 30; 30 -> 31 a 60; 60 -> 61+.
+  const EDGES=[0,7,14,30,60];
+  const open_=B.map((b,i)=>{
+    if(i===0){
+      return act.filter(c=>{
+        if(String(pick(c,['payment_status'],''))==='past_due') return false;
+        const nd=pick(c,['next_due_date'],null); if(!nd) return false;
+        return Math.round((new Date(nd)-today)/86400000)===0;
+      }).length;
+    }
+    return act.filter(c=>(Number(pick(c,['days_past_due'],0))||0)===EDGES[i]).length;
+  });
   const pctN=v=>totalActive?(Math.round(v/totalActive*1000)/10).toFixed(1):'0.0';
   const pctD=v=>outstanding?(Math.round(v/outstanding*1000)/10).toFixed(1):'0.0';
   const th='padding:10px 14px;border:1px solid var(--line);background:#e9ebf0;font-weight:700;text-align:center';
@@ -740,7 +747,7 @@ async function openAging(){
       <tr><td${tl}>Float Pct</td>${agg.map(b=>`<td${td_}>${pctD(b.dol)}</td>`).join('')}<td${td_}><b>${pctD(td)}</b></td></tr>
       <tr><td${tl}>Roll/Open Pct</td>${open_.map(n=>`<td style="padding:9px 14px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mono">${n}</span><span class="mono">${pctN(n)}</span></div></td>`).join('')}<td style="padding:9px 14px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mono"><b>${open_[0]}</b></span><span class="mono"><b>${(parseFloat(pctN(tn))+parseFloat(pctN(open_[0]))).toFixed(1)}</b></span></div></td></tr>
     </table></div>
-    <p class="muted" style="font-size:12.5px">Pct de contratos = contratos del rango / activos. Float = monto vencido del rango; Float Pct = sobre el saldo activo total. Roll/Open = contratos al corriente con vencimiento en los proximos dias del rango; Total = vencidos Pct + por vencer esta semana Pct (exposicion combinada).</p>`;
+    <p class="muted" style="font-size:12.5px">Pct de contratos = contratos del rango / activos. Float = monto vencido del rango; Float Pct = sobre el saldo activo total. Roll = lo que cruza a cada rango esta noche si no paga hoy (vence hoy → 1 a 7; 7d → 8 a 14; 14d → 15 a 30; 30d → 31 a 60; 60d → 61+). Open Pct (Total) = vencidos Pct + potencial de los que vencen hoy.</p>`;
   $('agBack').onclick=(e)=>{e.preventDefault(); ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; const s2=$('conStats'); if(s2) s2.style.display='flex'; };
 }
 if($('conAgingBtn')) $('conAgingBtn').onclick=openAging;

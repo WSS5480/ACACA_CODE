@@ -144,6 +144,7 @@
       <a data-view="clientes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Clientes</a>
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
       <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
+      <a data-view="contratos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Contratos</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
       <div class="sep"></div>
       <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
@@ -227,6 +228,20 @@
     </section>
 
     <!-- ---------- CATÁLOGOS ---------- -->
+    <!-- ---------- CONTRATOS ---------- -->
+    <section class="view hide" data-v="contratos">
+      <div class="head"><h1 id="conTitle">Gestion de Contratos</h1><div class="sp"></div>
+        <a href="#" id="conClearFilter" style="display:none;color:var(--brand-d);font-weight:700">Ver todos</a>
+      </div>
+      <div id="conTableWrap"><div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Contrato</th><th>Cliente</th><th class="right">Total</th><th class="right">Financiado</th>
+          <th class="right">Pago x sem</th><th class="right">Saldo</th><th>Plazo</th><th>Estatus</th><th class="right">Articulos</th>
+        </tr></thead><tbody id="conBody"><tr><td colspan="9" class="empty">Cargando...</td></tr></tbody></table>
+      </div></div></div>
+      <div id="conDetail" style="display:none"></div>
+    </section>
+
     <section class="view hide" data-v="catalogos">
       <div class="head"><h1>Catálogos</h1><div class="sp"></div>
         <button class="btn" id="catDownload" style="background:#eef0f6;color:var(--navy)">Descargar CSV</button>
@@ -482,6 +497,7 @@ function show(view){
   if(view==='clientes' && !loaded.cli){ loadClients(); }
   if(view==='creditos' && !loaded.cre){ loadCredits(); }
   if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
+  if(view==='contratos' && !loaded.con){ loadContracts(); loaded.con=1; }
   if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
   if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
   if(view==='catalogos') loaded.cat=1;
@@ -564,7 +580,7 @@ async function loadClients(){
       const id=pick(u,['id'],''), name=([pick(u,['name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||'—'), email=pick(u,['email'],'—');
       const num=pick(u,['number','client_number','phone'],'—');
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null), bal=pick(u,['account_balance'],null);
-      return `<tr><td>${esc(name)}</td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+      return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
         <td class="right"><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
@@ -589,6 +605,102 @@ async function loadCredits(){
       <td class="right mono">${money(c)}</td><td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
   }).join('') : `<tr><td colspan="4" class="empty">Ningún cliente con crédito disponible todavía</td></tr>`;
 }
+
+/* ---------------- Contratos ---------------- */
+function conStatusPill(s){ s=String(s||'').toLowerCase();
+  const map={current:['p-appr','Al corriente'],past_due:['p-pend','Vencido'],paid:['p-appr','Pagado'],cancelled:['p-canc','Cancelado'],active:['p-other','Activo']};
+  const m=map[s]||['p-other', s||'-']; return `<span class="pill ${m[0]}">${esc(m[1])}</span>`;
+}
+function istPill(st){ st=String(st||'').toLowerCase();
+  const map={paid:['p-appr','Pagado'],partial:['p-pend','Parcial'],pending:['p-other','Pendiente']};
+  const m=map[st]||['p-other', st||'-']; return `<span class="pill ${m[0]}">${esc(m[1])}</span>`;
+}
+function goClientContracts(uid){ loaded.con=1; show('contratos'); loadContracts(uid); }
+let CONFILTER=null;
+async function loadContracts(userId){
+  CONFILTER = userId||null;
+  const dt=$('conDetail'); if(dt){ dt.style.display='none'; dt.innerHTML=''; }
+  const wrap=$('conTableWrap'); if(wrap) wrap.style.display='';
+  const body=$('conBody'); if(!body) return;
+  body.innerHTML='<tr><td colspan="9" class="empty">Cargando...</td></tr>';
+  $('conTitle').textContent = userId ? 'Contratos del cliente' : 'Gestion de Contratos';
+  const cf=$('conClearFilter'); if(cf){ cf.style.display = userId ? '' : 'none'; cf.onclick=(e)=>{e.preventDefault(); loadContracts(null);}; }
+  const r=await api('GET','/api/contracts'+(userId?('?user_id='+encodeURIComponent(userId)):''));
+  if(!r.ok){ body.innerHTML='<tr><td colspan="9" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
+  const list=rows(r.data);
+  body.innerHTML = list.length ? list.map(c=>{
+    const num=pick(c,['contract_number'],'-'), cli=pick(c,['client_name'],'-');
+    const total=pick(c,['total_amount'],null), fin=pick(c,['financed_amount'],null);
+    const wk=pick(c,['weekly_payment'],null), bal=pick(c,['balance'],null);
+    const weeks=pick(c,['weeks'],null), items=pick(c,['items_count'],0), ps=pick(c,['payment_status'],'');
+    return `<tr class="con-row" data-id="${esc(c.id)}" style="cursor:pointer">
+      <td class="mono">${esc(num)}</td><td>${esc(cli)}</td>
+      <td class="right mono">${total!=null?money(total):'-'}</td>
+      <td class="right mono">${fin!=null?money(fin):'-'}</td>
+      <td class="right mono">${wk!=null?money(wk):'-'}</td>
+      <td class="right mono">${bal!=null?money(bal):'-'}</td>
+      <td>${weeks!=null?esc(weeks)+' sem':'-'}</td>
+      <td>${conStatusPill(ps)}</td><td class="right">${esc(items)}</td></tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty">No hay contratos todavia</td></tr>';
+  body.querySelectorAll('.con-row').forEach(tr=>tr.onclick=()=>openContract(tr.dataset.id));
+}
+async function openContract(id){
+  const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
+  d.style.display=''; d.innerHTML='<p class="muted">Cargando contrato...</p>';
+  const r=await api('GET','/api/contracts/'+encodeURIComponent(id));
+  if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar el contrato.</p>'; return; }
+  const c=r.data.data, items=c.items||[], ist=c.installments||[];
+  const itemRows=items.map(o=>`<tr><td>${esc(pick(o,['product_title','product_name','title'],'-'))}</td>
+      <td class="mono">${esc(pick(o,['product_asin','asin'],'-'))}</td>
+      <td class="right mono">${money(pick(o,['product_price','price'],0))}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin articulos</td></tr>';
+  const istRows=ist.map(i=>`<tr><td class="mono">${esc(pick(i,['number'],'-'))}</td>
+      <td>${fdate(pick(i,['due_date'],null))}</td>
+      <td class="right mono">${money(pick(i,['amount'],0))}</td>
+      <td class="right mono">${money(pick(i,['paid_amount'],0))}</td>
+      <td>${istPill(pick(i,['status'],''))}</td>
+      <td>${fdate(pick(i,['paid_at'],null))}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sin tabla de amortizacion</td></tr>';
+  d.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="conBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a contratos</a></div>
+    <div class="head"><h1 style="font-size:20px">Contrato ${esc(pick(c,['contract_number'],''))}</h1><div class="sp"></div>${conStatusPill(pick(c,['payment_status'],''))}</div>
+    <div class="sec" style="display:flex;gap:26px;flex-wrap:wrap">
+      <div><div class="muted" style="font-size:12px">Cliente</div><div style="font-weight:700">${esc(pick(c,['client_name'],'-'))}</div></div>
+      <div><div class="muted" style="font-size:12px">Total</div><div style="font-weight:700">${money(pick(c,['total_amount'],0))}</div></div>
+      <div><div class="muted" style="font-size:12px">Enganche</div><div style="font-weight:700">${money(pick(c,['downpayment'],0))}</div></div>
+      <div><div class="muted" style="font-size:12px">Financiado</div><div style="font-weight:700">${money(pick(c,['financed_amount'],0))}</div></div>
+      <div><div class="muted" style="font-size:12px">Pago x sem</div><div style="font-weight:700">${money(pick(c,['weekly_payment'],0))}</div></div>
+      <div><div class="muted" style="font-size:12px">Pagado</div><div style="font-weight:700">${money(pick(c,['total_paid'],0))}</div></div>
+      <div><div class="muted" style="font-size:12px">Saldo</div><div style="font-weight:700">${money(pick(c,['balance'],0))}</div></div>
+    </div>
+    <div class="sec">
+      <div class="stitle" style="padding:0 0 8px">Articulos (${items.length})</div>
+      <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th></tr></thead><tbody>${itemRows}</tbody></table>
+    </div>
+    <div class="sec">
+      <div class="stitle" style="padding:0 0 10px">Registrar pago</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="payAmt" type="number" min="0" step="0.01" placeholder="Monto" style="width:130px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+        <select class="sel" id="payMethod"><option value="cash">Efectivo</option><option value="card">Tarjeta</option><option value="transfer">Transferencia</option></select>
+        <input id="payNote" placeholder="Nota (opcional)" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+        <button class="btn" id="payBtn">Registrar</button>
+        <span class="muted" id="payMsg"></span>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="stitle" style="padding:0 0 8px">Tabla de amortizacion</div>
+      <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Vence</th><th class="right">Monto</th><th class="right">Pagado</th><th>Estatus</th><th>Fecha pago</th></tr></thead><tbody>${istRows}</tbody></table></div>
+    </div>`;
+  $('conBack').onclick=(e)=>{e.preventDefault(); openContractsList();};
+  $('payBtn').onclick=async()=>{
+    const amt=parseFloat($('payAmt').value);
+    if(!(amt>0)){ $('payMsg').textContent='Ingresa un monto valido.'; return; }
+    $('payBtn').disabled=true; $('payMsg').textContent='Registrando...';
+    const pr=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/record_payment',{amount:amt,method:$('payMethod').value,note:$('payNote').value});
+    $('payBtn').disabled=false;
+    if(pr.ok&&pr.data&&pr.data.ok){ $('payMsg').textContent='OK - pago registrado'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(id); }
+    else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
+  };
+}
+function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
 
 /* ---------------- Catalog ---------------- */
 let CAT=[], CATS=[], SEL=new Set(), catAvail={};

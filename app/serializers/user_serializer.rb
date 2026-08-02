@@ -2,6 +2,14 @@ class UserSerializer
   include JSONAPI::Serializer
   attributes :id, :email, :name, :last_name, :number, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :role_id, :credit_amount
 
+  attribute :credit_limit do |user|
+    user.credit_limit
+  end
+
+  attribute :account_balance do |user|
+    user.outstanding_balance
+  end
+
   attribute :role do |user|
     if user.role.present?
       { name: user.role.name, label: user.role.label }

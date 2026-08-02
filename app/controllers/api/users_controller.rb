@@ -76,7 +76,10 @@ class Api::UsersController < ApplicationController
       @user.save!
       # Guardar la versión del motor de riesgo usada para evaluar a este cliente.
       @user.update_column(:risk_version, @user.risk_engine_version) if User.column_names.include?('risk_version')
-      @user.create_credit!(amount: @user.calculate_initial_credit)
+      initial_credit = @user.calculate_initial_credit
+      credit_attrs = { amount: initial_credit }
+      credit_attrs[:credit_limit] = initial_credit if Credit.column_names.include?('credit_limit')
+      @user.create_credit!(credit_attrs)
     end
 
     # Token de verificacion por WhatsApp (se incrusta en el enlace/QR que el cliente nos envia).

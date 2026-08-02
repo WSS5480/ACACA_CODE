@@ -1,6 +1,7 @@
 class Order < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :product, optional: true
+  belongs_to :contract, optional: true
   belongs_to :beneficiary, optional: true
   has_one :buyer, dependent: :destroy
   has_one :guarantor, dependent: :destroy

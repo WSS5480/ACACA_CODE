@@ -13,6 +13,8 @@ class User < ApplicationRecord
   belongs_to :role
   has_one :credit, dependent: :destroy
   has_many :orders, dependent: :nullify
+  has_many :contracts, dependent: :nullify
+  has_many :payments, dependent: :nullify
   has_many :beneficiaries, dependent: :destroy
 
   validates :housing_type, inclusion: { in: %w[owner tenant], message: 'debe ser owner o tenant' }, allow_nil: true
@@ -33,6 +35,19 @@ class User < ApplicationRecord
     end
     update_column(:whatsapp_verify_token, token)
     token
+  end
+
+  # --- Credito disponible en base a contratos ---
+  def credit_limit
+    (credit&.respond_to?(:credit_limit) ? credit.credit_limit : nil) || credit&.amount || 0
+  end
+
+  def outstanding_balance
+    contracts.where(status: 'active').to_a.sum { |c| c.balance }.round(2)
+  end
+
+  def available_credit
+    (credit&.amount || 0).to_f.round(2)
   end
 
   def whatsapp_verify_url

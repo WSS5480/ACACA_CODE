@@ -326,10 +326,11 @@
               <th class="right" title="Precio de contado — Precio × Turns × Factor">Al Contado · Cash Price</th>
               <th class="right" title="Financiado = Al Contado menos enganche mínimo (10%)">Financiado</th>
               <th data-sort="min_weekly_payment" class="right" style="cursor:pointer">Pago x sem</th>
+              <th class="right" title="Net Turns = Al Contado (cash) / Costo (Precio USD) = turns x factor">Net Turns</th>
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-          </thead><tbody id="catBody"><tr><td colspan="16" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="17" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -705,6 +706,7 @@ function renderCat(){
       <td class="right mono cell-cash">—</td>
       <td class="right mono cell-fin">—</td>
       <td class="right mono cell-pago">—</td>
+      <td class="right mono cell-net">—</td>
       <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
         <option value="active" ${st==='active'?'selected':''}>En tienda</option>
         <option value="inactive" ${st!=='active'?'selected':''}>Borrador</option></select></td>
@@ -726,11 +728,13 @@ function recalcRow(id){
   const cash=price*turns*fac;     // precio de contado
   const weekly=turns ? (total - 0.1*cash)/52*1.1 : 0;
   const fin=cash*0.9;            // financiado = contado menos enganche minimo (10%)
-  const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago'), fn=row.querySelector('.cell-fin');
+  const net=price ? cash/price : 0;   // net turns = contado / costo
+  const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago'), fn=row.querySelector('.cell-fin'), nt=row.querySelector('.cell-net');
   if(t) t.textContent = total ? money(total) : '—';
   if(c) c.textContent = cash ? money(cash) : '—';
   if(pg) pg.textContent = weekly ? money(weekly) : '—';
   if(fn) fn.textContent = fin ? money(fin) : '—';
+  if(nt) nt.textContent = net ? net.toFixed(2)+'×' : '—';
 }
 $('catAll').onchange=()=>{ const on=$('catAll').checked; currentList().forEach(p=>{const id=String(pick(p,['id'],'')); on?SEL.add(id):SEL.delete(id);}); renderCat(); };
 $('catVerify').onclick=verifyCatalogAmazon;

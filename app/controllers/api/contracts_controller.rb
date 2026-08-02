@@ -4,7 +4,7 @@ module Api
   class ContractsController < ApplicationController
     include TokenAuthenticatable
 
-    before_action :authorize_staff!, only: [:record_payment]
+    before_action :authorize_staff!, only: [:record_payment, :destroy]
 
     # GET /api/contracts?user_id=
     def index
@@ -109,6 +109,27 @@ module Api
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     rescue ActiveRecord::RecordInvalid => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+    end
+
+    # DELETE /api/contracts/:id  -> herramienta de limpieza (pruebas). Restaura el saldo al credito.
+    def destroy
+      contract = Contract.find(params[:id])
+      user = contract.user
+      bal = contract.balance
+      ActiveRecord::Base.transaction do
+        if user&.credit && bal > 0
+          cr = user.credit
+          limit = (cr.respond_to?(:credit_limit) ? cr.credit_limit : nil) || cr.amount
+          cr.update!(amount: [cr.amount.to_f + bal, limit.to_f].min.round(2))
+        end
+        contract.orders.update_all(contract_id: nil)
+        contract.destroy!
+      end
+      render json: { ok: true }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
     end
 
     private

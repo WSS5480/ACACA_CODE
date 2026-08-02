@@ -696,7 +696,7 @@ async function openContract(id){
       <td>${fdate(pick(i,['paid_at'],null))}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sin tabla de amortizacion</td></tr>';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="conBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a contratos</a></div>
-    <div class="head"><h1 style="font-size:20px">Contrato ${esc(pick(c,['contract_number'],''))}</h1><div class="sp"></div>${conStatusPill(pick(c,['payment_status'],''))}</div>
+    <div class="head"><h1 style="font-size:20px">Contrato ${esc(pick(c,['contract_number'],''))}</h1><div class="sp"></div><button id="conDelBtn" style="border:0;background:var(--bad);color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-right:10px">Eliminar contrato</button>${conStatusPill(pick(c,['payment_status'],''))}</div>
     <div class="sec" style="display:flex;gap:26px;flex-wrap:wrap">
       <div><div class="muted" style="font-size:12px">Cliente</div><div style="font-weight:700">${esc(pick(c,['client_name'],'-'))}</div></div>
       <div><div class="muted" style="font-size:12px">Total</div><div style="font-weight:700">${money(pick(c,['total_amount'],0))}</div></div>
@@ -725,6 +725,7 @@ async function openContract(id){
       <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Vence</th><th class="right">Monto</th><th class="right">Pagado</th><th>Estatus</th><th>Fecha pago</th></tr></thead><tbody>${istRows}</tbody></table></div>
     </div>`;
   $('conBack').onclick=(e)=>{e.preventDefault(); openContractsList();};
+  if($('conDelBtn')) $('conDelBtn').onclick=()=>deleteContract(id);
   $('payBtn').onclick=async()=>{
     const amt=parseFloat($('payAmt').value);
     if(!(amt>0)){ $('payMsg').textContent='Ingresa un monto valido.'; return; }
@@ -734,6 +735,12 @@ async function openContract(id){
     if(pr.ok&&pr.data&&pr.data.ok){ $('payMsg').textContent='OK - pago registrado'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(id); }
     else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
   };
+}
+async function deleteContract(id){
+  if(!confirm('Eliminar este contrato? Se restaura el credito pendiente del cliente. (Herramienta de pruebas)')) return;
+  const r=await api('DELETE','/api/contracts/'+encodeURIComponent(id));
+  if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContractsList(); alert('Contrato eliminado; credito restaurado.'); }
+  else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo eliminar el contrato.'); }
 }
 function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
 

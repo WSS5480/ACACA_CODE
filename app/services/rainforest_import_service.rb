@@ -240,7 +240,7 @@ class RainforestImportService
       passing << { 'success' => true, 'id' => product_data['asin'], 'result' => { 'product' => product_data } }
     end
 
-    ManageJson::ProcessProductsJob.new.perform(passing, false, 'inactive') if passing.any?
+    ManageJson::ProcessProductsJob.new.perform(passing, false, 'active') if passing.any?
     { ok: true, checked: asins.size, imported: passing.size, skipped: skipped }
   end
 

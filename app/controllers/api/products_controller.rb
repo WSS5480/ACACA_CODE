@@ -51,7 +51,7 @@ class Api::ProductsController < ApplicationController
       Rails.logger.info("[rainforest] payload=array size=#{payload.size}")
     end
 
-    ManageJson::ProcessProductsJob.perform_async(payload.as_json)
+    ManageJson::ProcessProductsJob.perform_async(payload.as_json, false)
     render json: { ok: true }, status: :ok
   end
 
@@ -166,7 +166,7 @@ class Api::ProductsController < ApplicationController
     end
     return render json: { error: 'No se encontraron productos en el archivo.' }, status: :unprocessable_entity if items.blank?
 
-    ManageJson::ProcessProductsJob.perform_async(items, false, 'inactive')
+    ManageJson::ProcessProductsJob.perform_async(items, false, 'active')
     render json: { ok: true, received: items.size }, status: :ok
   end
 

@@ -14,6 +14,10 @@ class ProductSerializer
     product.total_price
   end
 
+  attribute :full_price do |product|
+    product.full_price
+  end
+
   attribute :image_urls do |product|
     product.image_urls
   end

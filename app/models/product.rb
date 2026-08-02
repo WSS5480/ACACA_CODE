@@ -35,26 +35,36 @@ class Product < ApplicationRecord
     weeks.to_i <= 13 ? 10 : 20
   end
 
-  # "Total" / Precio (constante) = costo x turns x factor
+  # PRECIO DE CONTADO (cash price) = costo x turns x factor. Base de enganche y financiamiento.
   def total_price
     return 0 if effective_price.blank?
     (effective_price.to_f * (turns || 3.5).to_f * (decimal_factor || 0.75).to_f).round(2)
   end
 
-  # Enganche mínimo = 10% del total
+  # TOTAL (precio a credito de referencia) = costo x turns (sin factor).
+  def full_price
+    return 0 if effective_price.blank?
+    (effective_price.to_f * (turns || 3.5).to_f).round(2)
+  end
+
+  # Enganche mínimo = 10% del precio de contado
   def min_downpayment
     (total_price * 0.10).round(2)
   end
 
-  # Pago semanal = (Total - enganche) / semanas. Sin waiver.
+  # Pago semanal: financiado = (contado - enganche) x 1.25; pago = financiado / semanas.
+  FINANCE_FACTOR = 1.25
+
   def calculate_weekly_payment(weeks:, downpayment: nil, product_cost_usd: nil, used_credit: 0, turns: nil, decimal_factor: nil)
     cost = (product_cost_usd || effective_price).to_f
     t = (turns || self.turns || 3.5).to_f
     f = (decimal_factor || self.decimal_factor || 0.75).to_f
     return 0 if cost <= 0 || weeks.to_f <= 0
-    total = cost * t * f
-    dp = (downpayment || total * 0.10).to_f
-    ((total - dp) / weeks.to_f).round(2)
+    cash = cost * t * f
+    dp = (downpayment || cash * 0.10).to_f
+    financed = (cash - dp) * FINANCE_FACTOR
+    return 0 if financed <= 0
+    (financed / weeks.to_f).round(2)
   end
 
   # Plazos disponibles (solo los que superan $20 semanales) para un enganche dado

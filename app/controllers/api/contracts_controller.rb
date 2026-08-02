@@ -46,13 +46,46 @@ module Api
       products = Product.where(id: product_ids).to_a
       return render(json: { error: 'Selecciona al menos un producto' }, status: :unprocessable_entity) if products.empty?
 
+      total = products.sum { |p| p.total_price.to_f }.round(2)  # precio de contado
+      cash_sale = ActiveModel::Type::Boolean.new.cast(params[:cash])
+
+      beneficiary_id_cash = params[:beneficiary_id].present? ? user.beneficiaries.where(id: params[:beneficiary_id]).pick(:id) : nil
+      if cash_sale
+        # VENTA DE CONTADO: contrato pagado, sin credito ni amortizacion.
+        contract = nil
+        ActiveRecord::Base.transaction do
+          contract = Contract.create!(
+            user: user, status: 'paid',
+            total_amount: total, downpayment: total, financed_amount: 0,
+            weekly_payment: 0, weeks: 0, frequency: 'weekly', start_date: Date.current
+          )
+          products.each do |prod|
+            contract.orders.create!(
+              user_id: user.id, product_id: prod.id,
+              user_name: user.name, user_last_name: user.last_name, user_email: user.email,
+              product_title: prod.title, product_asin: prod.asin,
+              product_price: prod.price, product_price_with_discount: prod.price_with_discount,
+              product_original_price: prod.original_price,
+              product_turns: prod.turns, product_decimal_factor: prod.decimal_factor,
+              used_credit: 0, downpayment: total, weekly_payment: 0, credit_duration: 0,
+              beneficiary_id: beneficiary_id_cash,
+              status: 'approved'
+            )
+          end
+        end
+        return render(json: { data: ContractSerializer.new(contract).serializable_hash[:data][:attributes] }, status: :created)
+      end
+
       weeks = params[:weeks].to_i
       return render(json: { error: 'Plazo (semanas) invalido' }, status: :unprocessable_entity) if weeks <= 0
 
-      total = products.sum { |p| p.total_price.to_f }.round(2)
       down = params[:downpayment].to_f
-      financed = (total - down).round(2)
-      return render(json: { error: 'El enganche no puede ser mayor al total' }, status: :unprocessable_entity) if financed < 0
+      min_down = (total * 0.10).round(2)
+      return render(json: { error: "El enganche minimo es $#{min_down} (10% del precio de contado)" }, status: :unprocessable_entity) if down + 0.01 < min_down
+      return render(json: { error: 'El enganche no puede ser mayor al precio de contado' }, status: :unprocessable_entity) if down > total
+
+      # FINANCIADO = (contado - enganche) x 1.25
+      financed = ((total - down) * Product::FINANCE_FACTOR).round(2)
 
       available = user.credit&.amount.to_f
       return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if financed > available + 0.01

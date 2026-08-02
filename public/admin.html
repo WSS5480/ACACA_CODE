@@ -955,11 +955,12 @@ function recalcRow(id){
   const eff=(disc>0?disc:price);                 // precio efectivo (descuento si aplica) = effective_price
   const total=price*turns;                        // "Total" (Precio x Turns) informativo
   const cash=eff*turns*fac;                       // Al Contado = effective_price x turns x factor (= total_price)
-  const dp=cash*0.10;                             // enganche minimo (10%)
-  const TERMS=[52,39,26,13], MINW=20;             // plazos 12/9/6/3; solo pagos > $20/sem
-  const weeklies=TERMS.map(w=>Math.round((cash-dp)/w*100)/100).filter(wk=>wk>MINW);
-  const weekly=weeklies.length?Math.min(...weeklies):0;   // Pago x sem = pago semanal minimo (= "Desde" en tienda)
-  const fin=cash-dp;                              // Financiado = Al Contado - enganche
+  const dp=cash*0.10;                             // enganche minimo (10% del contado)
+  const fin=(cash-dp)*1.25;                       // Financiado = (Contado - enganche) x 1.25
+  const TERMS=[52,39,26,13];                      // min: $20/sem (>13 sem) o $10/sem (<=13 sem)
+  const weeklies=TERMS.map(w=>({w, wk:Math.round(fin/w*100)/100})).filter(o=>o.wk>(o.w<=13?10:20)).map(o=>o.wk);
+  let weekly=weeklies.length?Math.min(...weeklies):0;     // Pago x sem = "Desde" en tienda
+  if(!weekly && fin>0) weekly=Math.min(10,fin);           // plan reducido: $10/sem, menos semanas
   const net=eff?cash/eff:0;                       // Net Turns = Al Contado / costo efectivo = turns x factor
   const t=row.querySelector('.cell-total'), c=row.querySelector('.cell-cash'), pg=row.querySelector('.cell-pago'), fn=row.querySelector('.cell-fin'), nt=row.querySelector('.cell-net');
   if(t) t.textContent = total ? money(total) : '—';
@@ -1533,7 +1534,7 @@ async function ncLoadProducts(){ if(NC_PRODUCTS) return NC_PRODUCTS; const r=awa
 function ncTotal(){ return NC_CART.reduce((s,i)=>s+Number(i.price||0),0); }
 function ncRecalc(){
   const total=ncTotal(); const down=parseFloat($('ncDown').value)||0; const weeks=parseInt($('ncWeeks').value)||0;
-  const fin=Math.max(total-down,0); const wk=weeks>0?(fin/weeks):0;
+  const fin=Math.max((total-down)*1.25,0); const wk=weeks>0?(fin/weeks):0;
   $('ncTotal').textContent=money(total); $('ncFin').textContent=money(fin); $('ncWeekly').textContent=weeks>0?money(wk):'-';
 }
 function ncRenderCart(){

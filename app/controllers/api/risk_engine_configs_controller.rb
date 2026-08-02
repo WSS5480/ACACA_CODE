@@ -37,7 +37,46 @@ class Api::RiskEngineConfigsController < ApplicationController
     render json: serialize(cfg), status: :ok
   end
 
+  # POST /api/risk_engine/recalc_credit   body: { user_ids: [..]? }
+  # Re-evalua el credito de clientes (todos o seleccionados) con la version ACTIVA
+  # del motor de riesgo, respetando el credito ya utilizado.
+  def recalc_credit
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff?
+
+    scope = User.joins(:role).includes(:credit).where(roles: { name: 'cliente' })
+    if params[:user_ids].present?
+      ids = Array(params[:user_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(id: ids)
+    end
+
+    active_v = RiskEngineConfig.active_version
+    has_limit = Credit.column_names.include?('credit_limit')
+    count = 0
+
+    scope.find_each do |u|
+      new_limit = u.calculate_initial_credit.to_f.round(2)
+      credit = u.credit || u.build_credit(amount: new_limit)
+      old_limit = (has_limit && credit.credit_limit) ? credit.credit_limit.to_f : credit.amount.to_f
+      used = [(old_limit - credit.amount.to_f), 0].max
+      new_amount = [(new_limit - used), 0].max.round(2)
+      credit.amount = new_amount
+      credit.credit_limit = new_limit if has_limit
+      credit.save!
+      u.update_column(:risk_version, active_v) if User.column_names.include?('risk_version')
+      count += 1
+    end
+
+    render json: { ok: true, count: count, active_version: active_v }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
+
+  def staff?
+    %w[master admin].include?(@current_user&.role&.name)
+  end
+
 
   def config_param
     raw = params[:config]

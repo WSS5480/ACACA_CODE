@@ -103,5 +103,6 @@ Rails.application.routes.draw do
     get  'risk_engine/versions', to: 'api/risk_engine_configs#index'
     post 'risk_engine/versions', to: 'api/risk_engine_configs#create'
     post 'risk_engine/versions/:version/activate', to: 'api/risk_engine_configs#activate'
+    post 'risk_engine/recalc_credit', to: 'api/risk_engine_configs#recalc_credit'
   end
 end

@@ -231,6 +231,7 @@
     <!-- ---------- CONTRATOS ---------- -->
     <section class="view hide" data-v="contratos">
       <div class="head"><h1 id="conTitle">Gestion de Contratos</h1><div class="sp"></div>
+        <button class="btn" id="conNewBtn" style="margin-right:10px">+ Nuevo contrato</button>
         <a href="#" id="conClearFilter" style="display:none;color:var(--brand-d);font-weight:700">Ver todos</a>
       </div>
       <div id="conTableWrap"><div class="sec"><div style="overflow-x:auto">
@@ -418,6 +419,24 @@
           <span class="muted" id="saveMsg"></span>
         </div>
       </div>
+
+      <div class="rk-card">
+        <h2>Aplicar la versión activa a clientes existentes</h2>
+        <p class="muted" style="margin:-4px 0 12px">Recalcula el crédito con la <b>versión activa</b> del motor. Respeta el crédito ya utilizado: la línea nueva menos lo que el cliente ya gastó. No afecta contratos existentes.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn" id="recalcAllBtn" style="background:var(--bad)">Recalcular crédito de TODOS</button>
+          <span class="muted" id="recalcAllMsg"></span>
+        </div>
+        <div style="border-top:1px dashed var(--line);padding-top:14px">
+          <label class="muted" style="display:block;margin-bottom:6px">O selecciona clientes específicos:</label>
+          <div class="search" style="max-width:280px;margin-bottom:10px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="recalcSearch" placeholder="Buscar cliente..."></div>
+          <div id="recalcList" style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px">Cargando...</div>
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+            <button class="btn" id="recalcSelBtn">Recalcular seleccionados</button>
+            <span class="muted" id="recalcSelMsg"></span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ---------- CONFIGURACIÓN ---------- -->
@@ -501,7 +520,7 @@ function show(view){
   if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
   if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
   if(view==='catalogos') loaded.cat=1;
-  if(view==='riesgo' && !loaded.rk){ loadVersions(); loaded.rk=1; }
+  if(view==='riesgo' && !loaded.rk){ loadVersions(); loadRecalcList(); loaded.rk=1; }
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
 }
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
@@ -1384,6 +1403,103 @@ async function saveNew(){
 }
 $('saveBtn').onclick=saveNew;
 ['housing','usa','addr','job','income','rel'].forEach(id=>$(id).addEventListener('input',rkRender));
+
+/* ---------------- Aplicar riesgo a clientes ---------------- */
+let RECALC_SEL=new Set();
+async function loadRecalcList(){
+  const el=$('recalcList'); if(!el) return;
+  const list=await fetchClients();
+  const render=term=>{
+    let l=list; if(term) l=list.filter(u=>JSON.stringify(u).toLowerCase().includes(term));
+    el.innerHTML = l.length ? l.map(u=>{
+      const nm=[pick(u,['name','full_name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||pick(u,['email'],'-');
+      const checked=RECALC_SEL.has(String(u.id))?'checked':'';
+      return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" class="rc-chk" data-uid="${esc(String(u.id))}" ${checked} style="width:15px;height:15px"> ${esc(nm)} <span class="muted" style="font-size:12px">${esc(pick(u,['email'],''))}</span></label>`;
+    }).join('') : '<div class="muted">No hay clientes.</div>';
+    el.querySelectorAll('.rc-chk').forEach(c=>c.onchange=()=>{ c.checked?RECALC_SEL.add(c.dataset.uid):RECALC_SEL.delete(c.dataset.uid); });
+  };
+  render(''); const s=$('recalcSearch'); if(s) s.oninput=()=>render(s.value.trim().toLowerCase());
+}
+async function doRecalc(userIds, msgEl, btnEl){
+  if(!confirm('Esto recalculara el credito con la version ACTIVA del motor. Continuar?')) return;
+  btnEl.disabled=true; msgEl.textContent='Recalculando...';
+  const r=await api('POST','/api/risk_engine/recalc_credit', userIds?{user_ids:userIds}:{});
+  btnEl.disabled=false;
+  if(r.ok&&r.data&&r.data.ok){ msgEl.textContent='OK - '+r.data.count+' cliente(s) actualizados (v'+r.data.active_version+').'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; }
+  else { msgEl.textContent=(r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo recalcular.'; }
+}
+if($('recalcAllBtn')) $('recalcAllBtn').onclick=()=>doRecalc(null,$('recalcAllMsg'),$('recalcAllBtn'));
+if($('recalcSelBtn')) $('recalcSelBtn').onclick=()=>{ const ids=[...RECALC_SEL]; if(!ids.length){ $('recalcSelMsg').textContent='Selecciona al menos un cliente.'; return; } doRecalc(ids,$('recalcSelMsg'),$('recalcSelBtn')); };
+
+/* ---------------- Nuevo contrato (carrito multi-articulo) ---------------- */
+let NC_CART=[], NC_PRODUCTS=null;
+async function ncLoadProducts(){ if(NC_PRODUCTS) return NC_PRODUCTS; const r=await api('GET','/api/products?status=active&page=-1'); NC_PRODUCTS=rows(r.data); return NC_PRODUCTS; }
+function ncTotal(){ return NC_CART.reduce((s,i)=>s+Number(i.price||0),0); }
+function ncRecalc(){
+  const total=ncTotal(); const down=parseFloat($('ncDown').value)||0; const weeks=parseInt($('ncWeeks').value)||0;
+  const fin=Math.max(total-down,0); const wk=weeks>0?(fin/weeks):0;
+  $('ncTotal').textContent=money(total); $('ncFin').textContent=money(fin); $('ncWeekly').textContent=weeks>0?money(wk):'-';
+}
+function ncRenderCart(){
+  const el=$('ncCart'); if(!el) return;
+  el.innerHTML = NC_CART.length ? NC_CART.map((i,ix)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="flex:1">${esc(i.title)}</span><span class="mono">${money(i.price)}</span><a href="#" data-ix="${ix}" class="nc-rm" style="color:var(--bad);font-weight:700">X</a></div>`).join('') : '<div class="muted">Aun no agregas articulos.</div>';
+  el.querySelectorAll('.nc-rm').forEach(a=>a.onclick=(e)=>{e.preventDefault(); NC_CART.splice(+a.dataset.ix,1); ncRenderCart();});
+  ncRecalc();
+}
+async function newContractForm(){
+  const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
+  d.style.display=''; d.innerHTML='<p class="muted">Cargando...</p>'; NC_CART=[];
+  const clients=await fetchClients(); const prods=await ncLoadProducts();
+  const PMAP={}; prods.forEach(p=>PMAP[String(p.id)]=p);
+  d.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="ncBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a contratos</a></div>
+    <div class="head"><h1 style="font-size:20px">Nuevo contrato</h1></div>
+    <div class="sec">
+      <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px">Cliente</label>
+      <select id="ncClient" style="max-width:460px;width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+        <option value="">- Selecciona un cliente -</option>
+        ${clients.map(u=>{const nm=[pick(u,['name','full_name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||pick(u,['email'],'-'); const cr=pick(u,['credit','available_credit','credit_amount'],0); return `<option value="${esc(String(u.id))}">${esc(nm)} - disp. ${esc(money(cr))}</option>`;}).join('')}
+      </select>
+    </div>
+    <div class="sec">
+      <div class="stitle" style="padding:0 0 10px">Agregar articulos</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <select id="ncProd" style="flex:1;min-width:240px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+          <option value="">- Selecciona un producto -</option>
+          ${prods.map(p=>`<option value="${esc(String(p.id))}">${esc(pick(p,['title'],'-'))} - ${esc(money(pick(p,['total_price','price_with_discount','price'],0)))}</option>`).join('')}
+        </select>
+        <button class="btn" id="ncAdd">Agregar</button>
+      </div>
+      <div id="ncCart"></div>
+    </div>
+    <div class="sec" style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end">
+      <div><div class="muted" style="font-size:12px">Total</div><div style="font-weight:700;font-size:18px" id="ncTotal">$0</div></div>
+      <div><label class="muted" style="font-size:12px;display:block">Enganche (USD)</label><input id="ncDown" type="number" min="0" step="0.01" value="0" style="width:120px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;text-align:right"></div>
+      <div><label class="muted" style="font-size:12px;display:block">Plazo (semanas)</label><input id="ncWeeks" type="number" min="1" value="12" style="width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;text-align:right"></div>
+      <div><div class="muted" style="font-size:12px">Financiado</div><div style="font-weight:700;font-size:18px" id="ncFin">$0</div></div>
+      <div><div class="muted" style="font-size:12px">Pago x sem (combinado)</div><div style="font-weight:700;font-size:18px;color:var(--brand-d)" id="ncWeekly">-</div></div>
+    </div>
+    <div class="sec" style="display:flex;gap:12px;align-items:center">
+      <button class="btn" id="ncCreate">Crear contrato</button>
+      <span class="muted" id="ncMsg"></span>
+    </div>`;
+  $('ncBack').onclick=(e)=>{e.preventDefault(); openContractsList();};
+  $('ncAdd').onclick=()=>{ const sel=$('ncProd'); const id=sel.value; if(!id) return; const p=PMAP[id]; if(!p) return; NC_CART.push({id:id,title:pick(p,['title'],'-'),price:Number(pick(p,['total_price','price_with_discount','price'],0))}); sel.value=''; ncRenderCart(); };
+  $('ncDown').oninput=ncRecalc; $('ncWeeks').oninput=ncRecalc;
+  $('ncCreate').onclick=async()=>{
+    const uid=$('ncClient').value; if(!uid){ $('ncMsg').textContent='Selecciona un cliente.'; return; }
+    if(!NC_CART.length){ $('ncMsg').textContent='Agrega al menos un articulo.'; return; }
+    const weeks=parseInt($('ncWeeks').value)||0; if(weeks<=0){ $('ncMsg').textContent='Plazo invalido.'; return; }
+    const down=parseFloat($('ncDown').value)||0;
+    $('ncCreate').disabled=true; $('ncMsg').textContent='Creando...';
+    const r=await api('POST','/api/contracts',{user_id:uid,product_ids:NC_CART.map(i=>i.id),downpayment:down,weeks:weeks});
+    $('ncCreate').disabled=false;
+    if(r.ok&&r.data&&r.data.data){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(r.data.data.id); }
+    else { $('ncMsg').textContent=(r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo crear el contrato.'; }
+  };
+  ncRenderCart();
+}
+if($('conNewBtn')) $('conNewBtn').onclick=()=>{ show('contratos'); newContractForm(); };
 </script>
 </body>
 </html>

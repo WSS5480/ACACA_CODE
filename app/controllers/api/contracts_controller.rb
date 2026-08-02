@@ -84,11 +84,13 @@ module Api
       return render(json: { error: "El enganche minimo es $#{min_down} (10% del precio de contado)" }, status: :unprocessable_entity) if down + 0.01 < min_down
       return render(json: { error: 'El enganche no puede ser mayor al precio de contado' }, status: :unprocessable_entity) if down > total
 
-      # FINANCIADO = (contado - enganche) x 1.25
-      financed = ((total - down) * Product::FINANCE_FACTOR).round(2)
+      # PRINCIPAL = contado - enganche (esto es lo que consume credito).
+      # FINANCIADO (a pagar) = principal x 1.25 (cargo financiero).
+      principal = (total - down).round(2)
+      financed = (principal * Product::FINANCE_FACTOR).round(2)
 
       available = user.credit&.amount.to_f
-      return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if financed > available + 0.01
+      return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if principal > available + 0.01
 
       freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
       # Beneficiario (opcional pero recomendado): debe pertenecer al cliente.
@@ -127,8 +129,8 @@ module Api
             status: 'approved'
           )
         end
-        if user.credit.present? && financed > 0
-          user.credit.update!(amount: (user.credit.amount - financed).round(2))
+        if user.credit.present? && principal > 0
+          user.credit.update!(amount: (user.credit.amount - principal).round(2))
         end
         contract.build_amortization!
       end

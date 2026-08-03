@@ -52,7 +52,9 @@ module AcasaApi
     config.api_only = true
 
     # Enable sidekiq
-    config.active_job.queue_adapter = :sidekiq
+    # Sin worker de Sidekiq en Render: los jobs de ActiveJob (p.ej. purga de archivos
+    # de Active Storage) se ejecutan inline. Los jobs Sidekiq nativos no se ven afectados.
+    config.active_job.queue_adapter = :inline
 
     # Set the default locale to Spanish
     config.i18n.default_locale = :es

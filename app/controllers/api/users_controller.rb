@@ -60,8 +60,9 @@ class Api::UsersController < ApplicationController
     end
 
     ActiveRecord::Base.transaction do
-      # Contratos exigen usuario (NOT NULL): se eliminan primero (cascada pagos/cuotas; ordenes quedan sueltas).
+      # Contratos primero (cascada pagos/cuotas), luego SUS ordenes (cascada comprador/aval/referencias).
       @user.contracts.find_each(&:destroy!) if @user.respond_to?(:contracts)
+      @user.orders.find_each(&:destroy!)
       @user.destroy!
     end
     head :no_content

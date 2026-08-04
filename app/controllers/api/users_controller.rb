@@ -55,13 +55,27 @@ class Api::UsersController < ApplicationController
 
   # DELETE /api/users/:id
   def destroy
-    unless %w[master admin].include?(@current_user&.role&.name)
+    role = @current_user&.role&.name
+    unless %w[master admin sistema editor operador].include?(role)
       return render json: { error: 'No autorizado' }, status: :forbidden
+    end
+
+    contracts = @user.respond_to?(:contracts) ? @user.contracts.to_a : []
+    # Un contrato esta ENTREGADO si alguna de sus ordenes ya se entrego.
+    delivered = contracts.select do |c|
+      c.orders.any? { |o| o.respond_to?(:delivered_at) && o.delivered_at.present? }
+    end
+
+    # Con contratos entregados, borrar cliente+contratos exige credenciales de ADMIN.
+    if delivered.any? && !%w[master admin].include?(role)
+      return render json: {
+        error: "Este cliente tiene #{delivered.size} contrato(s) ENTREGADO(s). Solo un administrador puede eliminarlo."
+      }, status: :forbidden
     end
 
     ActiveRecord::Base.transaction do
       # Contratos primero (cascada pagos/cuotas), luego SUS ordenes (cascada comprador/aval/referencias).
-      @user.contracts.find_each(&:destroy!) if @user.respond_to?(:contracts)
+      contracts.each(&:destroy!)
       @user.orders.find_each(&:destroy!)
       @user.destroy!
     end

@@ -94,7 +94,10 @@ class Api::OrdersController < ApplicationController
     else
       response[:data][:referrals] = []
     end
-    
+
+    # Alertas de dirección: el CP debe corresponder a la ciudad/estado capturados (datos reales).
+    response[:data][:address_alerts] = address_alerts_for(@order)
+
     render json: response, status: :ok
   end
 
@@ -300,6 +303,35 @@ class Api::OrdersController < ApplicationController
       downpayment: downpayment.round(2),
       financed: (total - downpayment).round(2)
     }, status: :ok
+  end
+
+  # Compara CP vs ciudad/estado del comprador (EUA) y del beneficiario (MX) contra datos reales.
+  def address_alerts_for(order)
+    alerts = []
+    if order.respond_to?(:buyer) && order.buyer.present?
+      b = order.buyer
+      r = ZipLookup.check(country: 'US', zip: b.living_zip_code, city: b.living_city, state: b.living_state)
+      if r[:status] == 'mismatch'
+        expected = [r[:expected_city], r[:expected_state]].compact.join(', ')
+        entered  = [b.living_city, b.living_state].reject { |v| v.to_s.strip.empty? }.join(', ')
+        alerts << { section: 'buyer', zip: b.living_zip_code, entered: entered, expected: expected,
+                    message: "El ZIP #{b.living_zip_code} (EUA) corresponde a #{expected}, pero el cliente escribió: #{entered}." }
+      end
+    end
+    if order.beneficiary.present?
+      ben = order.beneficiary
+      r = ZipLookup.check(country: 'MX', zip: ben.zip_code, city: ben.city, state: ben.state)
+      if r[:status] == 'mismatch'
+        expected = [r[:expected_city], r[:expected_state]].compact.join(', ')
+        entered  = [ben.city, ben.state].reject { |v| v.to_s.strip.empty? }.join(', ')
+        alerts << { section: 'beneficiary', zip: ben.zip_code, entered: entered, expected: expected,
+                    message: "El CP #{ben.zip_code} (México) corresponde a #{expected}, pero se capturó: #{entered}." }
+      end
+    end
+    alerts
+  rescue StandardError => e
+    Rails.logger.warn "[address_alerts] #{e.message}"
+    []
   end
 
   private

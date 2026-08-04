@@ -101,10 +101,6 @@ Rails.application.routes.draw do
       post 'populate', on: :collection
     end
 
-    # Restablecimiento de contraseña por enlace de correo
-    post 'passwords/forgot', to: 'api/passwords#forgot'
-    post 'passwords/reset',  to: 'api/passwords#reset'
-
     post 'clients/forgot_number', to: 'api/clients#forgot_number'
     put 'clients/:id/update_credit', to: 'api/clients#update_credit'
 

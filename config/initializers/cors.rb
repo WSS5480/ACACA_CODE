@@ -1,5 +1,5 @@
 # config/initializers/cors.rb
-allowed_origins = ENV.fetch('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3008,http://localhost:8000,https://acasa-frontend.vercel.app,https://www.acasa.mx,https://acasa.mx').split(',')
+allowed_origins = ENV.fetch('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3008,http://localhost:8000,https://acasa-frontend.vercel.app,https://www.acasa.mx,https://acasa.mx,https://www.acasamx.com,https://acasamx.com').split(',')
 
 dynamic_origin_matchers = [
   /\Ahttp:\/\/localhost:\d+\z/i,

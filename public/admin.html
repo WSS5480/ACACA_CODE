@@ -149,6 +149,7 @@
       <div class="sep"></div>
       <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
       <a data-view="config"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
+      <a data-view="security"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Seguridad</a>
     </nav>
     <div class="foot">
       <div class="av" id="av">A</div>
@@ -443,6 +444,37 @@
       </div>
     </section>
 
+    <!-- ---------- SEGURIDAD (usuarios y niveles de cuenta) ---------- -->
+    <section class="view hide" data-v="security">
+      <div class="head"><h1>Administración y seguridad</h1></div>
+      <div class="sec" style="padding:18px">
+        <div class="stitle" style="padding:0 0 6px">Niveles de cuenta</div>
+        <p class="muted" style="margin:0">
+          <b>master</b>: control total, único que administra usuarios master. ·
+          <b>admin</b>: control total excepto usuarios master; puede eliminar clientes con contratos ENTREGADOS. ·
+          <b>sistema / editor / operador</b>: operación diaria; no administran usuarios ni pueden eliminar clientes con contratos entregados.
+        </p>
+      </div>
+      <div class="sec" style="padding:18px">
+        <div class="stitle" style="padding:0 0 10px">Agregar usuario del equipo</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Nombre</div><input id="suName" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px"></div>
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Apellido</div><input id="suLast" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px"></div>
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Email</div><input id="suEmail" type="email" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:220px"></div>
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Rol</div><select id="suRole" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px"></select></div>
+          <button class="btn" id="suCreate">Crear y enviar enlace</button>
+        </div>
+        <p class="muted" style="margin:10px 0 0">No se captura contraseña: el usuario recibe un correo con un enlace para crear la suya (vence en 2 horas; se puede reenviar desde la tabla).</p>
+        <p id="suMsg" class="muted" style="margin:6px 0 0"></p>
+      </div>
+      <div class="sec"><div class="stitle">Usuarios del equipo</div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Confirmado</th><th class="right">Acciones</th></tr></thead>
+          <tbody id="secBody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
     <!-- ---------- CONFIGURACIÓN ---------- -->
     <section class="view hide" data-v="config">
       <div class="head"><h1>Configuración</h1></div>
@@ -526,6 +558,7 @@ function show(view){
   if(view==='catalogos') loaded.cat=1;
   if(view==='riesgo' && !loaded.rk){ loadVersions(); loadRecalcList(); loaded.rk=1; }
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
+  if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
 }
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
@@ -645,10 +678,12 @@ async function openOrderVerify(id){
   if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar la orden.</p>'; return; }
   const raw=r.data.data, o=Object.assign({id:raw.id},raw.attributes||{});
   const ben=raw.beneficiary, buy=raw.buyer, refs=raw.referrals||[];
+  const zAlerts=raw.address_alerts||[];
+  const zBox=sec=>zAlerts.filter(a=>a.section===sec).map(a=>`<div style="background:#fdecea;border:1px solid #f5c6c2;color:#b3261e;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600">&#9888; ${esc(a.message||'')}</div>`).join('');
   const asin=pick(o,['product_asin'],null);
   const approved=!!o.admin_approved, delivered=!!o.delivered_at;
-  const benInner = ben ? [vField('Nombre',[ben.name,ben.last_name].filter(Boolean).join(' ')),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '';
-  const buyInner = buy ? [vField('Nombre',[buy.name,buy.last_name].filter(Boolean).join(' ')),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '';
+  const benInner = zBox('beneficiary') + (ben ? [vField('Nombre',[ben.name,ben.last_name].filter(Boolean).join(' ')),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
+  const buyInner = zBox('buyer') + (buy ? [vField('Nombre',[buy.name,buy.last_name].filter(Boolean).join(' ')),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
   const refInner = refs.length ? refs.map((rf,i)=>vField(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`,[rf.name,rf.last_name].filter(Boolean).join(' ')+' · '+((rf.phone_code||'')+' '+(rf.phone_number||'')))).join('') : '';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="ovBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a órdenes</a></div>
@@ -1577,6 +1612,60 @@ async function refreshFx(auto){
   if(!auto){ $('fxWhen').textContent = (r.data&&r.data.updated) ? ('Actualizado ahora · '+fdate(r.data.fetched_at)) : (r.ok?'Sin cambios desde la última consulta':'No se pudo actualizar (¿sin internet?)'); }
 }
 $('fxRefresh').onclick=()=>refreshFx(false);
+
+/* ---------------- Seguridad: usuarios del equipo ---------------- */
+let secRoles=[];
+async function loadSecurity(){
+  const rr=await api('GET','/api/roles');
+  secRoles=rows(rr.data).filter(r=>r.name!=='cliente');
+  const sel=$('suRole');
+  if(sel){ sel.innerHTML=secRoles.map(r=>`<option value="${esc(String(r.id))}">${esc(r.label||r.name)}</option>`).join(''); }
+  await loadSecUsers();
+  const bt=$('suCreate');
+  if(bt) bt.onclick=secCreateUser;
+}
+async function loadSecUsers(){
+  const body=$('secBody');
+  const r=await api('GET','/api/users?page=-1');
+  if(!r.ok){ body.innerHTML='<tr><td colspan="5" class="empty">No se pudo cargar (¿tu cuenta es admin?).</td></tr>'; return; }
+  const staff=rows(r.data).filter(u=>{const rn=(u.role&&(u.role.name||u.role))||''; return rn!=='cliente';});
+  if(!staff.length){ body.innerHTML='<tr><td colspan="5" class="empty">Sin usuarios de equipo.</td></tr>'; return; }
+  body.innerHTML=staff.map(u=>{
+    const rn=(u.role&&(u.role.name||u.role))||'';
+    const opts=secRoles.map(r=>`<option value="${esc(String(r.id))}" ${String(r.id)===String(u.role_id)?'selected':''}>${esc(r.label||r.name)}</option>`).join('');
+    return `<tr><td>${esc([u.name,u.last_name].filter(Boolean).join(' '))}</td><td>${esc(u.email||'')}</td>
+      <td><select class="sec-role" data-id="${esc(String(u.id))}" style="padding:5px 8px;border:1px solid #dfe3ea;border-radius:7px">${opts}</select></td>
+      <td>${u.confirmed?'✓':'—'}</td>
+      <td class="right">
+        <button class="sec-save btn" data-id="${esc(String(u.id))}" style="background:#eef0f6;color:var(--navy);padding:6px 10px;font-size:12.5px">Guardar rol</button>
+        <button class="sec-pass btn" data-id="${esc(String(u.id))}" style="background:var(--brand);padding:6px 10px;font-size:12.5px">Enviar enlace de contraseña</button>
+      </td></tr>`;
+  }).join('');
+  body.querySelectorAll('.sec-save').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id, sel=body.querySelector(`.sec-role[data-id="${id}"]`);
+    const r2=await api('PUT','/api/users/'+encodeURIComponent(id),{user:{role_id:sel.value}});
+    alert(r2.ok?'Rol actualizado.':((r2.data&&(r2.data.error||(r2.data.errors||[]).join(', ')))||'No se pudo actualizar.'));
+    if(r2.ok) loadSecUsers();
+  });
+  body.querySelectorAll('.sec-pass').forEach(b=>b.onclick=async()=>{
+    const r2=await api('POST','/api/users/'+encodeURIComponent(b.dataset.id)+'/send_password_setup');
+    alert(r2.ok?'Enlace enviado por correo: el usuario creará su propia contraseña.':((r2.data&&r2.data.error)||'No se pudo enviar.'));
+  });
+}
+async function secCreateUser(){
+  const name=$('suName').value.trim(), last=$('suLast').value.trim(), email=$('suEmail').value.trim(), role_id=$('suRole').value;
+  const msg=$('suMsg');
+  if(!name||!email){ msg.textContent='Nombre y email son obligatorios.'; return; }
+  msg.textContent='Creando…';
+  const r=await api('POST','/api/users',{user:{name:name,last_name:last,email:email,role_id:role_id}});
+  if(r.ok){
+    msg.textContent='Usuario creado. Le enviamos un correo con el enlace para crear su contraseña.';
+    $('suName').value='';$('suLast').value='';$('suEmail').value='';
+    loadSecUsers();
+  } else {
+    msg.textContent=(r.data&&(r.data.error||(r.data.errors||[]).join(', ')))||'No se pudo crear.';
+  }
+}
 
 /* ---------------- Rainforest connection (Configuración) ---------------- */
 async function loadRf(){

@@ -66,6 +66,7 @@ Rails.application.routes.draw do
     resources :users, controller: 'api/users' do
       post 'client_register', on: :collection
       post 'set_credit', on: :member
+      post 'send_password_setup', on: :member
     end
 
     get 'current_user', to: 'api/users#current_user'
@@ -100,6 +101,10 @@ Rails.application.routes.draw do
     resources :zip_codes, controller: 'api/zip_codes' do
       post 'populate', on: :collection
     end
+
+    # Restablecimiento de contraseña por enlace de correo
+    post 'passwords/forgot', to: 'api/passwords#forgot'
+    post 'passwords/reset',  to: 'api/passwords#reset'
 
     post 'clients/forgot_number', to: 'api/clients#forgot_number'
     put 'clients/:id/update_credit', to: 'api/clients#update_credit'

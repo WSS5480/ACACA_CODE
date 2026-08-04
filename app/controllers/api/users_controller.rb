@@ -8,7 +8,7 @@ class Api::UsersController < ApplicationController
   skip_before_action :authenticate_entity!
   skip_before_action :authenticate_client_or_user!
   # Nivel 2: Solo JWT para index, create, destroy
-  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit]
+  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit, :send_password_setup]
   # Nivel 3: Cliente o JWT para show, update, current_user
   before_action :authenticate_client_or_user!, only: [:show, :update, :current_user]
   # Otros callbacks
@@ -31,21 +31,62 @@ class Api::UsersController < ApplicationController
     render json: UserSerializer.new(@user).serializable_hash, status: :ok
   end
 
-  # POST /api/users
+  # POST /api/users  (alta de usuarios del equipo — solo master/admin)
   def create
+    unless %w[master admin].include?(@current_user&.role&.name)
+      return render json: { error: 'No autorizado' }, status: :forbidden
+    end
+
+    role = params[:user] && params[:user][:role_id].present? ? Role.find_by(id: params[:user][:role_id]) : nil
+    if role&.name == 'master' && @current_user&.role&.name != 'master'
+      return render json: { error: 'Solo master puede crear usuarios master' }, status: :forbidden
+    end
+
     @user = User.new(user_params)
+    @user.role = role if role
+
+    # Sin contraseña capturada: se genera una aleatoria y el usuario crea la suya
+    # con el enlace que le llega por correo (mismo flujo que "olvidé mi contraseña").
+    generated = @user.password.blank?
+    if generated
+      tmp = SecureRandom.hex(16)
+      @user.password = tmp
+      @user.password_confirmation = tmp
+    end
 
     if @user.save
       # Asegurarse de que usuarios no-clientes (admin, etc.) se confirman al crearse
       @user.confirm if @user.role&.name != 'cliente'
+      send_password_setup_email(@user) if generated
       render json: UserSerializer.new(@user).serializable_hash, status: :created
     else
       render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
+  # POST /api/users/:id/send_password_setup  — envía enlace para crear/cambiar contraseña
+  def send_password_setup
+    unless %w[master admin].include?(@current_user&.role&.name)
+      return render json: { error: 'No autorizado' }, status: :forbidden
+    end
+    user = User.find(params[:id])
+    send_password_setup_email(user)
+    render json: { ok: true }, status: :ok
+  end
+
   # PATCH/PUT /api/users/:id
   def update
+    if params[:user] && params[:user][:role_id].present?
+      unless %w[master admin].include?(@current_user&.role&.name)
+        return render json: { error: 'Solo un administrador puede cambiar roles' }, status: :forbidden
+      end
+      new_role = Role.find_by(id: params[:user][:role_id])
+      if (new_role&.name == 'master' || @user.role&.name == 'master') && @current_user&.role&.name != 'master'
+        return render json: { error: 'Solo master puede asignar o modificar el rol master' }, status: :forbidden
+      end
+      @user.role = new_role if new_role
+    end
+
     if @user.update(user_params)
       render json: UserSerializer.new(@user).serializable_hash, status: :ok
     else
@@ -176,6 +217,15 @@ class Api::UsersController < ApplicationController
     return if @user.number == request.headers['ClientNumber']
 
     render json: { error: 'No autorizado para ver este perfil' }, status: :forbidden
+  end
+
+  # Genera token de restablecimiento y envía el correo para crear contraseña propia.
+  def send_password_setup_email(user)
+    token = SecureRandom.hex(24)
+    user.update_columns(reset_password_token: token, reset_password_sent_at: Time.current)
+    UserMailer.with(user: user, token: token).send_password_reset.deliver_now
+  rescue StandardError => e
+    Rails.logger.error "No se pudo enviar el correo de contraseña a #{user.email}: #{e.message}"
   end
 
   def user_params

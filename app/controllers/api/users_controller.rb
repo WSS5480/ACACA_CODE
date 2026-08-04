@@ -57,7 +57,7 @@ class Api::UsersController < ApplicationController
     if @user.save
       # Asegurarse de que usuarios no-clientes (admin, etc.) se confirman al crearse
       @user.confirm if @user.role&.name != 'cliente'
-      sent = generated ? send_password_setup_email(@user) : nil
+      sent = generated ? send_password_setup_email(@user).first : nil
       payload = UserSerializer.new(@user).serializable_hash
       if generated && !sent
         payload[:warning] = "El usuario se creó, pero el correo NO se pudo enviar#{@user.email.blank? ? ' (sin email)' : ''}. Revisa la configuración SMTP en Render y reenvía el enlace desde la tabla."
@@ -77,10 +77,11 @@ class Api::UsersController < ApplicationController
     if user.email.blank?
       return render json: { error: 'Este usuario no tiene email registrado.' }, status: :unprocessable_entity
     end
-    if send_password_setup_email(user)
+    ok, err = send_password_setup_email(user)
+    if ok
       render json: { ok: true, sent_to: user.email }, status: :ok
     else
-      render json: { error: "No se pudo ENVIAR el correo a #{user.email}. Revisa la configuración SMTP en Render (SMTP_ADDRESS/USERNAME/PASSWORD)." }, status: :unprocessable_entity
+      render json: { error: "No se pudo ENVIAR el correo a #{user.email}. Detalle SMTP: #{err}" }, status: :unprocessable_entity
     end
   end
 
@@ -229,16 +230,17 @@ class Api::UsersController < ApplicationController
     render json: { error: 'No autorizado para ver este perfil' }, status: :forbidden
   end
 
-  # Genera token de restablecimiento y envía el correo. Devuelve true/false REAL.
+  # Genera token de restablecimiento y envía el correo.
+  # Devuelve [true, nil] o [false, detalle-del-error-SMTP].
   def send_password_setup_email(user)
-    return false if user.email.blank?
+    return [false, 'el usuario no tiene email'] if user.email.blank?
     token = SecureRandom.hex(24)
     user.update_columns(reset_password_token: token, reset_password_sent_at: Time.current)
     UserMailer.with(user: user, token: token).send_password_reset.deliver_now
-    true
+    [true, nil]
   rescue StandardError => e
-    Rails.logger.error "No se pudo enviar el correo de contraseña a #{user.email}: #{e.message}"
-    false
+    Rails.logger.error "No se pudo enviar el correo de contraseña a #{user.email}: #{e.class}: #{e.message}"
+    [false, "#{e.class}: #{e.message.to_s.strip[0, 300]}"]
   end
 
   def user_params

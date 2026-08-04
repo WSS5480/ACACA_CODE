@@ -22,10 +22,23 @@ class UserMailer < ApplicationMailer
 
   def send_client_welcome
     @user = params[:user]
-    # Enlace de WhatsApp con el token: el cliente nos escribe y su cuenta se activa (verificacion gratuita).
-    @whatsapp_url = @user.whatsapp_verify_url
+    raw_token = params[:confirmation_token]
+    # Enlace al frontend: la página /confirmar-cuenta recibe el token y llama al API para confirmar.
+    @confirmation_url = if raw_token.present?
+      base = frontend_base_url
+      "#{base}/confirmar-cuenta?confirmation_token=#{ERB::Util.url_encode(raw_token)}"
+    end
 
     mail to: @user.email, subject: "¡Bienvenid@ a acasa!"
+  end
+
+  # Enlace para crear una nueva contraseña (bilingüe ES/EN — no guardamos
+  # preferencia de idioma por cliente todavía, así el correo sirve para todos).
+  def send_password_reset
+    @user = params[:user]
+    @reset_url = "#{frontend_base_url}/restablecer?token=#{ERB::Util.url_encode(params[:token])}"
+
+    mail to: @user.email, subject: 'Restablece tu contraseña / Reset your password — acasa'
   end
 
   # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno)

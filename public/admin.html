@@ -1649,7 +1649,7 @@ async function loadSecUsers(){
   });
   body.querySelectorAll('.sec-pass').forEach(b=>b.onclick=async()=>{
     const r2=await api('POST','/api/users/'+encodeURIComponent(b.dataset.id)+'/send_password_setup');
-    alert(r2.ok?'Enlace enviado por correo: el usuario creará su propia contraseña.':((r2.data&&r2.data.error)||'No se pudo enviar.'));
+    alert(r2.ok?('Enlace enviado a '+((r2.data&&r2.data.sent_to)||'su correo')+': el usuario creará su propia contraseña.'):((r2.data&&r2.data.error)||'No se pudo enviar.'));
   });
 }
 async function secCreateUser(){
@@ -1659,7 +1659,7 @@ async function secCreateUser(){
   msg.textContent='Creando…';
   const r=await api('POST','/api/users',{user:{name:name,last_name:last,email:email,role_id:role_id}});
   if(r.ok){
-    msg.textContent='Usuario creado. Le enviamos un correo con el enlace para crear su contraseña.';
+    msg.textContent=(r.data&&r.data.warning)?('⚠ '+r.data.warning):'Usuario creado. Le enviamos un correo con el enlace para crear su contraseña.';
     $('suName').value='';$('suLast').value='';$('suEmail').value='';
     loadSecUsers();
   } else {

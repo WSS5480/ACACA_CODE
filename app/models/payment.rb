@@ -18,6 +18,8 @@ class Payment < ApplicationRecord
   end
 
   def apply_to_contract
+    # El PRIMER pago convierte el pedido en contrato: se asigna el número de contrato.
+    contract.assign_contract_number! if contract.respond_to?(:assign_contract_number!)
     contract.apply_payment!(amount)
     restore_credit(amount)
   end

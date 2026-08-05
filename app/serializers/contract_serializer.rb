@@ -44,6 +44,10 @@ class ContractSerializer
   attribute :initial_paid do |c|
     c.respond_to?(:initial_paid?) ? c.initial_paid? : true
   end
+  # Número de PEDIDO (existe desde el checkout; el número de contrato nace al pagar)
+  attribute :order_ref do |c|
+    c.respond_to?(:order_ref) ? c.order_ref : "PED-#{c.id}"
+  end
   attribute :client_phone do |c|
     c.user&.phone
   end

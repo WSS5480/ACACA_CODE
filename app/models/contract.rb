@@ -10,9 +10,31 @@ class Contract < ApplicationRecord
 
   STATUSES = %w[active paid cancelled].freeze
   validates :status, inclusion: { in: STATUSES }
-  validates :contract_number, presence: true, uniqueness: true
+  # El número de CONTRATO se asigna hasta recibir el pago inicial; antes de pagar,
+  # la compra sólo tiene número de PEDIDO (order_ref). Contado ('paid') lo recibe al crearse.
+  validates :contract_number, uniqueness: true, allow_nil: true
 
   before_validation :ensure_number, on: :create
+
+  # Número de pedido: identifica la compra desde el checkout (antes del pago).
+  def order_ref
+    "PED-#{id}"
+  end
+
+  # Asigna el número de contrato (al recibir el pago inicial). Idempotente.
+  def assign_contract_number!
+    return contract_number if contract_number.present?
+    num = nil
+    loop do
+      candidate = "C#{Time.current.strftime('%y%m')}#{SecureRandom.random_number(100000).to_s.rjust(5, '0')}"
+      unless Contract.exists?(contract_number: candidate)
+        num = candidate
+        break
+      end
+    end
+    update_column(:contract_number, num)
+    num
+  end
 
   # ----- dinero -----
   def total_paid
@@ -174,6 +196,9 @@ class Contract < ApplicationRecord
 
   def ensure_number
     return if contract_number.present?
+    # Sólo las ventas de CONTADO nacen con número de contrato (nacen pagadas);
+    # a crédito, el número se asigna al recibir el pago inicial (assign_contract_number!).
+    return unless status == 'paid'
     loop do
       candidate = "C#{Time.current.strftime('%y%m')}#{SecureRandom.random_number(100000).to_s.rjust(5, '0')}"
       unless Contract.exists?(contract_number: candidate)

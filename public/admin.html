@@ -238,9 +238,9 @@
       <p class="muted" style="margin:-6px 0 14px">Clientes que confirmaron su carrito y <b>llegaron a la pantalla de pago pero no han realizado el pago inicial</b>. Su contrato está reservado (no aparece en Órdenes y el cliente no ve su calendario hasta pagar). Contáctalos por WhatsApp para cerrar la venta; eliminar un intento libera su crédito.</p>
       <div class="sec"><div style="overflow-x:auto">
         <table><thead><tr>
-          <th>Cliente</th><th>Teléfono</th><th class="right">Artículos</th><th class="right">Contado</th>
+          <th>Pedido</th><th>Cliente</th><th>Teléfono</th><th class="right">Artículos</th><th class="right">Contado</th>
           <th class="right" title="Enganche + primer pago">Pago inicial</th><th>Creado</th><th>Esperando</th><th class="right">Acciones</th>
-        </tr></thead><tbody id="crmBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
+        </tr></thead><tbody id="crmBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -634,7 +634,7 @@ async function loadDash(){
 $('dashFilter').onchange=()=>{ loadDash(); loadOrders('dashboard'); };
 
 /* ---------------- Orders ---------------- */
-let ordStatus='';
+let ordStatus='', ALLORD=[];
 function estadoPill(o){
   const st=String(pick(o,['status','state'],'')).toLowerCase();
   if(st.includes('appr') && !pick(o,['admin_approved'],false)) return '<span class="pill p-pend">Pre-aprobado</span>';
@@ -646,30 +646,47 @@ function fulfillPill(o){
   const m=map[fs]||['p-other',fs];
   return `<span class="pill ${m[0]}">${m[1]}</span>`;
 }
-function orderRow(o,withStatus){
+// Una COMPRA = una orden: los artículos de un mismo contrato van empacados en UNA fila
+// con UN número (el de contrato si ya pagó; si no, el número de pedido PED-).
+function groupOrders(list){
+  const seen=new Set(), disp=[];
+  list.forEach(o=>{
+    const cid=pick(o,['contract_id'],null);
+    if(cid!=null&&cid!==''){ const k=String(cid); if(seen.has(k)) return; seen.add(k);
+      disp.push(list.filter(x=>String(pick(x,['contract_id'],''))===k)); }
+    else disp.push([o]);
+  });
+  return disp;
+}
+function orderRow(g,withStatus){
+  const grp=Array.isArray(g)?g:[g]; const o=grp[0];
   const cliente = ([pick(o,['user_name','client_name'],''),pick(o,['user_last_name'],'')].filter(Boolean).join(' ')) || pick(o,['user_email','client_email','email'],'—');
-  const prod = pick(o,['product_title','product_name','product','title'],'—');
+  const titles=grp.map(x=>pick(x,['product_title','product_name','product','title'],'—'));
+  const prod = grp.length>1 ? (grp.length+' artículos: '+titles.join(' · ')) : titles[0];
   const asin = pick(o,['product_asin','asin'],null);
   const approved = !!pick(o,['admin_approved'],false);
-  // La compra en Amazon SOLO se habilita cuando la orden fue aprobada por el admin.
-  const prodCell = (asin && approved && withStatus) ? `<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" title="Abrir en Amazon para comprar" style="color:var(--brand-d)" onclick="event.stopPropagation()">${esc(prod)}</a>` : esc(prod);
-  const precio = pick(o,['product_cost_usd','price','product_price','total'],null);
-  const plazo = pick(o,['weeks','term_weeks','installments'],null);
-  const credito = pick(o,['used_credit','credit','credit_used'],null);
+  // La compra en Amazon SOLO se habilita cuando la orden fue aprobada por el admin (enlaces por artículo en la verificación).
+  const prodCell = (grp.length===1 && asin && approved && withStatus) ? `<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" title="Abrir en Amazon para comprar" style="color:var(--brand-d)" onclick="event.stopPropagation()">${esc(prod)}</a>` : `<span title="${esc(titles.join(' | '))}">${esc(prod.length>90?prod.slice(0,90)+'…':prod)}</span>`;
+  const precio = grp.reduce((s,x)=>{const v=pick(x,['product_cost_usd','price','product_price','total'],null); return v!=null?(s??0)+Number(v):s;},null);
+  const plazo = pick(o,['weeks','term_weeks','credit_duration','installments'],null);
+  const credito = grp.reduce((s,x)=>{const v=pick(x,['used_credit','credit','credit_used'],null); return v!=null?(s??0)+Number(v):s;},null);
   const waiver = pick(o,['waiver_percentage','waiver','waiver_percent'],null);
-  const pago = pick(o,['weekly_payment','payment_per_week','weekly'],null);
+  const pago = pick(o,['contract_weekly_payment'],null) ?? pick(o,['weekly_payment','payment_per_week','weekly'],null);
+  const num = pick(o,['contract_number'],null) || pick(o,['contract_order_ref'],null) || ('#'+pick(o,['id','order_id','number'],'—'));
   const id = pick(o,['id','order_id','number'],'—');
+  // Verificación/entrega agregadas: entregado sólo cuando TODOS los artículos se entregaron.
+  const aggFul = grp.every(x=>pick(x,['delivered_at'],null)) ? 'entregado' : (approved ? 'por_entregar' : 'pendiente');
   if(withStatus){
     const uid=pick(o,['user_id'],null);
     // Enganche / pago inicial: verde $ si el contrato ya registró el pago, alto rojo si no.
     const dpPaid=!!pick(o,['downpayment_paid'],false);
     const dpCell=`<td style="text-align:center" title="${dpPaid?'Pago inicial recibido':'Sin pago inicial todavía'}">${dpPaid?'<span style="color:#12b76a;font-weight:800;font-size:16px">$</span>':'<span style="font-size:15px">&#128721;</span>'}</td>`;
-    return `<tr class="ord-row" data-oid="${esc(id)}" style="cursor:pointer"><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${prodCell}</td>
+    return `<tr class="ord-row" data-oid="${esc(id)}" style="cursor:pointer"><td class="mono">${esc(num)}</td><td>${esc(cliente)}</td><td style="max-width:280px">${prodCell}</td>
       <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
-      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td>${dpCell}<td>${fulfillPill(o)}</td>
+      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td>${dpCell}<td>${fulfillPill({fulfillment_status:aggFul})}</td>
       <td>${uid?`<button class="wabtn" data-uid="${esc(uid)}" data-name="${esc(cliente)}" onclick="event.stopPropagation()" title="WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:15px">✆</button>`:''}</td></tr>`;
   }
-  return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
+  return `<tr><td class="mono">${esc(num)}</td><td>${esc(cliente)}</td><td style="max-width:280px">${prodCell}</td>
     <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
     <td class="right mono">${credito!=null?money(credito):'—'}</td><td class="right mono">${waiver!=null?esc(waiver)+'%':'—'}</td>
     <td class="right mono">${pago!=null?money(pago):'—'}</td></tr>`;
@@ -695,7 +712,9 @@ async function loadOrders(where){
   if(term) list=list.filter(o=>JSON.stringify(o).toLowerCase().includes(term));
   if(where==='all') list=list.slice().reverse();
   if(where==='dashboard' && $('ordSort').value==='asc') list.reverse();
-  body.innerHTML = list.length ? list.map(o=>orderRow(o,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
+  ALLORD=list; // caché para la pantalla de verificación (artículos hermanos del contrato)
+  const disp=groupOrders(list); // una compra (contrato) = UNA fila
+  body.innerHTML = disp.length ? disp.map(g=>orderRow(g,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
   if(where==='all'){ body.querySelectorAll('.ord-row').forEach(tr=>tr.onclick=()=>openOrderVerify(tr.dataset.oid));
     body.querySelectorAll('.wabtn').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); waChatOpen(b.dataset.uid, b.dataset.name);}); }
 }
@@ -730,6 +749,20 @@ async function openOrderVerify(id){
   const zBox=sec=>zAlerts.filter(a=>a.section===sec).map(a=>`<div style="background:#fdecea;border:1px solid #f5c6c2;color:#b3261e;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600">&#9888; ${esc(a.message||'')}</div>`).join('');
   const asin=pick(o,['product_asin'],null);
   const approved=!!o.admin_approved, delivered=!!o.delivered_at;
+  // Artículos hermanos del mismo contrato: la compra completa se verifica y aprueba como UNA orden.
+  const sibs=(pick(o,['contract_id'],null)!=null && ALLORD.length) ? ALLORD.filter(x=>String(pick(x,['contract_id'],''))===String(pick(o,['contract_id'],''))) : [];
+  const grp=sibs.length?sibs:[o];
+  const allDelivered=grp.every(x=>pick(x,['delivered_at'],null));
+  const headNum=o.contract_number?('Contrato '+o.contract_number):(pick(o,['contract_order_ref'],null)||('Orden #'+o.id));
+  const itemsHtml=grp.map(it=>{
+    const ia=pick(it,['product_asin'],null), iap=!!pick(it,['admin_approved'],false), idel=pick(it,['delivered_at'],null);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)">
+      <div style="flex:1;font-weight:600;font-size:13.5px">${esc(pick(it,['product_title'],'—'))} <span class="mono muted" style="font-size:11.5px">${esc(ia||'')}</span></div>
+      ${fulfillPill(it)}
+      ${iap&&ia?`<a href="https://www.amazon.com.mx/dp/${esc(ia)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 10px;font-size:12px;font-weight:700;background:#ff9900;color:#111;border-radius:8px;text-decoration:none">Comprar</a>`:''}
+      ${iap&&!idel?`<button class="ovdeliver1" data-oid="${esc(String(pick(it,['id'],'')))}" style="border:0;background:var(--brand-d);color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer" title="Confirmar que este artículo fue entregado">Entregado ✓</button>`:''}
+    </div>`;
+  }).join('');
   // Nombre con botón de conversación (bitácora + WhatsApp) por persona.
   const vPerson=(label,who,conv)=>`<div style="min-width:150px"><div class="muted" style="font-size:11.5px">${esc(label)}</div><div style="font-weight:600;font-size:13.5px">${who?esc(who):'—'}${(conv&&conv.phone)?convBtnHtml(conv):''}</div></div>`;
   const benName=ben?[ben.name,ben.last_name].filter(Boolean).join(' '):'';
@@ -743,9 +776,12 @@ async function openOrderVerify(id){
   }).join('') : '';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="ovBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a órdenes</a></div>
-    <div class="head"><h1 style="font-size:20px">Orden #${esc(o.id)} — ${esc([o.user_name,o.user_last_name].filter(Boolean).join(' '))}</h1><div class="sp"></div>${fulfillPill(o)}</div>
-    <div class="sec" style="display:flex;gap:22px;flex-wrap:wrap;padding:16px">
-      ${vField('Producto',o.product_title)}${vField('ASIN',o.product_asin)}${vField('Contrato',o.contract_number)}${vField('Pago semanal',o.weekly_payment!=null?money(o.weekly_payment):null)}
+    <div class="head"><h1 style="font-size:20px">${esc(headNum)} — ${esc([o.user_name,o.user_last_name].filter(Boolean).join(' '))}</h1><div class="sp"></div>${fulfillPill({fulfillment_status:(allDelivered?'entregado':(approved?'por_entregar':'pendiente'))})}</div>
+    <div class="sec" style="padding:16px">
+      <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:8px">
+        ${vField('Pedido',pick(o,['contract_order_ref'],null))}${vField('Contrato',o.contract_number)}${vField('Pago x periodo',pick(o,['contract_weekly_payment'],null)!=null?money(pick(o,['contract_weekly_payment'],null)):(o.weekly_payment!=null?money(o.weekly_payment):null))}${vField('Artículos',grp.length)}
+      </div>
+      ${itemsHtml}
     </div>
     ${vSection('beneficiary','Beneficiario (recibe en México)',benInner,o.beneficiary_verified,o.beneficiary_comment)}
     ${vSection('buyer','Comprador',buyInner,o.buyer_verified,o.buyer_comment)}
@@ -754,9 +790,7 @@ async function openOrderVerify(id){
       <button class="btn" id="ovWa" style="background:#25D366">WhatsApp al cliente</button>
       <button class="btn" id="ovSave" style="background:#eef0f6;color:var(--navy)">Guardar verificación</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="background:var(--good)">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
-      ${approved&&asin?`<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" class="btn" style="display:inline-block;background:#ff9900;color:#111;text-decoration:none">Comprar en Amazon</a>`:''}
-      ${approved&&!delivered?`<button class="btn" id="ovDeliver" style="background:var(--brand-d)">Confirmar entrega</button>`:''}
-      ${delivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
+      ${allDelivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
       <span class="muted" id="ovMsg"></span>
     </div>
     ${!approved?'<p class="muted" style="font-size:12.5px">La compra en Amazon se habilita hasta que las tres secciones estén verificadas y la orden aprobada.</p>':''}`;
@@ -778,11 +812,12 @@ async function openOrderVerify(id){
     const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/verify',b);
     if(r2.ok){ openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo aprobar.'; }
   };
-  const dv=$('ovDeliver'); if(dv) dv.onclick=async()=>{
+  // Entrega POR ARTÍCULO (cada artículo de la compra llega por separado).
+  d.querySelectorAll('.ovdeliver1').forEach(b=>b.onclick=async()=>{
     if(!confirm('¿Confirmar que este artículo fue ENTREGADO al beneficiario?')) return;
-    const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/confirm_delivery',{});
-    if(r2.ok){ openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo confirmar.'; }
-  };
+    const r2=await api('POST','/api/orders/'+encodeURIComponent(b.dataset.oid)+'/confirm_delivery',{});
+    if(r2.ok){ await loadOrders('all'); openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo confirmar.'; }
+  });
 }
 
 /* ---------------- Conversaciones por persona: bitácora + WhatsApp ---------------- */
@@ -1085,7 +1120,7 @@ async function loadContracts(userId){
   if(!r.ok){ body.innerHTML='<tr><td colspan="11" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
   const list=rows(r.data);
   body.innerHTML = list.length ? list.map(c=>{
-    const num=pick(c,['contract_number'],'-'), cli=pick(c,['client_name'],'-');
+    const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||'-', cli=pick(c,['client_name'],'-');
     const total=pick(c,['total_amount'],null), fin=pick(c,['financed_amount'],null);
     const wk=pick(c,['weekly_payment'],null), bal=pick(c,['balance'],null);
     const weeks=pick(c,['weeks'],null), items=pick(c,['items_count'],0), ps=pick(c,['payment_status'],'');
@@ -1108,9 +1143,9 @@ let CONLIST=[];
 /* ---------------- CRM: ventas por cerrar (pago inicial pendiente) ---------------- */
 async function loadCrm(){
   const body=$('crmBody'); if(!body) return;
-  body.innerHTML='<tr><td colspan="8" class="empty">Cargando…</td></tr>';
+  body.innerHTML='<tr><td colspan="9" class="empty">Cargando…</td></tr>';
   const r=await api('GET','/api/contracts');
-  if(!r.ok){ body.innerHTML='<tr><td colspan="8" class="empty">No se pudo cargar.</td></tr>'; return; }
+  if(!r.ok){ body.innerHTML='<tr><td colspan="9" class="empty">No se pudo cargar.</td></tr>'; return; }
   const list=rows(r.data).filter(c=>String(pick(c,['status'],''))==='active' && !pick(c,['initial_paid'],true));
   list.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
   const now=Date.now();
@@ -1121,6 +1156,7 @@ async function loadCrm(){
     const wait=hrs==null?'—':(hrs<48?(hrs+' h'):(Math.round(hrs/24)+' días'));
     const hot=hrs!=null&&hrs<24; // caliente: recién abandonó, mejor momento para contactar
     return `<tr class="crm-row" data-cid="${esc(String(c.id))}" style="cursor:pointer">
+      <td class="mono">${esc(pick(c,['order_ref'],null)||('PED-'+c.id))}</td>
       <td style="font-weight:600">${esc(name)}</td>
       <td class="mono">${esc(phone||'—')}</td>
       <td class="right">${esc(String(pick(c,['items_count'],0)))}</td>
@@ -1132,7 +1168,7 @@ async function loadCrm(){
         <button class="crmwa" data-uid="${esc(String(uid||''))}" data-name="${esc(name)}" data-phone="${esc(phone||'')}" onclick="event.stopPropagation()" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
         <button class="crmdel" data-cid="${esc(String(c.id))}" data-name="${esc(name)}" onclick="event.stopPropagation()" title="Eliminar intento (libera su crédito)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑️</button>
       </td></tr>`;
-  }).join('') : '<tr><td colspan="8" class="empty">Sin ventas pendientes de pago — todos los que llegaron a la pantalla de pago, pagaron. 🎉</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">Sin ventas pendientes de pago — todos los que llegaron a la pantalla de pago, pagaron. 🎉</td></tr>';
   body.querySelectorAll('.crm-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
   body.querySelectorAll('.crmwa').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
     convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}); });
@@ -1234,7 +1270,7 @@ async function openContract(id){
       <td>${fdate(pick(i,['paid_at'],null))}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sin tabla de amortizacion</td></tr>';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="conBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a contratos</a></div>
-    <div class="head"><h1 style="font-size:20px">Contrato ${esc(pick(c,['contract_number'],''))}</h1><div class="sp"></div>${pick(c,['autopay'],false)?'<span class="pill p-appr" style="margin-right:10px">Autopay ✓</span>':''}<button id="conDelBtn" style="border:0;background:var(--bad);color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-right:10px">Eliminar contrato</button>${conStatusPill(pick(c,['payment_status'],''))}</div>
+    <div class="head"><h1 style="font-size:20px">${pick(c,['contract_number'],null)?('Contrato '+esc(pick(c,['contract_number'],''))):('Pedido '+esc(pick(c,['order_ref'],'')||('PED-'+c.id))+' — sin pago inicial')}</h1><div class="sp"></div>${pick(c,['autopay'],false)?'<span class="pill p-appr" style="margin-right:10px">Autopay ✓</span>':''}<button id="conDelBtn" style="border:0;background:var(--bad);color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-right:10px">Eliminar contrato</button>${conStatusPill(pick(c,['payment_status'],''))}</div>
     <div class="sec" style="display:flex;gap:26px;flex-wrap:wrap">
       <div><div class="muted" style="font-size:12px">Cliente</div><div style="font-weight:700">${esc(pick(c,['client_name'],'-'))}</div></div>
       <div><div class="muted" style="font-size:12px">Total</div><div style="font-weight:700">${money(pick(c,['total_amount'],0))}</div></div>

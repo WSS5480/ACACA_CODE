@@ -24,7 +24,7 @@ module Api
         customer: customer_id,
         setup_future_usage: 'off_session',
         automatic_payment_methods: { enabled: true },
-        description: "Contrato #{contract.contract_number}",
+        description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
         metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: params[:kind].to_s }
       })
       render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'] }, status: :ok
@@ -72,7 +72,7 @@ module Api
         payment_method: pm,
         off_session: 'true',
         confirm: 'true',
-        description: "Contrato #{contract.contract_number}",
+        description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
         metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: 'saved' }
       })
       if pi['status'] == 'succeeded'

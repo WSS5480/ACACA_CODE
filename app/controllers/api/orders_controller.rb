@@ -48,6 +48,14 @@ class Api::OrdersController < ApplicationController
       fields['approved_at'] = fields['admin_approved'] ? Time.current : nil
     end
     order.update!(fields)
+    # La verificación es de las PERSONAS de la compra (comprador, beneficiario, referencias),
+    # no del artículo: se aplica a TODOS los artículos del mismo contrato (una sola verificación
+    # por compra, un solo número de pedido/contrato).
+    if order.contract_id.present? && fields.any?
+      Order.where(contract_id: order.contract_id).where.not(id: order.id).find_each do |sibling|
+        sibling.update!(fields)
+      end
+    end
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity

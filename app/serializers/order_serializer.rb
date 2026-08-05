@@ -18,6 +18,15 @@ class OrderSerializer
     order.respond_to?(:contract) ? order.contract&.contract_number : nil
   end
 
+  # Datos del contrato para agrupar la compra como UNA sola orden en el admin.
+  attribute :contract_order_ref do |order|
+    c = order.respond_to?(:contract) ? order.contract : nil
+    c ? (c.respond_to?(:order_ref) ? c.order_ref : "PED-#{c.id}") : nil
+  end
+  attribute :contract_weekly_payment do |order|
+    order.respond_to?(:contract) ? order.contract&.weekly_payment : nil
+  end
+
   %i[beneficiary_verified beneficiary_comment buyer_verified buyer_comment
      references_verified references_comment admin_approved approved_at delivered_at].each do |f|
     attribute f do |order|

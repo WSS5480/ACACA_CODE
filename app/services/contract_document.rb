@@ -91,11 +91,12 @@ class ContractDocument
       'monto_total' => money(@c.downpayment.to_f + @c.financed_amount.to_f),
       'monto_exencion' => exencion ? money(exencion) : '0.00',
       'cuota_procesamiento' => (Product.processing_fee.positive? ? money(Product.processing_fee) : '0.00'),
-      # Interés/cargo financiero = diferencia del factor a 100 (1.25 → 25%).
-      'tasa_ordinaria' => format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0)),
+      # TASA ANUAL calculada del contrato: (interés ÷ principal) anualizada por el plazo.
+      'tasa_ordinaria' => (@c.respond_to?(:annual_interest_rate) && @c.annual_interest_rate.positive? ? format('%g', @c.annual_interest_rate) : format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0))),
       'tasa_moratoria' => (Product.mora_rate.positive? ? format('%g', Product.mora_rate) : nil),
       'descuento_anticipado' => nil,
-      'cat' => (Product.cat_rate.positive? ? format('%g', Product.cat_rate) : nil),
+      # CAT calculado del contrato (efectivo; incluye cuota de procesamiento, sin seguro opcional).
+      'cat' => (@c.respond_to?(:computed_cat) && @c.computed_cat.positive? ? format('%g', @c.computed_cat) : nil),
 
       'moneda_mxn' => ' ',
       'moneda_usd' => 'X',
@@ -150,7 +151,15 @@ class ContractDocument
     end
     rate = @c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0
     factor = @c.respond_to?(:finance_factor) ? @c.finance_factor : 1.25
-    note = format("\nTasa de interés (cargo financiero) aplicada al monto financiado: %g%% — corresponde a la diferencia a 100 del factor de financiamiento (%.2f).", rate, factor)
+    note = format("\nCargo financiero: %g%% sobre el principal (diferencia a 100 del factor de financiamiento %.2f). Interés: $%s sobre un principal de $%s.",
+                  rate, factor, money(@c.respond_to?(:interest_amount) ? @c.interest_amount : 0),
+                  money(@c.respond_to?(:principal_amount) ? @c.principal_amount : 0))
+    if @c.respond_to?(:annual_interest_rate) && @c.annual_interest_rate.positive?
+      note += format("\nTasa de interés ordinaria ANUAL equivalente por el plazo contratado: %g%%.", @c.annual_interest_rate)
+    end
+    if @c.respond_to?(:computed_cat) && @c.computed_cat.positive?
+      note += format("\nCAT: %g%% efectivo anual. Para fines informativos y de comparación. Incluye la cuota de procesamiento; no incluye el seguro opcional (exención de responsabilidad) ni IVA.", @c.computed_cat)
+    end
     note += format("\nIVA aplicado a cada pago: %g%%.", tax) if tax.positive?
     mora = Product.respond_to?(:mora_rate) ? Product.mora_rate : 0.0
     note += format("\nInterés moratorio anual sobre pagos vencidos (a partir del 2o día de atraso): %g%% (tasa/360 por día).", mora) if mora.positive?

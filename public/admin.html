@@ -491,13 +491,11 @@
             <div><div class="muted" style="font-size:12px;margin-bottom:4px">Cuota de procesamiento ($)</div>
               <input id="rtProc" type="number" min="0" max="10000" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
               <div class="muted" style="font-size:11px;margin-top:3px">Fija, se cobra con el pago inicial</div></div>
-            <div><div class="muted" style="font-size:12px;margin-bottom:4px">CAT (%)</div>
-              <input id="rtCat" type="number" min="0" max="1000" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
-              <div class="muted" style="font-size:11px;margin-top:3px">Informativo — va en la carátula del contrato</div></div>
             <button class="btn" id="rtSave">Guardar tasas</button>
             <span class="muted" id="rtMsg"></span>
           </div>
           <p class="muted" style="margin:14px 0 0;font-size:12px">Los cambios aplican a compras y cobros NUEVOS. Los contratos ya firmados conservan sus términos; los productos con factor propio en Catálogos conservan el suyo (el nuevo factor de contado es el valor por defecto).</p>
+          <p class="muted" style="margin:8px 0 0;font-size:12px"><b>Tasa anual y CAT se calculan solos, por contrato</b>, con el precio de contado, el monto de interés, el plazo y la cuota de procesamiento vigente — cada contrato generado sale con sus cifras correctas (el CAT incluye la cuota de procesamiento y excluye el seguro opcional).</p>
         </div>
       </div>
       <div id="secTabContract" style="display:none">
@@ -2087,7 +2085,7 @@ async function loadRates(){
   const r=await api('GET','/api/settings/rates');
   if(!r.ok||!r.data){ $('rtMsg').textContent='No se pudieron cargar las tasas.'; return; }
   $('rtTax').value=r.data.tax_rate; $('rtInt').value=r.data.interest_rate; $('rtWaiver').value=r.data.waiver_rate;
-  $('rtMora').value=r.data.mora_rate; $('rtProc').value=r.data.processing_fee; $('rtCat').value=r.data.cat_rate;
+  $('rtMora').value=r.data.mora_rate; $('rtProc').value=r.data.processing_fee;
   rtShowFactors();
 }
 function rtShowFactors(){
@@ -2097,7 +2095,7 @@ function rtShowFactors(){
 if($('rtInt')) $('rtInt').addEventListener('input',rtShowFactors);
 if($('rtSave')) $('rtSave').onclick=async()=>{
   $('rtMsg').textContent='Guardando…'; $('rtSave').disabled=true;
-  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0, cat_rate:parseFloat($('rtCat').value)||0});
+  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0});
   $('rtSave').disabled=false;
   if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); }
   else { $('rtMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }

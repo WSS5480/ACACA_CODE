@@ -42,6 +42,13 @@ class ContractSerializer
   attribute :late_fee_amount do |c|
     c.respond_to?(:late_fee_amount) ? c.late_fee_amount : 0.0
   end
+  # Tasa anual y CAT calculados por contrato (precio de contado, interés, plazo y cuota).
+  attribute :annual_interest_rate do |c|
+    c.respond_to?(:annual_interest_rate) ? c.annual_interest_rate : nil
+  end
+  attribute :computed_cat do |c|
+    c.respond_to?(:computed_cat) ? c.computed_cat : nil
+  end
   attribute :first_due_date do |c|
     c.first_due_date
   end

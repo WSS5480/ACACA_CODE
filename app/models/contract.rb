@@ -196,6 +196,66 @@ class Contract < ApplicationRecord
     ((finance_factor - 1) * 100).round(2)
   end
 
+  # Periodos por año según la frecuencia (semanal 52, quincenal 26, mensual 12).
+  def periods_per_year
+    case freq
+    when 'monthly'  then 12
+    when 'biweekly' then 26
+    else                 52
+    end
+  end
+
+  # PRINCIPAL del contrato = precio de contado − enganche.
+  def principal_amount
+    [(total_amount.to_f - downpayment.to_f).round(2), 0].max
+  end
+
+  # Monto de INTERÉS = financiado − principal.
+  def interest_amount
+    [(financed_amount.to_f - principal_amount).round(2), 0].max
+  end
+
+  # TASA DE INTERÉS ORDINARIA ANUAL del contrato (simple, SIN seguro):
+  # (interés ÷ principal) anualizada por el plazo real. Ej.: $25 sobre $100 a
+  # 12 meses = 25% anual; a 3 meses = 100% anual.
+  def annual_interest_rate
+    p = principal_amount
+    return 0.0 if p <= 0
+    n = contract_installments.count
+    n = [weeks.to_i, 1].max if n.zero?
+    years = n.to_f / periods_per_year
+    return 0.0 if years <= 0
+    ((interest_amount / p) / years * 100).round(1)
+  end
+
+  # CAT EFECTIVO del contrato (informativo, metodología Banxico): TIR de los flujos
+  # reales anualizada compuesta. Incluye la cuota de procesamiento (costo obligatorio,
+  # se paga a la firma) y EXCLUYE el seguro opcional (waiver).
+  def computed_cat
+    p = principal_amount
+    return 0.0 if p <= 0
+    fee = Product.respond_to?(:processing_fee) ? Product.processing_fee : 0.0
+    disbursed = (p - fee).round(2)
+    return 0.0 if disbursed <= 0
+    pays = contract_installments.order(:number).pluck(:amount).map(&:to_f)
+    if pays.empty?
+      n, per = schedule_periods_and_amount
+      pays = Array.new(n, per)
+    end
+    return 0.0 if pays.empty? || pays.sum <= disbursed
+    pv = ->(i) { pays.each_with_index.sum { |a, k| a / ((1 + i)**(k + 1)) } }
+    lo = 0.0
+    hi = 4.0
+    60.times do
+      mid = (lo + hi) / 2.0
+      pv.call(mid) > disbursed ? lo = mid : hi = mid
+    end
+    i = (lo + hi) / 2.0
+    (((1 + i)**periods_per_year - 1) * 100).round(1)
+  rescue StandardError
+    0.0
+  end
+
   # Pago aplicado a SALDO: el excedente (más allá de la cuota próxima pendiente) paga
   # PRINCIPAL directo, así que se le perdona el cargo financiero (factor − 1) sobre ese
   # excedente → el saldo baja por 1.25x el extra, el plazo se ACORTA y se ahorra interés.

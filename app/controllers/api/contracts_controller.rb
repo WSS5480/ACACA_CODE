@@ -188,6 +188,11 @@ module Api
       pmt.apply_mode = params[:apply_to].to_s if params[:apply_to].present?
       pmt.save!
       contract.reload
+      AuditLog.record!(actor: @current_user, action: 'payment_recorded', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "Pago $#{format('%.2f', amount)} · método: #{params[:method].presence || 'n/d'}" \
+                                "#{params[:apply_to].present? ? " · aplicado a: #{params[:apply_to]}" : ''}" \
+                                " · saldo restante: $#{format('%.2f', contract.balance)}")
       render json: {
         ok: true,
         balance: contract.balance,
@@ -245,6 +250,9 @@ module Api
         inst.update_columns(due_date: inst.due_date + delta)
       end
       contract.reload
+      AuditLog.record!(actor: @current_user, action: 'due_date_moved', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "Próximo vencimiento movido #{delta >= 0 ? '+' : ''}#{delta} días → #{new_date.strftime('%d/%m/%Y')} (herramienta de PRUEBAS)")
       render json: {
         ok: true, moved_days: delta,
         next_due_date: contract.next_due_date,
@@ -290,6 +298,13 @@ module Api
         em = send_signing_email(contract) unless wa[:ok]
         contract.update_column(:document_sent_at, Time.current) if wa[:ok] || (em && em[:ok])
       end
+      sent_via = if wa && wa[:ok] then "WhatsApp a #{wa[:sent_to]}"
+                 elsif em && em[:ok] then "correo a #{em[:sent_to]}"
+                 else 'sin envío'
+                 end
+      AuditLog.record!(actor: @current_user, action: 'contract_generated', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "Documento generado para firma · aviso: #{sent_via}")
       render json: { ok: true, generated_at: contract.document_generated_at, whatsapp: wa, email: em }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
@@ -316,6 +331,9 @@ module Api
         signature_name: params[:name].to_s.strip.presence || [@current_user.name, @current_user.last_name].compact.join(' '),
         signature_ip: request.remote_ip
       )
+      AuditLog.record!(actor: @current_user, action: 'contract_signed', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "Firmado por #{contract.signature_name} desde IP #{contract.signature_ip}")
       render json: { ok: true, signed_at: contract.signed_at }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
@@ -354,6 +372,11 @@ module Api
         end
         contract.destroy!
       end
+      AuditLog.record!(actor: @current_user, action: 'contract_deleted', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "#{unpaid ? 'Pedido SIN pagar cancelado (artículos eliminados)' : 'Contrato eliminado'}" \
+                                " · cliente: #{[user&.name, user&.last_name].compact.join(' ')}" \
+                                " · crédito restaurado: $#{format('%.2f', restore)}")
       render json: { ok: true }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
@@ -362,6 +385,13 @@ module Api
     end
 
     private
+
+    # Etiqueta legible del contrato para la bitácora de auditoría.
+    def audit_contract_label(contract)
+      num = contract.contract_number.presence || (contract.respond_to?(:order_ref) ? contract.order_ref : "PED-#{contract.id}")
+      client = [contract.user&.name, contract.user&.last_name].compact.join(' ').strip
+      client.present? ? "#{num} · #{client}" : num.to_s
+    end
 
     # Estado del documento/firma para el show (cliente y staff).
     def document_payload(contract)

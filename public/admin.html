@@ -470,6 +470,35 @@
         <button data-stab="users" class="on">Usuarios y accesos</button>
         <button data-stab="contract">Control de documentos legales</button>
         <button data-stab="rates">Tasas e impuestos</button>
+        <button data-stab="audit">Bitácora de cambios</button>
+      </div>
+      <div id="secTabAudit" style="display:none">
+        <div class="sec" style="padding:18px">
+          <div class="stitle" style="padding:0 0 6px">Bitácora de cambios y transacciones</div>
+          <p class="muted" style="margin:0 0 14px">Quién hizo qué y cuándo: cambios en Tasas e impuestos y documentos legales, pagos registrados (manuales y en línea), verificaciones, aprobaciones, entregas, contratos generados y firmados, eliminaciones y líneas de crédito. Filtra por usuario o tipo de acción y ordena con los encabezados.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+            <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Usuario</div>
+              <select id="auUser" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:180px"><option value="">Todos</option></select></div>
+            <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Acción</div>
+              <select id="auAction" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:200px"><option value="">Todas</option></select></div>
+            <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Buscar (contrato, cliente, detalle…)</div>
+              <input id="auQ" placeholder="C260823741, Eddie, tasas…" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:230px"></div>
+            <button class="btn" id="auRefresh">Actualizar</button>
+            <span class="muted" id="auMsg"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table><thead><tr>
+              <th data-asort="created_at" style="cursor:pointer" title="Ordenar">Fecha ▾</th>
+              <th data-asort="user_email" style="cursor:pointer" title="Ordenar">Usuario</th>
+              <th data-asort="user_role" style="cursor:pointer" title="Ordenar">Rol</th>
+              <th data-asort="action_label" style="cursor:pointer" title="Ordenar">Acción</th>
+              <th data-asort="target_label" style="cursor:pointer" title="Ordenar">Referencia</th>
+              <th>Detalle</th>
+            </tr></thead>
+            <tbody id="auBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+          </div>
+          <p class="muted" style="margin:10px 0 0;font-size:12px">Se muestran los últimos 500 movimientos que cumplen los filtros. El registro es permanente: sobrevive aunque el usuario se elimine (queda su email).</p>
+        </div>
       </div>
       <div id="secTabRates" style="display:none">
         <div class="sec" style="padding:18px">
@@ -2095,8 +2124,73 @@ if($('secTabs')) $('secTabs').addEventListener('click',e=>{
   $('secTabUsers').style.display = tab==='users' ? '' : 'none';
   $('secTabContract').style.display = tab==='contract' ? '' : 'none';
   $('secTabRates').style.display = tab==='rates' ? '' : 'none';
+  $('secTabAudit').style.display = tab==='audit' ? '' : 'none';
   if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); }
   if(tab==='rates') loadRates();
+  if(tab==='audit') loadAudit();
+});
+
+/* ------- Seguridad: Bitácora de cambios (auditoría por usuario) ------- */
+let AU_LOGS=[], AU_SORT={key:'created_at',dir:-1}, AU_ACTIONS_LOADED=0, AU_USERS={};
+async function loadAudit(){
+  $('auMsg').textContent='Cargando…';
+  const p=new URLSearchParams();
+  if($('auUser').value) p.set('user_id',$('auUser').value);
+  if($('auAction').value) p.set('action_key',$('auAction').value);
+  if($('auQ').value.trim()) p.set('q',$('auQ').value.trim());
+  const r=await api('GET','/api/audit_logs'+(p.toString()?('?'+p.toString()):''));
+  if(!r.ok||!r.data||!r.data.logs){
+    $('auMsg').textContent=(r.data&&r.data.error)||'No se pudo cargar la bitácora.';
+    $('auBody').innerHTML='<tr><td colspan="6" class="empty">'+esc((r.data&&r.data.error)||'Sin acceso o falta la migración.')+'</td></tr>';
+    return;
+  }
+  if(!AU_ACTIONS_LOADED && r.data.actions){
+    AU_ACTIONS_LOADED=1;
+    $('auAction').innerHTML='<option value="">Todas</option>'+Object.entries(r.data.actions).map(([k,v])=>`<option value="${esc(k)}">${esc(v)}</option>`).join('');
+  }
+  // El filtro de usuario se alimenta de los propios movimientos (acumulado entre cargas).
+  r.data.logs.forEach(l=>{ if(l.user_id && l.user_email) AU_USERS[l.user_id]=l.user_email; });
+  const cur=$('auUser').value;
+  $('auUser').innerHTML='<option value="">Todos</option>'+Object.entries(AU_USERS).map(([id,em])=>`<option value="${esc(id)}" ${String(id)===cur?'selected':''}>${esc(em)}</option>`).join('');
+  AU_LOGS=r.data.logs;
+  $('auMsg').textContent=AU_LOGS.length?(AU_LOGS.length+' movimiento(s)'):'';
+  renderAudit();
+}
+function renderAudit(){
+  const body=$('auBody');
+  if(!AU_LOGS.length){ body.innerHTML='<tr><td colspan="6" class="empty">Sin movimientos con estos filtros.</td></tr>'; return; }
+  const k=AU_SORT.key, d=AU_SORT.dir;
+  const sorted=[...AU_LOGS].sort((a,b)=>{
+    const va=(a[k]==null?'':String(a[k]).toLowerCase()), vb=(b[k]==null?'':String(b[k]).toLowerCase());
+    return va<vb?-d:(va>vb?d:0);
+  });
+  body.innerHTML=sorted.map(l=>`<tr>
+    <td style="white-space:nowrap">${esc(fdatetime(l.created_at))}</td>
+    <td>${esc(l.user_email||'—')}</td>
+    <td>${esc(l.user_role||'—')}</td>
+    <td><b>${esc(l.action_label||l.action)}</b></td>
+    <td>${esc(l.target_label||'—')}</td>
+    <td class="muted" style="max-width:420px">${esc(l.details||'')}</td>
+  </tr>`).join('');
+}
+function fdatetime(s){
+  if(!s) return '—';
+  const d=new Date(s); if(isNaN(d)) return s;
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+}
+if($('auRefresh')) $('auRefresh').onclick=loadAudit;
+if($('auQ')) $('auQ').addEventListener('keydown',e=>{ if(e.key==='Enter') loadAudit(); });
+if($('auUser')) $('auUser').addEventListener('change',loadAudit);
+if($('auAction')) $('auAction').addEventListener('change',loadAudit);
+if($('secTabAudit')) $('secTabAudit').addEventListener('click',e=>{
+  const th=e.target.closest('th[data-asort]'); if(!th) return;
+  const k=th.dataset.asort;
+  AU_SORT = (AU_SORT.key===k) ? {key:k,dir:-AU_SORT.dir} : {key:k,dir:(k==='created_at'?-1:1)};
+  th.closest('tr').querySelectorAll('th[data-asort]').forEach(x=>{
+    x.textContent=x.textContent.replace(/ [▾▴]$/,'');
+    if(x===th) x.textContent+= (AU_SORT.dir===-1?' ▾':' ▴');
+  });
+  renderAudit();
 });
 async function loadRates(){
   const r=await api('GET','/api/settings/rates');

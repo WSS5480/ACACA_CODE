@@ -138,6 +138,10 @@ Rails.application.routes.draw do
     # Bitácora de conversaciones (notas de llamadas) por persona
     resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create]
 
+    # Bitácora de AUDITORÍA (solo master/admin): quién hizo qué — cambios de tasas,
+    # pagos, aprobaciones, entregas, firmas, eliminaciones...
+    resources :audit_logs, controller: 'api/audit_logs', only: [:index]
+
     post 'autopay/run', to: 'api/autopay#run'
   end
 end

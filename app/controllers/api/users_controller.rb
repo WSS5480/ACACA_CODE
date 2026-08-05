@@ -163,12 +163,17 @@ class Api::UsersController < ApplicationController
       }, status: :forbidden
     end
 
+    client_name = [@user.name, @user.last_name].compact.join(' ').strip
+    client_email = @user.email
     ActiveRecord::Base.transaction do
       # Contratos primero (cascada pagos/cuotas), luego SUS ordenes (cascada comprador/aval/referencias).
       contracts.each(&:destroy!)
       @user.orders.find_each(&:destroy!)
       @user.destroy!
     end
+    AuditLog.record!(actor: @current_user, action: 'client_deleted', target: @user,
+                     label: (client_name.present? ? client_name : client_email),
+                     details: "Cliente eliminado (#{client_email}) con #{contracts.size} contrato(s)")
     head :no_content
   rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
@@ -246,9 +251,13 @@ class Api::UsersController < ApplicationController
     return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if amt < 0
 
     cr = user.credit || user.build_credit(amount: 0)
+    old_amt = cr.amount.to_f
     cr.amount = amt.round(2)
     cr.credit_limit = amt.round(2) if Credit.column_names.include?('credit_limit')
     cr.save!
+    AuditLog.record!(actor: @current_user, action: 'credit_set', target: user,
+                     label: [user.name, user.last_name].compact.join(' ').strip.presence || user.email,
+                     details: "Línea de crédito: $#{format('%.2f', old_amt)} → $#{format('%.2f', cr.amount)}")
     render json: { ok: true, credit_amount: cr.amount, credit_limit: (cr.respond_to?(:credit_limit) ? cr.credit_limit : cr.amount) }, status: :ok
   end
 

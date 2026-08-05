@@ -168,6 +168,14 @@ module Api
       # 'saldo' = el excedente paga principal (acorta plazo y ahorra el cargo financiero).
       pmt.apply_mode = pi.dig('metadata', 'apply_to').to_s
       pmt.save!
+      # Bitácora: pagos en línea. En el webhook no hay sesión: el actor es el dueño del contrato.
+      actor = (defined?(@current_user) && @current_user) || contract.user
+      num = contract.contract_number.presence || contract.order_ref
+      client_name = [contract.user&.name, contract.user&.last_name].compact.join(' ').strip
+      AuditLog.record!(actor: actor, action: 'payment_online', target: contract,
+                       label: client_name.present? ? "#{num} · #{client_name}" : num.to_s,
+                       details: "Stripe $#{format('%.2f', base)} (total cobrado $#{format('%.2f', total)})" \
+                                "#{pmt.apply_mode.present? ? " · aplicado a: #{pmt.apply_mode}" : ''} · #{pi_id}")
       pmt
     end
   end

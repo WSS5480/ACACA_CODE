@@ -56,6 +56,19 @@ class Api::OrdersController < ApplicationController
         sibling.update!(fields)
       end
     end
+    if fields.any?
+      if fields['admin_approved'] == true
+        AuditLog.record!(actor: @current_user, action: 'order_approved', target: order,
+                         label: audit_order_label(order),
+                         details: 'Aprobada para compra en Amazon (verificación completa)')
+      else
+        checks = fields.slice('beneficiary_verified', 'buyer_verified', 'references_verified')
+                       .map { |k, v| "#{k.sub('_verified', '')}: #{v ? '✓' : '✗'}" }
+        AuditLog.record!(actor: @current_user, action: 'order_verified', target: order,
+                         label: audit_order_label(order),
+                         details: (checks.any? ? "Verificación guardada · #{checks.join(' · ')}" : 'Verificación guardada'))
+      end
+    end
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -70,6 +83,9 @@ class Api::OrdersController < ApplicationController
     return render(json: { error: 'La orden debe estar aprobada primero' }, status: :unprocessable_entity) unless order.respond_to?(:admin_approved) && order.admin_approved
 
     order.update!(delivered_at: Time.current)
+    AuditLog.record!(actor: @current_user, action: 'order_delivered', target: order,
+                     label: audit_order_label(order),
+                     details: "Entrega confirmada · #{order.product_title.to_s[0, 80]}")
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   end
 
@@ -341,6 +357,14 @@ class Api::OrdersController < ApplicationController
 
   def staff_user?
     %w[master admin].include?(@current_user&.role&.name)
+  end
+
+  # Etiqueta legible de la orden para la bitácora de auditoría.
+  def audit_order_label(order)
+    num = order.contract&.contract_number.presence ||
+          (order.contract ? order.contract.order_ref : "Orden ##{order.id}")
+    client = [order.user_name, order.user_last_name].compact.join(' ').strip
+    client.present? ? "#{num} · #{client}" : num.to_s
   end
 
   # Compara dos montos monetarios de forma segura (evita errores de punto flotante).

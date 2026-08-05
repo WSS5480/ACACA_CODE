@@ -30,11 +30,21 @@ class Api::SettingsController < ApplicationController
 
     limits = { 'tax_rate' => 100, 'interest_rate' => 100, 'waiver_rate' => 100,
                'mora_rate' => 500, 'cat_rate' => 1000, 'processing_fee' => 10_000 }
+    defaults = { 'tax_rate' => 0, 'interest_rate' => 25, 'waiver_rate' => 0,
+                 'mora_rate' => 0, 'cat_rate' => 0, 'processing_fee' => 0 }
+    changes = []
     limits.each_key do |k|
       next unless params.key?(k)
       v = params[k].to_f
       return render(json: { error: "Valor inválido para #{k} (0 a #{limits[k]})" }, status: :unprocessable_entity) if v.negative? || v > limits[k]
-      AppSetting.set(k, v.round(4).to_s)
+      old = AppSetting.rate(k, defaults[k])
+      new_v = v.round(4)
+      changes << "#{k}: #{format('%g', old)} → #{format('%g', new_v)}" if old != new_v
+      AppSetting.set(k, new_v.to_s)
+    end
+    if changes.any?
+      AuditLog.record!(actor: @current_user, action: 'rates_updated',
+                       label: 'Tasas e impuestos', details: changes.join(' · '))
     end
     rates
   end
@@ -78,6 +88,9 @@ class Api::SettingsController < ApplicationController
 
     if ActiveModel::Type::Boolean.new.cast(params[:reset])
       AppSetting.find_by(key: CONTRACT_KEY)&.destroy
+      AuditLog.record!(actor: @current_user, action: 'template_reset',
+                       label: 'Control de documentos legales',
+                       details: 'Restauró la plantilla original del contrato')
       return render json: { content: default_contract_template, custom: false, updated_at: nil }, status: :ok
     end
 
@@ -85,6 +98,9 @@ class Api::SettingsController < ApplicationController
     return render json: { error: 'El contrato no puede quedar vacío.' }, status: :unprocessable_entity if val.strip.blank?
 
     rec = AppSetting.set(CONTRACT_KEY, val)
+    AuditLog.record!(actor: @current_user, action: 'template_updated',
+                     label: 'Control de documentos legales',
+                     details: "Guardó la plantilla del contrato (#{val.length} caracteres)")
     render json: { ok: true, custom: true, updated_at: rec.updated_at }, status: :ok
   end
 

@@ -485,6 +485,15 @@
             <div><div class="muted" style="font-size:12px;margin-bottom:4px">Seguro / Waiver (%)</div>
               <input id="rtWaiver" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
               <div class="muted" style="font-size:11px;margin-top:3px">Exención de responsabilidad por pago</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Moratorios (% anual)</div>
+              <input id="rtMora" type="number" min="0" max="500" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Sobre vencidos, desde el 2º día (tasa/360 x día)</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Cuota de procesamiento ($)</div>
+              <input id="rtProc" type="number" min="0" max="10000" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Fija, se cobra con el pago inicial</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">CAT (%)</div>
+              <input id="rtCat" type="number" min="0" max="1000" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Informativo — va en la carátula del contrato</div></div>
             <button class="btn" id="rtSave">Guardar tasas</button>
             <span class="muted" id="rtMsg"></span>
           </div>
@@ -1408,6 +1417,7 @@ async function openContract(id){
       <div><div class="muted" style="font-size:12px">Financiado</div><div style="font-weight:700">${money(pick(c,['financed_amount'],0))}</div></div>
       <div><div class="muted" style="font-size:12px">Pago x sem</div><div style="font-weight:700">${money(pick(c,['weekly_payment'],0))}</div></div>
       <div><div class="muted" style="font-size:12px" title="Diferencia a 100 del factor de financiamiento (1.25)">Interés (cargo)</div><div style="font-weight:700">${esc(String(pick(c,['interest_rate'],25)))}%</div></div>
+      ${Number(pick(c,['late_fee_amount'],0))>0?`<div><div class="muted" style="font-size:12px" title="Interés moratorio acumulado sobre lo vencido (desde el 2º día de atraso)">Moratorios</div><div style="font-weight:700;color:var(--bad)">${money(pick(c,['late_fee_amount'],0))}</div></div>`:''}
       <div><div class="muted" style="font-size:12px">Pagado</div><div style="font-weight:700">${money(pick(c,['total_paid'],0))}</div></div>
       <div><div class="muted" style="font-size:12px">Saldo</div><div style="font-weight:700">${money(pick(c,['balance'],0))}</div></div>
     </div>
@@ -2077,6 +2087,7 @@ async function loadRates(){
   const r=await api('GET','/api/settings/rates');
   if(!r.ok||!r.data){ $('rtMsg').textContent='No se pudieron cargar las tasas.'; return; }
   $('rtTax').value=r.data.tax_rate; $('rtInt').value=r.data.interest_rate; $('rtWaiver').value=r.data.waiver_rate;
+  $('rtMora').value=r.data.mora_rate; $('rtProc').value=r.data.processing_fee; $('rtCat').value=r.data.cat_rate;
   rtShowFactors();
 }
 function rtShowFactors(){
@@ -2086,7 +2097,7 @@ function rtShowFactors(){
 if($('rtInt')) $('rtInt').addEventListener('input',rtShowFactors);
 if($('rtSave')) $('rtSave').onclick=async()=>{
   $('rtMsg').textContent='Guardando…'; $('rtSave').disabled=true;
-  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0});
+  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0, cat_rate:parseFloat($('rtCat').value)||0});
   $('rtSave').disabled=false;
   if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); }
   else { $('rtMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }

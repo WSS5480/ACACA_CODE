@@ -14,6 +14,9 @@ class Api::SettingsController < ApplicationController
       tax_rate: Product.tax_rate,
       interest_rate: Product.interest_rate,
       waiver_rate: Product.waiver_rate,
+      mora_rate: Product.mora_rate,
+      processing_fee: Product.processing_fee,
+      cat_rate: Product.cat_rate,
       finance_factor: Product.finance_factor,
       cash_factor: Product.default_cash_factor
     }, status: :ok
@@ -25,10 +28,12 @@ class Api::SettingsController < ApplicationController
       return render json: { error: 'Solo master o admin pueden cambiar las tasas' }, status: :forbidden
     end
 
-    %w[tax_rate interest_rate waiver_rate].each do |k|
+    limits = { 'tax_rate' => 100, 'interest_rate' => 100, 'waiver_rate' => 100,
+               'mora_rate' => 500, 'cat_rate' => 1000, 'processing_fee' => 10_000 }
+    limits.each_key do |k|
       next unless params.key?(k)
       v = params[k].to_f
-      return render(json: { error: "Valor inválido para #{k} (0 a 100)" }, status: :unprocessable_entity) if v.negative? || v > 100
+      return render(json: { error: "Valor inválido para #{k} (0 a #{limits[k]})" }, status: :unprocessable_entity) if v.negative? || v > limits[k]
       AppSetting.set(k, v.round(4).to_s)
     end
     rates

@@ -149,9 +149,25 @@ class Contract < ApplicationRecord
     amt.round(2)
   end
 
-  # Pago inicial en el checkout = enganche + primer pago del periodo.
+  # Pago inicial en el checkout = enganche + primer pago del periodo + cuota de procesamiento.
   def initial_payment
-    (downpayment.to_f + first_period_payment).round(2)
+    fee = Product.respond_to?(:processing_fee) ? Product.processing_fee : 0.0
+    (downpayment.to_f + first_period_payment + fee).round(2)
+  end
+
+  # Intereses MORATORIOS acumulados: sobre cada cuota vencida con más de 1 día de atraso,
+  # tasa moratoria anual / 360 por día efectivamente transcurrido (cláusula TERCERA).
+  def late_fee_amount
+    rate = Product.respond_to?(:mora_rate) ? Product.mora_rate : 0.0
+    return 0.0 if rate <= 0
+    today = Date.current
+    total = contract_installments.where.not(status: 'paid').where('due_date < ?', today).sum do |i|
+      days = (today - i.due_date).to_i
+      next 0.0 if days <= 1 # 1 día de gracia
+      remainder = (i.amount.to_f - i.paid_amount.to_f)
+      remainder.positive? ? remainder * (rate / 100.0 / 360.0) * days : 0.0
+    end
+    total.round(2)
   end
 
   def build_amortization!(start: nil)

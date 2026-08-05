@@ -83,6 +83,28 @@ class Product < ApplicationRecord
     10.0
   end
 
+  # Tasa de interés MORATORIO anual (%): se acumula sobre pagos vencidos
+  # después de 1 día de atraso (tasa/360 por día, cláusula TERCERA del contrato).
+  def self.mora_rate
+    AppSetting.rate('mora_rate', 0.0)
+  rescue StandardError
+    0.0
+  end
+
+  # Cuota de procesamiento (USD, fija): se cobra con el pago inicial (cláusula TERCERA).
+  def self.processing_fee
+    AppSetting.rate('processing_fee', 0.0)
+  rescue StandardError
+    0.0
+  end
+
+  # CAT informativo (%): sólo para la carátula del contrato.
+  def self.cat_rate
+    AppSetting.rate('cat_rate', 0.0)
+  rescue StandardError
+    0.0
+  end
+
   def calculate_weekly_payment(weeks:, downpayment: nil, product_cost_usd: nil, used_credit: 0, turns: nil, decimal_factor: nil)
     cost = (product_cost_usd || effective_price).to_f
     t = (turns || self.turns || 3.5).to_f

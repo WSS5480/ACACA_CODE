@@ -38,6 +38,10 @@ class ContractSerializer
   attribute :interest_rate do |c|
     c.respond_to?(:interest_rate) ? c.interest_rate : 25.0
   end
+  # Intereses moratorios acumulados sobre lo vencido (después de 1 día de atraso)
+  attribute :late_fee_amount do |c|
+    c.respond_to?(:late_fee_amount) ? c.late_fee_amount : 0.0
+  end
   attribute :first_due_date do |c|
     c.first_due_date
   end

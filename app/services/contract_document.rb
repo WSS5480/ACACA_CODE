@@ -90,12 +90,12 @@ class ContractDocument
       'numero_pagos' => n_pagos.to_s,
       'monto_total' => money(@c.downpayment.to_f + @c.financed_amount.to_f),
       'monto_exencion' => exencion ? money(exencion) : '0.00',
-      'cuota_procesamiento' => nil,
+      'cuota_procesamiento' => (Product.processing_fee.positive? ? money(Product.processing_fee) : '0.00'),
       # Interés/cargo financiero = diferencia del factor a 100 (1.25 → 25%).
       'tasa_ordinaria' => format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0)),
-      'tasa_moratoria' => nil,
+      'tasa_moratoria' => (Product.mora_rate.positive? ? format('%g', Product.mora_rate) : nil),
       'descuento_anticipado' => nil,
-      'cat' => nil,
+      'cat' => (Product.cat_rate.positive? ? format('%g', Product.cat_rate) : nil),
 
       'moneda_mxn' => ' ',
       'moneda_usd' => 'X',
@@ -152,6 +152,8 @@ class ContractDocument
     factor = @c.respond_to?(:finance_factor) ? @c.finance_factor : 1.25
     note = format("\nTasa de interés (cargo financiero) aplicada al monto financiado: %g%% — corresponde a la diferencia a 100 del factor de financiamiento (%.2f).", rate, factor)
     note += format("\nIVA aplicado a cada pago: %g%%.", tax) if tax.positive?
+    mora = Product.respond_to?(:mora_rate) ? Product.mora_rate : 0.0
+    note += format("\nInterés moratorio anual sobre pagos vencidos (a partir del 2o día de atraso): %g%% (tasa/360 por día).", mora) if mora.positive?
     ([header] + lines).join("\n") + note
   end
 end

@@ -754,6 +754,11 @@ async function openOrderVerify(id){
   const grp=sibs.length?sibs:[o];
   const allDelivered=grp.every(x=>pick(x,['delivered_at'],null));
   const headNum=o.contract_number?('Contrato '+o.contract_number):(pick(o,['contract_order_ref'],null)||('Orden #'+o.id));
+  // Contrato para firma: generar (rellena la plantilla legal) + WhatsApp; estado de la firma.
+  const docGen=!!pick(o,['contract_document_generated'],false), docSigned=!!pick(o,['contract_signed'],false);
+  const docCell = o.contract_number ? (docSigned
+    ? '<span class="pill p-appr">&#9997;&#65039; Contrato firmado</span>'
+    : `<button class="btn" id="ovDoc" style="background:var(--navy)">&#128196; ${docGen?'Reenviar firma por WhatsApp':'Generar contrato y enviar a firma'}</button>${docGen?'<span class="pill p-pend">Esperando firma del cliente</span>':''}`) : '';
   const itemsHtml=grp.map(it=>{
     const ia=pick(it,['product_asin'],null), iap=!!pick(it,['admin_approved'],false), idel=pick(it,['delivered_at'],null);
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)">
@@ -790,6 +795,7 @@ async function openOrderVerify(id){
       <button class="btn" id="ovWa" style="background:#25D366">WhatsApp al cliente</button>
       <button class="btn" id="ovSave" style="background:#eef0f6;color:var(--navy)">Guardar verificación</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="background:var(--good)">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
+      ${docCell}
       ${allDelivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
       <span class="muted" id="ovMsg"></span>
     </div>
@@ -804,9 +810,21 @@ async function openOrderVerify(id){
   $('ovSave').onclick=async()=>{ $('ovMsg').textContent='Guardando…';
     const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/verify',collect());
     $('ovMsg').textContent=r2.ok?'✓ Guardado':'No se pudo guardar.'; };
+  // Generar contrato + WhatsApp de firma / reenviar.
+  const dbtn=$('ovDoc'); if(dbtn) dbtn.onclick=async()=>{
+    if(!confirm(docGen?'¿Reenviar al cliente el WhatsApp con el enlace de firma?':'¿Generar el contrato con los datos del cliente (plantilla de Control de documentos legales) y enviarle el WhatsApp para que lo firme?')) return;
+    $('ovMsg').textContent='Generando contrato…'; dbtn.disabled=true;
+    const r2=await api('POST','/api/contracts/'+encodeURIComponent(pick(o,['contract_id'],''))+'/generate_document',{send_whatsapp:true});
+    dbtn.disabled=false;
+    if(r2.ok){ const wa=r2.data&&r2.data.whatsapp;
+      $('ovMsg').textContent = (wa&&wa.ok) ? '✓ Contrato generado y WhatsApp de firma enviado.' : ('✓ Contrato generado. '+((wa&&wa.error)||''));
+      setTimeout(async()=>{ await loadOrders('all'); openOrderVerify(id); }, 2200);
+    } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo generar el contrato.'; }
+  };
   $('ovApprove').onclick=async()=>{
     const b=collect();
     if(!(b.beneficiary_verified&&b.buyer_verified&&b.references_verified)){ $('ovMsg').textContent='Verifica las tres secciones antes de aprobar.'; return; }
+    if(docGen&&!docSigned){ if(!confirm('El cliente AÚN NO FIRMA su contrato. ¿Aprobar para compra de todos modos?')) return; }
     if(!confirm('¿Aprobar esta orden para compra en Amazon?')) return;
     b.admin_approved=true; $('ovMsg').textContent='Aprobando…';
     const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/verify',b);

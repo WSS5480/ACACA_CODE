@@ -29,11 +29,19 @@ module Api
       # el staff siempre lo ve completo.
       pending_initial = !contract.initial_paid?
       data[:pending_initial_payment] = pending_initial
-      data[:installments] = if client? && pending_initial
+      # Datos completos = el comprador llenó su cuestionario Y capturó referencias.
+      first_order = contract.orders.first
+      datos_complete = first_order.present? &&
+                       (first_order.respond_to?(:buyer) ? first_order.buyer.present? : true) &&
+                       first_order.referrals.exists?
+      data[:datos_complete] = datos_complete
+      # El CLIENTE ve su calendario de pagos hasta que: pagó el inicial Y completó sus datos.
+      data[:installments] = if client? && (pending_initial || !datos_complete)
                               []
                             else
                               contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
                             end
+      data[:document] = document_payload(contract)
       render json: { data: data }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
@@ -202,6 +210,66 @@ module Api
     end
 
     # DELETE /api/contracts/:id  -> herramienta de limpieza (pruebas). Restaura el saldo al credito.
+    # POST /api/contracts/:id/generate_document  { send_whatsapp: true }
+    # Genera el contrato del cliente desde la plantilla legal (rellena carátula, montos y
+    # tabla de pagos) y le avisa por WhatsApp para que entre a firmarlo. Sólo staff.
+    def generate_document
+      unless %w[master admin sistema editor operador].include?(@current_user&.role&.name)
+        return render json: { error: 'No autorizado' }, status: :forbidden
+      end
+      contract = Contract.find(params[:id])
+      unless contract.respond_to?(:document_text)
+        return render json: { error: 'Falta la migración de firma (bin/rails db:migrate).' }, status: :unprocessable_entity
+      end
+      unless contract.initial_paid?
+        return render json: { error: 'El contrato se genera hasta que el cliente realice el pago inicial.' }, status: :unprocessable_entity
+      end
+      if contract.signed_at.present?
+        return render json: { error: 'Este contrato ya fue FIRMADO; no se puede regenerar.' }, status: :unprocessable_entity
+      end
+
+      contract.assign_contract_number!
+      text = ContractDocument.render(contract)
+      return render(json: { error: 'La plantilla del contrato está vacía (Seguridad → Control de documentos legales).' }, status: :unprocessable_entity) if text.strip.blank?
+
+      contract.update!(document_text: text, document_generated_at: Time.current)
+
+      wa = nil
+      if ActiveModel::Type::Boolean.new.cast(params[:send_whatsapp])
+        wa = send_signing_whatsapp(contract)
+        contract.update_column(:document_sent_at, Time.current) if wa[:ok]
+      end
+      render json: { ok: true, generated_at: contract.document_generated_at, whatsapp: wa }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
+    # POST /api/contracts/:id/sign  { signature: 'data:image/png;base64,...', name: 'Eddie Cantu' }
+    # El CLIENTE firma su contrato (dibuja con dedo o mouse). La firma se guarda en su expediente.
+    def sign
+      contract = Contract.find(params[:id])
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless client? && contract.user_id == @current_user.id
+      return render(json: { error: 'Tu contrato aún no está listo para firma.' }, status: :unprocessable_entity) if !contract.respond_to?(:document_text) || contract.document_text.blank?
+      return render(json: { error: 'Este contrato ya fue firmado.' }, status: :unprocessable_entity) if contract.signed_at.present?
+
+      m = params[:signature].to_s.match(%r{\Adata:image/(png|jpeg);base64,(.+)\z}m)
+      return render(json: { error: 'Firma inválida.' }, status: :unprocessable_entity) unless m
+
+      bin = Base64.decode64(m[2])
+      return render(json: { error: 'La firma está vacía: dibuja tu firma en el recuadro.' }, status: :unprocessable_entity) if bin.bytesize < 400
+
+      ext = m[1] == 'png' ? 'png' : 'jpg'
+      contract.signature.attach(io: StringIO.new(bin), filename: "firma_contrato_#{contract.id}.#{ext}", content_type: "image/#{m[1]}")
+      contract.update!(
+        signed_at: Time.current,
+        signature_name: params[:name].to_s.strip.presence || [@current_user.name, @current_user.last_name].compact.join(' '),
+        signature_ip: request.remote_ip
+      )
+      render json: { ok: true, signed_at: contract.signed_at }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
     def destroy
       contract = Contract.find(params[:id])
       unpaid = !contract.initial_paid?
@@ -243,6 +311,53 @@ module Api
     end
 
     private
+
+    # Estado del documento/firma para el show (cliente y staff).
+    def document_payload(contract)
+      return nil unless contract.respond_to?(:document_text)
+
+      sig_url = nil
+      if contract.signature.attached?
+        sig_url = begin
+          contract.signature.url(expires_in: 1.hour)
+        rescue StandardError
+          begin
+            Rails.application.routes.url_helpers.rails_blob_url(contract.signature)
+          rescue StandardError
+            nil
+          end
+        end
+      end
+      {
+        generated_at: contract.document_generated_at,
+        sent_at: contract.document_sent_at,
+        signed_at: contract.signed_at,
+        signature_name: contract.signature_name,
+        signature_url: sig_url,
+        text: contract.document_text
+      }
+    end
+
+    def send_signing_whatsapp(contract)
+      user = contract.user
+      return { ok: false, error: 'El cliente no tiene teléfono registrado' } if user&.phone.blank?
+
+      front = ENV['FRONT_HOST'].presence || 'https://www.acasamx.com'
+      link = "#{front.chomp('/')}/contratos/#{contract.id}/firmar"
+      body = "Hola #{user.name}! 🎉 Tu contrato #{contract.contract_number} de acasa está listo. " \
+             "Inicia sesión y fírmalo aquí: #{link}\n\n" \
+             "Hello! Your acasa contract #{contract.contract_number} is ready. Please log in and sign it here: #{link}"
+      begin
+        WhatsappCloud.new.send_text(user.phone, body)
+        WhatsappMessage.create!(user: user, direction: 'out', wa_phone: WhatsappCloud.normalize_phone(user.phone),
+                                body: body, sent_by_id: @current_user.id)
+        { ok: true, sent_to: user.phone }
+      rescue WhatsappCloud::NotConfigured
+        { ok: false, error: 'WhatsApp no está configurado en el servidor (el contrato SÍ se generó; el cliente lo verá al entrar a su cuenta).' }
+      rescue StandardError => e
+        { ok: false, error: "No se pudo enviar el WhatsApp: #{e.message} (el contrato SÍ se generó)." }
+      end
+    end
 
     def authorize_staff!
       render json: { error: 'No autorizado' }, status: :forbidden unless staff?

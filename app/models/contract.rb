@@ -7,6 +7,7 @@ class Contract < ApplicationRecord
   has_many :orders, dependent: :nullify
   has_many :payments, dependent: :destroy
   has_many :contract_installments, -> { order(:number) }, dependent: :destroy
+  has_one_attached :signature # firma electrónica del cliente (imagen)
 
   STATUSES = %w[active paid cancelled].freeze
   validates :status, inclusion: { in: STATUSES }

@@ -48,6 +48,12 @@ class ContractSerializer
   attribute :order_ref do |c|
     c.respond_to?(:order_ref) ? c.order_ref : "PED-#{c.id}"
   end
+  attribute :document_generated do |c|
+    c.respond_to?(:document_generated_at) && c.document_generated_at.present?
+  end
+  attribute :document_signed do |c|
+    c.respond_to?(:signed_at) && c.signed_at.present?
+  end
   attribute :client_phone do |c|
     c.user&.phone
   end

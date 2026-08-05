@@ -96,6 +96,8 @@ Rails.application.routes.draw do
     resources :contracts, controller: 'api/contracts', only: [:index, :show, :create, :destroy] do
       post 'record_payment', on: :member
       post 'autopay', on: :member
+      post 'generate_document', on: :member # staff: genera el contrato desde la plantilla y avisa por WhatsApp
+      post 'sign', on: :member              # cliente: firma electrónica (imagen)
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'

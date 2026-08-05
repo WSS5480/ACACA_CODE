@@ -26,6 +26,14 @@ class OrderSerializer
   attribute :contract_weekly_payment do |order|
     order.respond_to?(:contract) ? order.contract&.weekly_payment : nil
   end
+  attribute :contract_document_generated do |order|
+    c = order.respond_to?(:contract) ? order.contract : nil
+    !!(c && c.respond_to?(:document_generated_at) && c.document_generated_at.present?)
+  end
+  attribute :contract_signed do |order|
+    c = order.respond_to?(:contract) ? order.contract : nil
+    !!(c && c.respond_to?(:signed_at) && c.signed_at.present?)
+  end
 
   %i[beneficiary_verified beneficiary_comment buyer_verified buyer_comment
      references_verified references_comment admin_approved approved_at delivered_at].each do |f|

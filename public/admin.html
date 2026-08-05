@@ -713,8 +713,11 @@ async function loadOrders(where){
   if(where==='all') list=list.slice().reverse();
   if(where==='dashboard' && $('ordSort').value==='asc') list.reverse();
   ALLORD=list; // caché para la pantalla de verificación (artículos hermanos del contrato)
-  const disp=groupOrders(list); // una compra (contrato) = UNA fila
-  body.innerHTML = disp.length ? disp.map(g=>orderRow(g,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">No se encontraron órdenes</td></tr>`;
+  let disp=groupOrders(list); // una compra (contrato) = UNA fila
+  // Órdenes es SOLO el pipeline de trabajo: al ENTREGARSE todos los artículos, la compra
+  // sale de aquí y vive con el cliente (pantalla del cliente / ficha), activa o liquidada.
+  disp=disp.filter(g=>!g.every(x=>pick(x,['delivered_at'],null)));
+  body.innerHTML = disp.length ? disp.map(g=>orderRow(g,where==='all')).join('') : `<tr><td colspan="${cols}" class="empty">Sin órdenes en trabajo — las entregadas viven en la pantalla de cada cliente.</td></tr>`;
   if(where==='all'){ body.querySelectorAll('.ord-row').forEach(tr=>tr.onclick=()=>openOrderVerify(tr.dataset.oid));
     body.querySelectorAll('.wabtn').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); waChatOpen(b.dataset.uid, b.dataset.name);}); }
 }

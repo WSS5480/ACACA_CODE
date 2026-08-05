@@ -42,6 +42,19 @@ module Api
                               contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
                             end
       data[:document] = document_payload(contract)
+      # Expediente de la compra: TODO lo que el cliente capturó (comprador, referencias,
+      # beneficiario, aval y sus documentos). Visible para el dueño y para el staff.
+      buyer_rec = first_order && first_order.respond_to?(:buyer) ? first_order.buyer : nil
+      buyer_rec ||= contract.orders.filter_map { |o| o.respond_to?(:buyer) ? o.buyer : nil }.first
+      gua_rec = contract.orders.filter_map { |o| o.respond_to?(:guarantor) ? o.guarantor : nil }.first
+      ben_rec = contract.orders.filter_map(&:beneficiary).first || contract.user&.beneficiaries&.first
+      refs_rec = contract.orders.map(&:referrals).find(&:present?) || []
+      data[:expediente] = {
+        buyer: buyer_rec ? BuyerSerializer.new(buyer_rec).serializable_hash[:data][:attributes] : nil,
+        guarantor: gua_rec ? GuarantorSerializer.new(gua_rec).serializable_hash[:data][:attributes] : nil,
+        beneficiary: ben_rec ? BeneficiarySerializer.new(ben_rec).serializable_hash[:data][:attributes] : nil,
+        referrals: refs_rec.map { |rf| ReferralSerializer.new(rf).serializable_hash[:data][:attributes] }
+      }
       render json: { data: data }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found

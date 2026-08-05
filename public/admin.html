@@ -1050,8 +1050,9 @@ async function openClientSheet(uid){
     ${fichaSec('Contratos y firmas ('+ctrs.length+')', ctrs.length ? ctrs.map(ct=>{
       const num=ct.contract_number||ct.order_ref||('#'+ct.id);
       let estado;
-      if(ct.signed_at) estado='<span class="pill p-appr">&#9997;&#65039; Firmado por '+esc(ct.signature_name||'')+' el '+fdate(ct.signed_at)+'</span>'+(ct.signature_url?(' <a href="'+esc(ct.signature_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver firma</a>'):'');
-      else if(ct.document_generated_at) estado='<span class="pill p-pend">Contrato enviado '+fdate(ct.document_sent_at||ct.document_generated_at)+' — esperando firma</span>';
+      const docLink=' <a href="#" class="ctview" data-cid="'+esc(String(ct.id))+'" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver contrato</a>';
+      if(ct.signed_at) estado='<span class="pill p-appr">&#9997;&#65039; Firmado por '+esc(ct.signature_name||'')+' el '+fdate(ct.signed_at)+'</span>'+docLink+(ct.signature_url?(' · <a href="'+esc(ct.signature_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver firma</a>'):'');
+      else if(ct.document_generated_at) estado='<span class="pill p-pend">Contrato enviado '+fdate(ct.document_sent_at||ct.document_generated_at)+' — esperando firma</span>'+docLink;
       else if(ct.initial_paid) estado='<span class="pill p-other">Pagado — contrato sin generar</span>';
       else estado='<span class="pill p-canc">Pedido sin pago inicial (CRM)</span>';
       return qaRow(num+' · '+money(ct.total_amount)+' · '+fdate(ct.created_at), estado);
@@ -1061,6 +1062,43 @@ async function openClientSheet(uid){
     ${fichaSec('Bitácora de conversaciones ('+logs.length+')', logsHtml)}`;
   $('fichaBack').onclick=(e)=>{e.preventDefault(); fi.style.display='none'; fi.innerHTML=''; const w=$('conTableWrap'); if(w) w.style.display=''; const s2=$('conStats'); if(s2) s2.style.display='flex'; };
   bindConvBtns(fi);
+  fi.querySelectorAll('.ctview').forEach(a=>a.onclick=(e)=>{e.preventDefault(); viewContractDoc(a.dataset.cid);});
+}
+
+// Visor del contrato generado/firmado (copia fiel + firma) con opción de imprimir.
+async function viewContractDoc(cid){
+  const r=await api('GET','/api/contracts/'+encodeURIComponent(cid));
+  const d=r.data&&r.data.data, doc=d&&d.document;
+  if(!doc||!doc.text){ alert('Este contrato aún no tiene documento generado.'); return; }
+  let ov=$('docOverlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='docOverlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:998;display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:14px;width:min(880px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:12px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)">
+        <b id="docTitle" style="flex:1;font-size:14px"></b>
+        <button class="btn" id="docPrint" style="background:#eef0f6;color:var(--navy)">Imprimir / PDF</button>
+        <button id="docClose" style="border:0;background:none;font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div id="docBody" style="overflow-y:auto;padding:22px;white-space:pre-wrap;font-family:Georgia,'Times New Roman',serif;font-size:12.8px;line-height:1.6"></div></div>`;
+    document.body.appendChild(ov);
+    $('docClose').onclick=()=>{ ov.style.display='none'; };
+  }
+  ov.style.display='flex';
+  $('docTitle').textContent='Contrato '+(d.contract_number||d.order_ref||'')+(doc.signed_at?(' — FIRMADO el '+fdate(doc.signed_at)):' — SIN FIRMAR');
+  $('docBody').textContent=doc.text;
+  if(doc.signed_at){
+    const sig=document.createElement('div');
+    sig.style.cssText='margin-top:26px;border-top:1.5px solid #777;padding-top:12px;white-space:normal;font-family:sans-serif';
+    sig.innerHTML='<div style="font-weight:700;font-size:13px">Firmado electrónicamente por '+esc(doc.signature_name||'')+' el '+fdate(doc.signed_at)+'</div>'
+      +(doc.signature_url?('<img src="'+esc(doc.signature_url)+'" alt="Firma" style="max-height:90px;display:block;margin-top:8px;border:1px solid #ddd;border-radius:6px;background:#fff">'):'');
+    $('docBody').appendChild(sig);
+  }
+  $('docPrint').onclick=()=>{
+    const w=window.open('','_blank'); if(!w){ alert('Permite ventanas emergentes para imprimir.'); return; }
+    w.document.write('<html><head><title>'+(d.contract_number||'Contrato')+'</title></head><body><div style="white-space:pre-wrap;font-family:Georgia,serif;font-size:12px;line-height:1.6">'+$('docBody').innerHTML+'</div></body></html>');
+    w.document.close(); setTimeout(()=>w.print(), 300);
+  };
 }
 
 /* ---------------- Clients / Credits ---------------- */

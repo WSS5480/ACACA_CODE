@@ -75,36 +75,29 @@ class Api::OrdersController < ApplicationController
 
   def show
     response = OrderSerializer.new(@order).serializable_hash
-    
-    # Agregar información del beneficiario al mismo nivel que attributes
-    if @order.beneficiary.present?
-      response[:data][:beneficiary] = BeneficiarySerializer.new(@order.beneficiary).serializable_hash[:data][:attributes]
-    else
-      response[:data][:beneficiary] = nil
-    end
-    # Agregar información del comprador al mismo nivel que attributes
-    if @order.buyer.present?
-      response[:data][:buyer] = BuyerSerializer.new(@order.buyer).serializable_hash[:data][:attributes]
-    else
-      response[:data][:buyer] = nil
-    end
-    # Agregar información del aval al mismo nivel que attributes
-    if @order.guarantor.present?
-      response[:data][:guarantor] = GuarantorSerializer.new(@order.guarantor).serializable_hash[:data][:attributes]
-    else
-      response[:data][:guarantor] = nil
-    end
-    # Agregar información de los referidos al mismo nivel que attributes
-    if @order.referrals.present?
-      response[:data][:referrals] = @order.referrals.map do |referral|
-        ReferralSerializer.new(referral).serializable_hash[:data][:attributes]
-      end
-    else
-      response[:data][:referrals] = []
-    end
+
+    # Los datos de la compra (comprador, aval, referencias, beneficiario) se capturan UNA sola vez
+    # por contrato y viven en una de las órdenes hermanas (la primera): resolverlos desde
+    # CUALQUIER orden del grupo, sin importar cuál se abra en la verificación.
+    siblings = if @order.contract_id.present?
+                 Order.where(contract_id: @order.contract_id).order(:id).includes(:buyer, :guarantor, :referrals, :beneficiary).to_a
+               else
+                 [@order]
+               end
+    buyer = (@order.respond_to?(:buyer) ? @order.buyer : nil) ||
+            siblings.filter_map { |s| s.respond_to?(:buyer) ? s.buyer : nil }.first
+    beneficiary = @order.beneficiary || siblings.filter_map(&:beneficiary).first
+    guarantor = (@order.respond_to?(:guarantor) ? @order.guarantor : nil) ||
+                siblings.filter_map { |s| s.respond_to?(:guarantor) ? s.guarantor : nil }.first
+    referrals = @order.referrals.presence || siblings.map(&:referrals).find(&:present?) || []
+
+    response[:data][:beneficiary] = beneficiary ? BeneficiarySerializer.new(beneficiary).serializable_hash[:data][:attributes] : nil
+    response[:data][:buyer] = buyer ? BuyerSerializer.new(buyer).serializable_hash[:data][:attributes] : nil
+    response[:data][:guarantor] = guarantor ? GuarantorSerializer.new(guarantor).serializable_hash[:data][:attributes] : nil
+    response[:data][:referrals] = referrals.map { |referral| ReferralSerializer.new(referral).serializable_hash[:data][:attributes] }
 
     # Alertas de dirección: el CP debe corresponder a la ciudad/estado capturados (datos reales).
-    response[:data][:address_alerts] = address_alerts_for(@order)
+    response[:data][:address_alerts] = address_alerts_for(@order, buyer: buyer, beneficiary: beneficiary)
 
     render json: response, status: :ok
   end
@@ -314,10 +307,12 @@ class Api::OrdersController < ApplicationController
   end
 
   # Compara CP vs ciudad/estado del comprador (EUA) y del beneficiario (MX) contra datos reales.
-  def address_alerts_for(order)
+  def address_alerts_for(order, buyer: nil, beneficiary: nil)
     alerts = []
-    if order.respond_to?(:buyer) && order.buyer.present?
-      b = order.buyer
+    b_rec = buyer || (order.respond_to?(:buyer) ? order.buyer : nil)
+    ben_rec = beneficiary || order.beneficiary
+    if b_rec.present?
+      b = b_rec
       r = ZipLookup.check(country: 'US', zip: b.living_zip_code, city: b.living_city, state: b.living_state)
       if r[:status] == 'mismatch'
         expected = [r[:expected_city], r[:expected_state]].compact.join(', ')
@@ -326,8 +321,8 @@ class Api::OrdersController < ApplicationController
                     message: "El ZIP #{b.living_zip_code} (EUA) corresponde a #{expected}, pero el cliente escribió: #{entered}." }
       end
     end
-    if order.beneficiary.present?
-      ben = order.beneficiary
+    if ben_rec.present?
+      ben = ben_rec
       r = ZipLookup.check(country: 'MX', zip: ben.zip_code, city: ben.city, state: ben.state)
       if r[:status] == 'mismatch'
         expected = [r[:expected_city], r[:expected_state]].compact.join(', ')

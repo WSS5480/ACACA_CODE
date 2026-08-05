@@ -260,8 +260,8 @@
       <div id="conTableWrap"><div class="sec"><div style="overflow-x:auto">
         <table><thead><tr>
           <th>Contrato</th><th>Cliente</th><th class="right">Total</th><th class="right">Financiado</th>
-          <th class="right">Pago x sem</th><th class="right">Saldo</th><th>Próximo Venc.</th><th>Plazo</th><th>Estatus</th><th>Entrega</th><th class="right">Articulos</th>
-        </tr></thead><tbody id="conBody"><tr><td colspan="11" class="empty">Cargando...</td></tr></tbody></table>
+          <th class="right">Pago x sem</th><th class="right">Saldo</th><th>Próximo Venc.</th><th>Plazo</th><th title="Activo = aún debe pagos · Inactivo = liquidado o cancelado">Cuenta</th><th>Estatus</th><th>Entrega</th><th class="right">Articulos</th>
+        </tr></thead><tbody id="conBody"><tr><td colspan="12" class="empty">Cargando...</td></tr></tbody></table>
       </div></div></div>
       <div id="conDetail" style="display:none"></div>
       <div id="cliFicha" style="display:none"></div>
@@ -1052,6 +1052,7 @@ async function openClientSheet(uid){
     ${fichaSec('Solicitud — preguntas y respuestas', solicitud)}
     ${fichaSec('Contratos y firmas ('+ctrs.length+')', ctrs.length ? ctrs.map(ct=>{
       const num=ct.contract_number||ct.order_ref||('#'+ct.id);
+      const acct=['current','past_due','active'].includes(String(ct.payment_status||''))?'<span class="pill p-appr">Activo</span> ':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span> ';
       let estado;
       const docLink=' <a href="#" class="ctview" data-cid="'+esc(String(ct.id))+'" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver contrato</a>';
       if(ct.signed_at) estado='<span class="pill p-appr">&#9997;&#65039; Firmado por '+esc(ct.signature_name||'')+' el '+fdate(ct.signed_at)+'</span>'+docLink+(ct.signature_url?(' · <a href="'+esc(ct.signature_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver firma</a>'):'');
@@ -1116,11 +1117,12 @@ async function loadClients(){
       const num=pick(u,['number','client_number','phone'],'—');
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null);
       const bal=(line!=null&&avail!=null)?Math.round((Number(line)-Number(avail))*100)/100:pick(u,['account_balance'],null);
-      return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+      return `<tr class="cli-row" data-uid="${esc(String(u.id||''))}"><td><button class="cliexp" data-id="${esc(String(u.id||''))}" title="Ver sus contratos aquí" style="border:0;background:none;cursor:pointer;font-size:12px;color:var(--brand-d);margin-right:4px">&#9654;</button><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
         <td class="right"><button class="convcli" data-id="${esc(id)}" data-name="${esc(name)}" data-phone="${esc(pick(u,['phone'],'')||'')}" title="Conversación / WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;margin-right:8px">&#9990;</button><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
     }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;
+    $('cliBody').querySelectorAll('.cliexp').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); toggleClientContracts(b);});
     $('cliBody').querySelectorAll('.convcli').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.id, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
     $('cliBody').querySelectorAll('.recalccli').forEach(b=>b.onclick=()=>recalcClient(b.dataset.id));
@@ -1128,6 +1130,34 @@ async function loadClients(){
   };
   render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
 }
+// Contratos del cliente desplegados DEBAJO de su fila en Clientes (activos e inactivos).
+async function toggleClientContracts(btn){
+  const tr=btn.closest('tr'); if(!tr) return;
+  const next=tr.nextElementSibling;
+  if(next && next.classList.contains('cli-sub')){ next.remove(); btn.innerHTML='&#9654;'; return; }
+  btn.innerHTML='&#9660;';
+  const sub=document.createElement('tr'); sub.className='cli-sub';
+  sub.innerHTML='<td colspan="9" style="background:#f7f8fb;padding:6px 14px 10px"><span class="muted">Cargando contratos…</span></td>';
+  tr.after(sub);
+  const r=await api('GET','/api/contracts?user_id='+encodeURIComponent(btn.dataset.id));
+  const list=r.ok?rows(r.data):[];
+  const visibles=list.filter(c=>pick(c,['initial_paid'],true)||String(pick(c,['status'],''))!=='active'); // pedidos sin pago viven en CRM
+  sub.firstElementChild.innerHTML = visibles.length ? ('<div style="padding:4px 0 2px;font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em">Contratos de este cliente</div>'+visibles.map(c=>{
+    const ps=String(pick(c,['payment_status'],''));
+    const act=['current','past_due','active'].includes(ps)?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>';
+    const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||('#'+c.id);
+    const bal=pick(c,['balance'],null), tot=pick(c,['total_amount'],null);
+    return `<div style="display:flex;align-items:center;gap:14px;padding:7px 0;border-top:1px dashed var(--line);font-size:13px">
+      <a href="#" onclick="event.preventDefault();loaded.con=1;show('contratos');openContract('${esc(String(c.id))}')" class="mono" style="color:var(--brand-d);font-weight:700;min-width:110px">${esc(num)}</a>
+      ${act}
+      ${conStatusPill(ps)}
+      <span class="mono">Total ${tot!=null?money(tot):'—'}</span>
+      <span class="mono">Saldo ${bal!=null?money(bal):'—'}</span>
+      <span class="muted">${fdate(pick(c,['created_at'],null))}</span>
+    </div>`;
+  }).join('')) : '<span class="muted">Sin contratos todavía (los pedidos sin pago inicial están en el CRM).</span>';
+}
+
 async function recalcClient(id){
   if(!confirm('Recalcular el credito de este cliente con la version ACTIVA del motor de riesgo?')) return;
   const r=await api('POST','/api/risk_engine/recalc_credit',{user_ids:[id]});
@@ -1175,7 +1205,7 @@ async function loadContracts(userId){
   const dt=$('conDetail'); if(dt){ dt.style.display='none'; dt.innerHTML=''; }
   const wrap=$('conTableWrap'); if(wrap) wrap.style.display='';
   const body=$('conBody'); if(!body) return;
-  body.innerHTML='<tr><td colspan="11" class="empty">Cargando...</td></tr>';
+  body.innerHTML='<tr><td colspan="12" class="empty">Cargando...</td></tr>';
   // Pantalla del cliente: su NOMBRE es el encabezado (en lugar de "Contratos del cliente"),
   // con botones junto al nombre: Ficha del cliente y Conversación.
   let cliRec=null;
@@ -1189,7 +1219,7 @@ async function loadContracts(userId){
     cb.onclick=()=>convOpen({user_id:userId, name:cliName||('Cliente #'+userId), phone:cliRec?pick(cliRec,['phone'],null):null, person_type:'customer'}); }
   const cf=$('conClearFilter'); if(cf){ cf.style.display = userId ? '' : 'none'; cf.onclick=(e)=>{e.preventDefault(); loadContracts(null);}; }
   const r=await api('GET','/api/contracts'+(userId?('?user_id='+encodeURIComponent(userId)):''));
-  if(!r.ok){ body.innerHTML='<tr><td colspan="11" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
+  if(!r.ok){ body.innerHTML='<tr><td colspan="12" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
   // Un contrato EXISTE hasta que se paga el pago inicial; los pedidos sin pagar viven SOLO en el CRM.
   const list=rows(r.data).filter(c=>pick(c,['initial_paid'],true)||String(pick(c,['status'],''))!=='active');
   body.innerHTML = list.length ? list.map(c=>{
@@ -1206,8 +1236,9 @@ async function loadContracts(userId){
       <td class="right mono">${bal!=null?money(bal):'-'}</td>
       <td>${fdate(ndd)}${dpd>0?` <span style="color:var(--bad);font-size:11.5px;font-weight:700">(${dpd}d)</span>`:''}</td>
       <td>${weeks!=null?esc(weeks)+' sem':'-'}</td>
+      <td>${['current','past_due','active'].includes(String(ps))?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>'}</td>
       <td>${conStatusPill(ps)}</td><td>${(function(){const f=String(pick(c,['fulfillment'],'')||'');const m={pendiente:['p-pend','Pendiente'],por_entregar:['p-other','Por entregar'],entregado:['p-appr','Entregado']}[f];return m?`<span class=\"pill ${m[0]}\">${m[1]}</span>`:'—';})()}</td><td class="right">${esc(items)}</td></tr>`;
-  }).join('') : '<tr><td colspan="11" class="empty">No hay contratos todavia</td></tr>';
+  }).join('') : '<tr><td colspan="12" class="empty">No hay contratos todavia</td></tr>';
   body.querySelectorAll('.con-row').forEach(tr=>tr.onclick=()=>openContract(tr.dataset.id));
   CONLIST=list; renderConStats(list);
 }

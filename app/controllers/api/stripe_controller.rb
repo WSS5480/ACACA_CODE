@@ -25,7 +25,7 @@ module Api
         setup_future_usage: 'off_session',
         automatic_payment_methods: { enabled: true },
         description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
-        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: params[:kind].to_s }
+        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: params[:kind].to_s, apply_to: params[:apply_to].to_s }
       })
       render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'] }, status: :ok
     rescue StripeClient::Error => e
@@ -73,7 +73,7 @@ module Api
         off_session: 'true',
         confirm: 'true',
         description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
-        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: 'saved' }
+        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: 'saved', apply_to: params[:apply_to].to_s }
       })
       if pi['status'] == 'succeeded'
         payment = apply_stripe_payment!(pi)
@@ -160,7 +160,11 @@ module Api
       note += " | cargos adicionales (enganche/seguro) $#{'%.2f' % fee}" if fee > 0
       note += " | total cobrado $#{'%.2f' % total}"
 
-      contract.payments.create!(amount: base, method: 'stripe', note: note, stripe_payment_intent_id: pi_id)
+      pmt = contract.payments.new(amount: base, method: 'stripe', note: note, stripe_payment_intent_id: pi_id)
+      # 'saldo' = el excedente paga principal (acorta plazo y ahorra el cargo financiero).
+      pmt.apply_mode = pi.dig('metadata', 'apply_to').to_s
+      pmt.save!
+      pmt
     end
   end
 end

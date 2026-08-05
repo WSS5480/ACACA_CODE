@@ -34,6 +34,10 @@ class ContractSerializer
   attribute :frequency do |c|
     c.freq
   end
+  # Cargo financiero (interés implícito): diferencia del factor a 100 (1.25 → 25%).
+  attribute :interest_rate do |c|
+    c.respond_to?(:interest_rate) ? c.interest_rate : 25.0
+  end
   attribute :first_due_date do |c|
     c.first_due_date
   end

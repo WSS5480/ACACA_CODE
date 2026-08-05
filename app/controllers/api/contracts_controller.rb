@@ -183,7 +183,10 @@ module Api
       return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if amount <= 0
 
       paid_at = params[:paid_on].present? ? ((Time.zone.parse(params[:paid_on].to_s) rescue nil)) : nil
-      contract.payments.create!(amount: amount, method: params[:method], note: params[:note], paid_at: paid_at)
+      pmt = contract.payments.new(amount: amount, method: params[:method], note: params[:note], paid_at: paid_at)
+      # 'saldo' = el excedente paga principal (acorta plazo y ahorra interés); default = 'plazo'.
+      pmt.apply_mode = params[:apply_to].to_s if params[:apply_to].present?
+      pmt.save!
       contract.reload
       render json: {
         ok: true,

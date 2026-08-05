@@ -170,6 +170,71 @@ class Contract < ApplicationRecord
     contract_installments.create!(rows)
   end
 
+  # Cargo financiero implícito del modelo: la diferencia del factor a 100.
+  # factor 1.25 → 25% sobre el principal financiado.
+  def finance_factor
+    defined?(Product::FINANCE_FACTOR) ? Product::FINANCE_FACTOR : 1.25
+  end
+
+  def interest_rate
+    ((finance_factor - 1) * 100).round(2)
+  end
+
+  # Pago aplicado a SALDO: el excedente (más allá de la cuota próxima pendiente) paga
+  # PRINCIPAL directo, así que se le perdona el cargo financiero (factor − 1) sobre ese
+  # excedente → el saldo baja por 1.25x el extra, el plazo se ACORTA y se ahorra interés.
+  # (El modo normal/PLAZO usa apply_payment!: el extra adelanta cuotas futuras.)
+  def apply_payment_saldo!(amount)
+    nxt = contract_installments.where.not(status: 'paid').order(:number).first
+    due = nxt ? (nxt.amount.to_f - nxt.paid_amount.to_f).round(2) : 0.0
+    cover = [amount.to_f, due].min.round(2)
+    extra = (amount.to_f - cover).round(2)
+
+    apply_payment!(cover) if cover.positive?
+
+    if extra.positive?
+      rebate = (extra * (finance_factor - 1)).round(2)
+      new_fin = [(financed_amount.to_f - rebate).round(2), total_paid].max
+      update_columns(financed_amount: new_fin)
+      rebuild_pending_schedule!
+    end
+    reload
+  end
+
+  # Reconstruye SOLO las cuotas pendientes con el saldo actual y el mismo monto de pago:
+  # menos cuotas = plazo más corto. Las cuotas pagadas quedan intactas como historial.
+  def rebuild_pending_schedule!
+    pend = contract_installments.where.not(status: 'paid').order(:number).to_a
+    rem = balance
+    if rem <= 0.009
+      contract_installments.where.not(status: 'paid').delete_all
+      update_columns(status: 'paid') unless status == 'cancelled'
+      return
+    end
+    return if pend.empty?
+
+    start_num = pend.first.number
+    first_due = pend.first.due_date || due_date_for_period(start_num)
+    per = [period_payment.to_f, 0.01].max
+    contract_installments.where.not(status: 'paid').delete_all
+
+    n = (rem / per).ceil
+    n = 1 if n < 1
+    acc = 0.0
+    rows = (0...n).map do |i|
+      amt = i == n - 1 ? (rem - acc).round(2) : [per, (rem - acc)].min.round(2)
+      acc = (acc + amt).round(2)
+      due_date = case freq
+                 when 'monthly'  then first_due >> i
+                 when 'biweekly' then first_due + (i * 14)
+                 else                 first_due + (i * 7)
+                 end
+      { number: start_num + i, due_date: due_date, amount: amt, paid_amount: 0, status: 'pending' }
+    end
+    contract_installments.create!(rows)
+    update_columns(weeks: contract_installments.count) if respond_to?(:weeks)
+  end
+
   # Aplica un pago a las cuotas pendientes mas antiguas (auto-completa la tabla).
   # Devuelve el sobrante si el pago excede el saldo.
   def apply_payment!(amount)

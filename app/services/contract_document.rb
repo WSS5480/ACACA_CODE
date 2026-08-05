@@ -91,7 +91,8 @@ class ContractDocument
       'monto_total' => money(@c.downpayment.to_f + @c.financed_amount.to_f),
       'monto_exencion' => exencion ? money(exencion) : '0.00',
       'cuota_procesamiento' => nil,
-      'tasa_ordinaria' => nil,
+      # Interés/cargo financiero = diferencia del factor a 100 (1.25 → 25%).
+      'tasa_ordinaria' => format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0)),
       'tasa_moratoria' => nil,
       'descuento_anticipado' => nil,
       'cat' => nil,
@@ -144,6 +145,9 @@ class ContractDocument
              exencion ? "$#{money(exencion)}" : '$0.00',
              "$#{money(total_row)}", "$#{money(saldo)}")
     end
-    ([header] + lines).join("\n")
+    rate = @c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0
+    factor = @c.respond_to?(:finance_factor) ? @c.finance_factor : 1.25
+    note = format("\nTasa de interés (cargo financiero) aplicada al monto financiado: %g%% — corresponde a la diferencia a 100 del factor de financiamiento (%.2f).", rate, factor)
+    ([header] + lines).join("\n") + note
   end
 end

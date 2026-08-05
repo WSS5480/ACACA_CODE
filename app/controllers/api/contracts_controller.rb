@@ -4,7 +4,8 @@ module Api
   class ContractsController < ApplicationController
     include TokenAuthenticatable
 
-    before_action :authorize_staff!, only: [:destroy]
+    # destroy hace sus propias validaciones: staff borra cualquiera; un cliente sólo puede
+    # CANCELAR su propio pedido mientras NO haya realizado el pago inicial.
 
     # GET /api/contracts?user_id=
     def index
@@ -203,15 +204,35 @@ module Api
     # DELETE /api/contracts/:id  -> herramienta de limpieza (pruebas). Restaura el saldo al credito.
     def destroy
       contract = Contract.find(params[:id])
+      unpaid = !contract.initial_paid?
+
+      if client?
+        # El cliente puede CANCELAR su propio pedido sólo si aún no paga el pago inicial.
+        return render(json: { error: 'No autorizado' }, status: :forbidden) unless contract.user_id == @current_user.id
+        unless unpaid
+          return render(json: { error: 'Este contrato ya tiene pagos registrados; contáctanos para cualquier aclaración.' }, status: :unprocessable_entity)
+        end
+      elsif !staff?
+        return render(json: { error: 'No autorizado' }, status: :forbidden)
+      end
+
       user = contract.user
-      bal = contract.balance
+      # Crédito a restaurar: en un pedido SIN pagar se consumió el PRINCIPAL (contado - enganche);
+      # en un contrato pagado (herramienta de staff) se restaura el saldo pendiente.
+      restore = unpaid ? [(contract.total_amount.to_f - contract.downpayment.to_f).round(2), 0].max : contract.balance
       ActiveRecord::Base.transaction do
-        if user&.credit && bal > 0
+        if user&.credit && restore > 0
           cr = user.credit
           limit = (cr.respond_to?(:credit_limit) ? cr.credit_limit : nil) || cr.amount
-          cr.update!(amount: [cr.amount.to_f + bal, limit.to_f].min.round(2))
+          cr.update!(amount: [cr.amount.to_f + restore, limit.to_f].min.round(2))
         end
-        contract.orders.update_all(contract_id: nil)
+        if unpaid
+          # Cancelación de un pedido sin pago: se elimina TODO el intento (artículos incluidos)
+          # para que no queden órdenes huérfanas en el pipeline.
+          contract.orders.find_each(&:destroy!)
+        else
+          contract.orders.update_all(contract_id: nil)
+        end
         contract.destroy!
       end
       render json: { ok: true }, status: :ok

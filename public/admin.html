@@ -1118,7 +1118,8 @@ async function loadContracts(userId){
   const cf=$('conClearFilter'); if(cf){ cf.style.display = userId ? '' : 'none'; cf.onclick=(e)=>{e.preventDefault(); loadContracts(null);}; }
   const r=await api('GET','/api/contracts'+(userId?('?user_id='+encodeURIComponent(userId)):''));
   if(!r.ok){ body.innerHTML='<tr><td colspan="11" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
-  const list=rows(r.data);
+  // Un contrato EXISTE hasta que se paga el pago inicial; los pedidos sin pagar viven SOLO en el CRM.
+  const list=rows(r.data).filter(c=>pick(c,['initial_paid'],true)||String(pick(c,['status'],''))!=='active');
   body.innerHTML = list.length ? list.map(c=>{
     const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||'-', cli=pick(c,['client_name'],'-');
     const total=pick(c,['total_amount'],null), fin=pick(c,['financed_amount'],null);

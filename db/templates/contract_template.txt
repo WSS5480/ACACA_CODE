@@ -1,0 +1,235 @@
+CONTRATO DE VENTA A CRÉDITO (de ahora en adelante “EL CONTRATO”) en términos del SÉPTIMO CAPÍTULO (Artículos 66, 67, 68, 69, 70, 71 y 72) de la Ley Federal de Protección al Consumidor entre el VENDEDOR y el COMPRADOR (cuyos nombres y datos se definen en la carátula del presente contrato) respecto del bien mueble descrito y señalado en la carátula de este contrato, en los siguientes términos y condiciones.
+
+════════════════════════════════════════════
+CARÁTULA
+════════════════════════════════════════════
+
+Número de Contrato: {{numero_contrato}}
+Fecha del Contrato: {{fecha_contrato}}
+
+DATOS DEL VENDEDOR
+  Otthon Group, S.A.P.I. de C.V.
+  RFC: OGR250924R47
+  Dirección: Av. Manuel Gómez Morin No. 350 int. PB6A-2, Valle del Campestre, San Pedro Garza García, Nuevo León, México. C.P. 66265
+  Teléfono:
+  Correo electrónico: clientes@acasa.mx
+  Horario de atención: Lun a Vie de las 09:00 a las 17:00 hrs y Sáb de las 09:00 a las 14:00 hrs.
+  Página de Internet: www.acasa.mx
+
+DATOS DEL COMPRADOR
+  Nombre: {{comprador_nombre}}
+  RFC: {{comprador_rfc}}
+  Dirección: {{comprador_direccion}}
+  Teléfono: {{comprador_telefono}}
+  Correo Electrónico: {{comprador_email}}
+
+DATOS DEL OBLIGADO SOLIDARIO
+  Nombre: {{obligado_nombre}}
+  RFC: {{obligado_rfc}}
+  Dirección: {{obligado_direccion}}
+  Teléfono: {{obligado_telefono}}
+  Correo Electrónico: {{obligado_email}}
+
+DESCRIPCIÓN DEL BIEN MUEBLE
+  No. de Bien Mueble: {{bien_numero}}
+  Descripción del Bien Mueble: {{bien_descripcion}}
+  Número de Serie: {{bien_serie}}
+  Modelo: {{bien_modelo}}
+  Condición del Bien Mueble: Nuevo
+
+DATOS ECONÓMICOS DEL CRÉDITO
+  Monto de Contado: $ {{monto_contado}}
+  Monto del Enganche: $ {{monto_enganche}}
+  Monto del Crédito: $ {{monto_credito}}
+  Monto del Pago: $ {{monto_pago}}
+  Periodicidad del Pago: {{periodicidad}}
+  Número de Pagos a Realizarse: {{numero_pagos}}
+  Monto Total a Pagar: $ {{monto_total}}
+  Monto Exención de Responsabilidad (Opcional) en cada periodo de pago a realizarse: $ {{monto_exencion}}
+  Cuota de Procesamiento: $ {{cuota_procesamiento}}
+  Tasa de Interés Ordinario anual: {{tasa_ordinaria}} %
+  Tasa de Intereses Moratorios: {{tasa_moratoria}} %
+  Porcentaje de descuento por pago total anticipado en una sola exhibición: {{descuento_anticipado}} %
+  CAT · Costo Anual Total: {{cat}} % Fijo Sin IVA. Para fines informativos y de comparación exclusivamente.
+
+MONEDA EN LA CUAL SE CALCULARÁN Y PAGARÁN LAS OBLIGACIONES (OPCIONAL): A elección del COMPRADOR, el presente crédito y todas sus obligaciones se calcularán y pagarán en la siguiente moneda de circulación legal:
+  ( {{moneda_mxn}} ) MXN - Pesos Mexicanos
+  ( {{moneda_usd}} ) USD - Dólares Norteamericanos, o su equivalente al momento de pago en Pesos Mexicanos
+
+Metodología de cálculo de interés: El cálculo de intereses se realizará multiplicando el saldo insoluto del crédito, por la tasa de interés dividido entre 360 días por año, multiplicando por el número de días efectivamente transcurridos.
+
+Cuide su capacidad de pago, generalmente no debe de exceder del 35% de sus ingresos periódicos, los costos por mora son muy elevados.
+
+Autorización: Estoy de acuerdo y autorizo el cobro del monto de Exención de Responsabilidad señalado, por cada periodo de pago:  ( {{exencion_si}} ) Sí  ( {{exencion_no}} ) No
+______________________________________ Firma del COMPRADOR
+
+Autorización: Los datos personales pueden utilizarse para mercadeo:  ( {{mercadeo_si}} ) Sí  ( {{mercadeo_no}} ) No
+______________________________________ Firma del COMPRADOR
+
+DOMICILIO DE ENTREGA DEL BIEN MUEBLE: A elección del COMPRADOR, el Bien Mueble materia del presente contrato será entregado en el siguiente domicilio:
+  Calle: {{entrega_calle}}, Número exterior: {{entrega_num_ext}}, Número interior: {{entrega_num_int}}
+  Colonia: {{entrega_colonia}}, Ciudad o Población: {{entrega_ciudad}}, Estado: {{entrega_estado}}, C.P.: {{entrega_cp}}
+  Persona que recibe el Bien Mueble: {{entrega_recibe}}
+
+DUDAS, ACLARACIONES Y RECLAMACIONES: Para cualquier duda, aclaración o reclamación, favor de dirigirse al VENDEDOR cuyos datos están asentados en la carátula de este contrato, o en su caso a PROFECO al teléfono 55-5568-8722 o al 800-468-8722, página de Internet: www.profeco.gob.mx
+
+Estado de Cuenta / Consulta de movimientos. Estado de cuenta con periodicidad: ( __ ) Cada 30 días o ( __ ) Cada 60 días por correo Electrónico o ( X ) Consulta vía Internet en la página del VENDEDOR.
+
+Autorizo al VENDEDOR para que consulte mi historial crediticio en cualquier momento en términos de lo previsto en la Ley para Regular las Sociedades de Información Crediticia hasta por un término de 03 años.
+_____________________ Firma del COMPRADOR
+
+_____________________________                    _____________________________
+      Firma COMPRADOR                                  Firma VENDEDOR
+
+
+CONTRATO DE VENTA A CREDITO CON RESERVA DE DOMINIO DE BIEN MUEBLES, EN TERMINOS DEL CAPITULO SÉPTIMO DE LA LEY FEDERAL DE PROTECCION AL CONSUMIDOR (Art. 66, 67, 68, 69, 70, 71 y 72) QUE CELEBRAN EL COMPRADOR Y EL VENDEDOR, CUYOS NOMBRES Y DATOS SE ESTABLECIERON EN LA CARATULA DEL PRESENTE CONTRATO, SOBRE EL BIEN MUEBLE ESTABLECIDO EN LA CARATULA DE ESTE CONTRATO, AL TENOR DE LAS SIGUIENTES DECLARACIONES Y CLAUSULAS:
+
+D E C L A R A C I O N E S
+
+Declara el VENDEDOR:
+
+Ser una persona moral cuya actividad preponderante es la compraventa de Bien Muebles de toda índole y ser el legítimo propietario del Bien Mueble
+
+Tener su domicilio y Registro Federal de Contribuyentes como se señala en la caratula de este Contrato
+
+Que informó al COMPRADOR de todas y cada una de las condiciones generales del Bien Mueble, para que en su caso sea revisado por este último. Así como la información relativa al costo total del Bien Mueble, el costo del crédito y demás términos y condiciones de este contrato.
+
+Declara el COMPRADOR:
+
+Llamarse, tener su domicilio y demás datos, como ha quedado señalado en la caratula del presente contrato, así como tener la capacidad legal y jurídica para obligarse en términos del presente contrato. Así mismo, manifiesta que dichos datos los aporta para que se le practiquen en ellos cualquier tipo de notificación.
+
+Que conoce el Bien Mueble y sus características materia de este contrato, mismo que fue seleccionado de forma personal y con absoluto conocimiento de sus características, funciones y precio, selección que realiza a su entera y absoluta satisfacción.
+
+Que es su deseo comprar a crédito el Bien Mueble descrito en la caratula de este contrato, en las condiciones y estado en que se encuentra y que lo conoce perfectamente, por haber hecho una revisión de sus características, funciones y selección del mismo.
+
+Estar de informado y contar con toda la información necesaria, por lo que está de acuerdo en el importe del crédito para la adquisición del Bien Mueble señalado en la caratula del contrato.
+
+Declaran VENDEDOR y COMPRADOR:
+
+Que la fecha de entrega del Bien Mueble será en un plazo no mayor a 30 días de la fecha de firma de este contrato, en el domicilio de entrega seleccionado por el COMPRADOR en la caratula y una vez que el COMPRADOR haya pagado al VENDEDOR el monto del enganche y cuota de procesamiento para el Bien Mueble.
+
+Que no existe error, dolo, engaño o cualquier otro vicio de voluntad en la celebración del presente contrato.
+
+En atención a lo anterior, las partes comparecientes convienen en celebrar el presente Contrato de acuerdo a las siguientes:
+
+C L Á U S U L A S
+
+PRIMERA. - Las partes contratantes, expresan su conformidad con todas y cada uno de los datos de la caratula y con las declaraciones mencionadas y las reproducen como si a la letra se insertasen, además acuerdan las partes que el presente contrato es un contrato de venta a Crédito con reserva de dominio en términos de los artículos 66, 67, 68, 69, 70, 71 y 72 de la Ley Federal de Protección al Consumidor.
+
+SEGUNDA. - Objeto. Venta a Crédito. Sujeto al pago del enganche y la cuota de procesamiento, el VENDEDOR vende a crédito a petición expresa del COMPRADOR del Bien Mueble por la cantidad señalada en la caratula, cantidad que deberá ser pagada al VENDEDOR en el número de pagos y con el monto de pago señalado en la caratula, con un interés ordinario pactado por las partes en la caratula. Los pagos al VENDEDOR se deberán realizar por el monto y la periodicidad señalado en la caratula, hasta el pago total al VENDEDOR. De conformidad al calendario que se anexa al presente contrato como apéndice uno de este acuerdo y el cual será parte integrante e indivisible y que se tiene aquí por reproducido en obvio de repeticiones innecesarias.
+
+TERCERA. - Precio. Pactan las partes que el precio o monto total a pagar, y demás términos económicos se encuentran establecidos en la caratula, cantidades expresadas en la moneda seleccionada por el COMPRADOR en la caratula, cantidades que incluye los siguientes conceptos: Monto de contado, monto total a pagar, monto del crédito, monto del enganche, monto de los pagos, frecuencia de los pagos, numero de pagos a realizarse, interés ordinario, así como la cuota de procesamiento y la exención de responsabilidad, como cargo opcional. Conceptos que quedan incluidos y detallados de manera específica en la carátula.
+
+Las partes acuerdan que la cuota de procesamiento será fija por la cantidad establecida en la caratula y será pagada a la firma del presente contrato y de forma independiente al enganche.
+
+A todas las cantidades señaladas en el presento contrato y caratula, sin importar que moneda haya sido seleccionada, se le deberá agregar el Impuesto al valor agregado (IVA) y/o cualquier impuesto que determinen las autoridades competentes.
+
+Para los efectos del presente contrato los intereses ordinarios y moratorios que el COMPRADOR se fijara de acuerdo con lo siguiente:
+
+Intereses ordinarios. - Intereses ordinarios a razón del porcentaje señalado en la caratula hasta que el crédito sea liquidado en su totalidad, mismo que corresponde a una tasa anual FIJA. Su pago se calculará multiplicando el monto de saldo insoluto del crédito, por el resultado de dividir la tasa anual entre 360 días, obteniendo el interés diario, el que deberá multiplicarse por el número de días efectivamente transcurridos, lo que se obtendrá el interés real a pagar en el periodo de pago que se aplique.
+
+Intereses moratorios. - Interés moratorio consistente en dividir el interés correspondiente al porcentaje señalado en la caratula entre 360 días, el resultado se multiplica por el saldo insoluto que exista al momento de incurrirse en mora, este resultado por los días efectivamente transcurridos, en la inteligencia de que cada monto de pago u obligación de pago no pagada a tiempo devengará intereses moratorios hasta su pago total. Cualquier cantidad pagada, se aplicará primero al pago de intereses o cualquier adeudo y cualquier remanente, en caso de existir, se aplicará al monto del principal.
+
+CUARTA. - CAT.- El Costo Anual Total (CAT): Es el porcentaje anualizado que incluye los intereses y demás accesorios del crédito y el Impuesto al Valor Agregado, que se calcula para fines informativos y de comparación, como se indica en la carátula del contrato.
+
+QUINTA. - Enganche. Ambas partes manifiestan, que el COMPRADOR deberá pagar al VENDEDOR en un plazo no mayor a 05 cinco días naturales tras la firma de este contrato, la cantidad señalada como enganche en la caratula a través de los medios de pago señalados por el VENDEDOR a través de su página web señalada en la caratula (de ahora en adelante “La página web”)
+
+SEXTA. - Pagos. - Todos los pagos que realice o deba realizar el COMPRADOR, los deberá realizar en Mexico a través de la cuenta bancaria del VENDEDOR en la institución bancaria BBVA con clave interbancaria 012580001263352099 o a través de los terceros en México que el VENDEDOR ponga a disposición en su página de internet, ahora bien, en caso que el COMPRADOR se encuentre fuera de Mexico, a su elección y decisión, podrá realizar sus pagos a través del agente de pagos del VENDEDOR, Otthon Group USA, LLC, empresa  agente de pagos de la VENDEDORA en Estados Unidos de Norteamérica a través de las cuentas bancarias o medios de pago que ponga a su disposición en la página web del VENDEDOR, de su aplicación para celulares o a través de los terceros autorizados para recibir pagos. Es obligación del COMPRADOR que los pagos sean hechos en la cuenta correcta y guardar sus recibos de pago como prueba de pago. El recibo es la única prueba que el COMPRADOR pagó de manera correcta. El COMPRADOR entiende y esta de acuerdo que la empresa agente de pagos antes mencionada, es opcional y solo un medio para facilitarle el cumplimiento de sus obligaciones de pago, sin que la misma represente o sustituya al VENDEDOR o sus derechos o que modifique el lugar de celebración y cumplimiento del presente contrato, por lo que toda comunicación, aclaración, situación o actuación se deberá realizar a través del VENDEDOR.
+
+SÉPTIMA. – Exención de responsabilidad por daño al Bien Mueble: Esto no es un seguro y la contratación es opcional para el COMPRADOR. En caso de que lo contrate el COMPRADOR, el VENDEDOR eximirá al COMPRADOR de la responsabilidad y pago en caso de que el Bien Mueble sufra un daño o pérdida total por causa de desastres naturales. La exención de responsabilidad no aplica para daños al Bien Mueble en casos de robo, perdidas o daños generados que no sean desastres naturales, incluidos de fuerza mayor o no voluntarios. El pago de la exención de responsabilidad no será reembolsable bajo ninguna circunstancia, incluso si no hubo incumplimiento. El pago deberá realizarse en cada pago si el COMPRADOR desea contratarlo. Para su aplicación, el COMPRADOR deberá devolver el Bien Mueble dañado o destruido al VENDEDOR, en el domicilio que señale y a su costo.
+
+OCTAVA. - Estados de cuenta. - El COMPRADOR recibirá en la forma y frecuencia seleccionada en la caratula, su estado de cuenta, donde se reflejará la situación del Crédito otorgado. El COMPRADOR tendrá 10 diez días tras recibir su estado de cuenta, para efectuar objeciones o aclaraciones a través del correo electrónico señalado por el VENDEDOR en la caratula. El VENDEDOR tendrá la obligación de responder las dudas u objeciones en un término de 05 cinco días hábiles de forma verbal o por correo electrónico.
+
+Cualquier aclaración, duda, reclamación, queja, sugerencia o servicios de orientación, se deberá realizar al teléfono o correo electrónico señalado por el VENDEDOR en la caratula del contrato, en horario de atención a clientes.
+
+NOVENA. - Pagaré. El COMPRADOR, como garantía de pago del crédito otorgado, suscribe en favor del VENDEDOR, 01 pagaré de pagos seriados por la cantidad del monto total a pagar señalado en la caratula. Pagaré que tendrá vencimientos en los mismos términos y condiciones de las obligaciones de pago del COMPRADOR. El título de crédito y sus pagos seriados serán cubiertos en su totalidad juntamente con sus intereses, en el domicilio del VENDEDOR señalado en la caratula.
+
+DÉCIMA. - Reserva de Dominio. Las partes acuerdan que el Bien Mueble materia de este contrato, es vendido a crédito a el COMPRADOR con reserva de dominio, por lo cual el VENDEDOR se reserva a su favor la propiedad del Bien Mueble, hasta el pago total conforme este contrato.
+
+DÉCIMA PRIMERA. - Entrega. El VENDEDOR, a elección del COMPRADOR hará la entrega del Bien Mueble, dentro del plazo señalado, en el domicilio y a la persona señalado para tal efecto en la caratula del contrato.
+
+El COMPRADOR, se obliga en términos de la cláusula decima sexta de este contrato en caso de cualquier situación que se pueda presentar con la entrega del Bien Muebles.
+
+DÉCIMA SEGUNDA. - Obligaciones del COMPRADOR. - Además de las obligaciones estipuladas y las leyes aplicables, el COMPRADOR asumirá las siguientes responsabilidades:
+
+Cumplir puntualmente con todos los pagos, hasta cubrir el Monto total y cualquier otra obligación conforme este contrato.
+
+Ser responsable por cualquier daño, perjuicio, deterioro, robo o destrucción del Bien Mueble, por causas voluntarias o involuntarias, incluso por fuerza mayor o causas naturales.
+
+Ser responsable por los daños o perjuicios que sufran terceros por el Bien Mueble y su uso.
+
+Dar todo tipo de mantenimiento necesario al Bien Mueble para su correcto funcionamiento y cuidado, a su propio costo.
+
+No trasladar el bien mueble sin el consentimiento previo y por escrito del VENDEDOR, del domicilio de entrega
+
+Conservar y presentar todos los recibos de pago realizados bajo este Contrato.
+
+Si el Contrato involucra a más de un COMPRADOR, cada uno será responsable solidariamente.
+
+DÉCIMA TERCERA. - Obligaciones del VENDEDOR. - Además de las obligaciones estipuladas y las leyes aplicables, el VENDEDOR asumirá las siguientes responsabilidades:
+
+Entregar el Bien Mueble al COMPRADOR con las características, especificaciones y dentro del plazo señalado en la caratula y este contrato.
+
+Coadyuvar en la medida de lo posible con el COMPRADOR para obtener las garantías estipuladas por el fabricante del Bien Mueble.
+
+Responder al COMPRADOR en caso de vicios ocultos del Bien Mueble que fueran de su conocimiento.
+
+DÉCIMA CUARTA. - Pagos Anticipados. El COMPRADOR podrá anticipar cualquier pago, siempre que este al corriente en sus pagos y dichos pagos sean aplicados al saldo insoluto del principal o a los pagos inmediatos siguiente, sin penalización alguna. El COMPRADOR deberá avisar mediante correo electrónico a el VENDEDOR sobre el pago anticipado que haya realizado, en máximo 48 horas, anexando el comprobante del pago adelantado.
+
+DÉCIMA QUINTA. - Pago Anticipado Final en una sola exhibición. A elección del COMPRADOR, este podrá, ejercer la opción de pagar el saldo restante en un solo pago, después de haber realizado el pago del Enganche y cuota de procesamiento, siempre que este al corriente de sus pagos y antes de completar todos los pagos. El precio a pagar será el resultado de aplicar el Porcentaje de Descuento sobre el saldo pendiente de pago por parte del COMPRADOR. No se considerarán como pagos previos al VENDEDOR cualquier sanción, interese moratorios, exenciones de responsabilidad y cualquier otra que no corresponda al capital. Al monto resultante se le añadirá el impuesto correspondiente.
+
+DÉCIMA SEXTA. – Entrega y Garantía del Bien Mueble. Al momento de la entrega del Bien Mueble y dentro de un plazo máximo de 10 diez días naturales, el COMPRADOR deberá inspeccionar el bien mueble y notificar al VENDEDOR si el mismo no cumple con la descripción señalada en la carátula, si presenta fallas o daños. Si el COMPRADOR no informan dentro del plazo de 10 diez días naturales sobre cualquier irregularidad, libera y exonera al VENDEDOR de cualquier responsabilidad futura relacionada con el Bien Mueble. Asimismo, el COMPRADOR deberá conservar el empaque original del Bien Mueble y todo documento o accesorio que se incluya dentro del empaque del Bien Mueble.
+
+En caso de que el Bien Mueble no corresponda a las características descritas en la caratula de este contrato o el mismo presente fallas o daños, deberá reportarlo al correo electrónico del VENDEDOR señalado en la caratula de este contrato, anexando en dicho correo electrónico una descripción de los sucedido y pruebas sobre los daños o fallas que presente el Bien Mueble, a efecto de que el VENDEDOR realice los trámites necesarios con la empresa que haya realizado la entrega del Bien Mueble para su devolución o solución de la situación. El COMPRADOR se compromete y obliga a seguir a pie de la letra y cumplir con todos los trámites y requisitos que puedan señalar o establecer la empresa que haya realizado la entrega del Bien Mueble, como puede ser, de forma enunciativa y no limitativa, empaque del Bien Mueble para su devolución, llevar para su devolución el Bien Mueble al domicilio y en el horario que señale, entregar el Bien Mueble en el horario que señale, dar todas las facilidades necesarias para realizar la devolución y entrega del Bien Mueble, etc. En caso de que el COMPRADOR no realice las acciones y condiciones señalas por la empresa que haya realizado la entrega del Bien Mueble, en este acto libera a el VENDEDOR de toda obligación y responsabilidad y la devolución solicitada no tendrá efecto alguno, dado lo anterior, el COMPRADOR estará obligado al cumplimiento del presente contrato y todas sus obligaciones, especialmente las obligaciones de pago.
+
+Para los términos de la garantía, el COMPRADOR tendrá un plazo no menor a lo señalado por el Art. 77 de la Ley Federal de Protección al Consumidor desde la entrega del Bien Mueble. Es del conocimiento y está de acuerdo el COMPRADOR que el Bien Mueble tiene garantía por escrito del fabricante, dado lo anterior, el COMPRADOR, deberá hacer valida la garantía ante el fabricante, en términos del Art. 79 de la Ley Federal de Protección al Consumidor. El COMPRADOR deberá conservar la garantía por escrito que se encuentra en el interior del Bien Mueble al momento de su entrega y deberá dar cumplimiento a todos y cada uno de los requisitos que establezca el fabricante del Bien Mueble para el otorgamiento de la garantía como podrán ser, de forma enunciativa y no limitativa, la instalación adecuada y/o profesional del Bien Mueble, registro de la garantía del Bien Mueble, traslado al centro de servicio del fabricante, pago de cualquier cantidad que establezca el fabricante, plazo de vigencia de la garantía del fabricante, condiciones para el otorgamiento de la garantía por parte del fabricante, etc. El VENDEDOR coadyuvará en la medida de lo posible con el COMPRADOR para que el COMPRADOR hace efectiva la garantía del Bien Mueble con el fabricante. Asimismo, el COMPRADOR será el único responsable por las descomposturas, daños o pérdidas parciales o totales que sufra el Bien Mueble, mientras el Bien Mueble se encuentre bajo su cuidado.
+
+DÉCIMA SÉPTIMA. - Domicilio. Las partes se obligan a informar a la otra parte, durante la vigencia del contrato el cambio de domicilio que llegare a tener, en un plazo máximo de 5 (cinco) días posteriores a la verificación del mismo.
+
+DÉCIMA OCTAVA. – Obligado Solidario. Para garantizar y asegurar el cumplimiento de todas y cada una de las obligaciones por el COMPRADOR en este contrato, comparece el OBLIGADO SOLIDARIO cuyos datos aparecen en la caratula, quien se constituye en obligado solidario del COMPRADOR y se obliga al cumplimiento de todas las obligaciones del presente contrato y acepta expresamente permanecerá como OBLIGADO SOLIDARIO hasta el cumplimiento total de todas y cada una de las obligaciones del presente contrato.
+
+El OBLIGADO SOLIDARIO reconoce y acepta que todas las obligaciones correspondientes al COMPRADOR le son y será aplicables, incluidas las obligaciones de pago y de cualquier otra índole.
+
+DÉCIMA NOVENA. - Rescisión, Las partes podrán rescindir el presente contrato cuando: Por causas imputables al COMPRADOR y/o OBLIGADO SOLIDARIO
+
+El incumplimiento de cualquier obligación por parte del COMPRADOR y/o OBLIGADO SOLIDARIO en los términos del presente contrato.
+
+Por cesión, arrendamiento, subarrendamiento, otorgar en garantía, embargo, entrega en comodato, prenda, empeñar, gravar, señalar para su embargo, modificar, mejorar, transmitir o traspasar el Bien Mueble o sus derechos que adquiere el COMPRADOR y/o OBLIGADO SOLIDARIO y sin que medie consentimiento otorgado por escrito del VENDEDOR.
+
+Por causas imputables al VENDEDOR:
+
+Por incumplimiento del VENDEDOR a cualesquiera de las obligaciones estipulados en el presente contrato.
+
+Si el Bien Mueble presentare vicios ocultos que no hayan sido informados al COMPRADOR y expresamente aceptados por el mismo, a través del presente contrato.
+
+Si se rescinde el presente contrato, el VENDEDOR y el COMPRADOR deben restituirse mutuamente las prestaciones que se hubieren hecho, el VENDEDOR que hubiera entregado el Bien Mueble, tendrá derecho a exigir por su uso, el pago de un alquiler o renta y, en su caso, una compensación por el demérito que haya sufrido, situaciones que desde este momento, las Partes acuerdan que el pago de alquiler o renta será igual a la totalidad de los pagos entregados y adeudados en términos de este contrato al VENDEDOR..
+
+El COMPRADOR que haya pagado parte del precio tiene derecho a recibir los intereses computados conforme a la tasa que, en su caso, se haya aplicado a su pago.
+
+Cuando el COMPRADOR haya pagado más de la tercera parte del precio o del número total de los pagos convenidos y el VENDEDOR exija la rescisión o cumplimiento del contrato por mora, el COMPRADOR tendrá derecho a optar por la rescisión en términos de lo establecido en el párrafo anterior o por el pago del adeudo vencido más las prestaciones que legalmente procedan. Los pagos que realice el COMPRADOR, aún en forma extemporánea y que sean aceptados por el VENDEDOR, liberan a aquél de las obligaciones inherentes a dichos pagos.
+
+VIGÉSIMA. - Firma electrónica. Las Partes consienten que la Firma Electrónica sustituya, para todos los efectos legales, a la firma autógrafa, produciendo los mismos efectos, incluidos los de valor probatorio. Serán aplicables los términos del Código Civil Federal, Código de Comercio y cualquier otra disposición federal o estatal aplicable, respecto de la identidad y expresión de consentimiento a través de medios electrónicos, ópticos o cualquier otra tecnología usada para la firma electrónica de este contrato. Las Partes consienten la celebración de documentos y este contrato, y sus anexos, a través de Mensajes de Datos y/o firma digital enviada por correo electrónico a través de un tercero.
+
+Finalmente, las Partes acuerdan que, para efectos de uso del sistema y la firma de este documento, únicamente firmarán al final de todo el documento, incluyendo la solicitud de Crédito y, en su caso, el contrato y demás documentos y anexos, por lo que dicha firma tendrá validez para todo el contrato y sus anexos.
+
+VIGÉSIMA PRIMERA. – Avisos de privacidad. El COMPRADOR Y OBLIGADO SOLIDARIO reconocen haber sido informados sobre el aviso de privacidad integral y la protección y manejo de la información personal y confidencial que se genere a raíz de este contrato, conforme a dicho aviso de privacidad y las políticas de información publicadas en el sitio web indicado en la primera cláusula de este contrato. En este sentido, el COMPRADOR y/o el OBLIGADO SOLIDARIO otorgan su consentimiento expreso para que el VENDEDOR utilice la información personal generada bajo este contrato, de acuerdo con el aviso de privacidad integral, respetando lo dispuesto en las leyes aplicables, incluyendo el Artículo 18 Bis de la Ley del Consumidor. Asimismo, el COMPRADOR y/o el OBLIGADO SOLIDARIO autorizan al VENDEDOR a utilizar, transmitir y entregar su información a proveedores, de conformidad con la Ley Federal de Protección de Datos Personales en Posesión de Particulares. Para cumplir con el Artículo 76 BIS Fracción II de la Ley del Consumidor, el VENDEDOR utiliza redes de protección avanzadas, como firewalls, y sistemas de seguridad líderes para proteger la información de tarjetas de crédito. El COMPRADOR y/o el OBLIGADO SOLIDARIO han sido debidamente informados sobre los procesos que el VENDEDOR tiene establecidos para acceder, rectificar y/o cancelar sus datos (Derechos ARCO), conforme a los términos y condiciones previstos en la Ley Federal de Protección de Datos Personales en Posesión de Particulares, a través del correo electrónico legal@acasa.mx.
+
+VIGÉSIMA SEGUNDA. - Competencia. Para la interpretación y cumplimiento de este contrato de crédito, en la vía administrativa, será competente la Procuraduría Federal del Consumidor; sin perjuicio de lo anterior, las partes se someten a la jurisdicción de los Tribunales de la ciudad de Monterrey, Nuevo León, Mexico y a las leyes aplicables en la República mexicana, renunciando expresamente a cualquier otra jurisdicción, por razón de sus domicilios presentes o futuros o por cualquier otra razón.
+
+VIGÉSIMA TERCERA. – Extranjero. En caso de que el COMPRADOR tenga su domicilio en el extranjero, el COMPRADOR autoriza al VENDEDOR a realizar todas las acciones y gestiones de cobro que considere necesarias, incluidas las acciones judiciales o de otro tipo en el lugar de residencia del COMPRADOR o en la Ciudad de San Antonio, Texas y dar notificación a los buros de crédito y autoridades que resulten necesarias o competentes.
+
+VIGÉSIMA CUARTA. – Cobranza. En este acto el COMPRADOR da su autorización expresa para que el VENDEDOR pueda, compartir información, realizar todas las gestiones de cobranza, realizar llamadas, dejar mensajes y/o contactar de cualquier forma a las referencias otorgadas o a la persona que haya recibido el Bien con el afán de localizar al COMPRADOR
+
+Leído que fue el presente contrato y saber los alcances jurídicos que del mismo se derivan, por haberlo leído de manera bastante y suficiente el COMPRADOR y el OBLIGADO SOLIDARIO, y así mismo le fue explicado en todas y cada una de sus partes, en razón de lo cual lo firman al calce, en la ciudad de Monterrey, Nuevo León, México, el día señalado en la caratula
+
+EL VENDEDOR	EL COMPRADOR
+
+OBLIGADO SOLIDARIO
+
+════════════════════════════════════════════
+ANEXO “A” — PLAZO DEL CRÉDITO
+════════════════════════════════════════════
+
+{{tabla_pagos}}
+
+(La tabla de pagos se genera automáticamente para cada contrato con las columnas: número de pago, fecha en la que se realiza el pago, monto del pago con IVA, exención de responsabilidad con IVA, total a pagar con IVA y pago anticipado final en una sola exhibición.)

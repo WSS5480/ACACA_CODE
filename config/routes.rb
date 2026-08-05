@@ -43,6 +43,10 @@ Rails.application.routes.draw do
     put  'settings/rainforest',      to: 'api/settings#update_rainforest'
     post 'settings/rainforest/test', to: 'api/settings#test_rainforest'
 
+    # Plantilla editable del contrato de venta a crédito (Seguridad → Contrato)
+    get 'settings/contract', to: 'api/settings#contract_template'
+    put 'settings/contract', to: 'api/settings#update_contract_template'
+
     resources :products, controller: 'api/products' do
       post 'manage_collection', on: :collection
       post 'import_search', on: :collection

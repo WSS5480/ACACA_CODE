@@ -451,6 +451,27 @@
     <!-- ---------- SEGURIDAD (usuarios y niveles de cuenta) ---------- -->
     <section class="view hide" data-v="security">
       <div class="head"><h1>Administración y seguridad</h1></div>
+      <div class="tabs" id="secTabs" style="margin-bottom:14px">
+        <button data-stab="users" class="on">Usuarios y accesos</button>
+        <button data-stab="contract">Contrato de crédito</button>
+      </div>
+      <div id="secTabContract" style="display:none">
+        <div class="sec" style="padding:18px">
+          <div class="stitle" style="padding:0 0 6px">Contrato de venta a crédito — plantilla editable</div>
+          <p class="muted" style="margin:0 0 10px">Este texto es la base del contrato de cada cliente. Los campos entre <b>{{dobles llaves}}</b> se rellenan automáticamente con los datos de cada contrato (carátula, montos y tabla de pagos del Anexo A). Edita lo que necesites y guarda: la versión editada queda en la base de datos y es la que se usa de ahí en adelante.</p>
+          <div id="ctInfo" class="muted" style="font-size:12px;margin:0 0 10px"></div>
+          <textarea id="ctText" spellcheck="false" style="width:100%;min-height:62vh;padding:16px;border:1px solid var(--line);border-radius:12px;font-size:13.5px;line-height:1.6;font-family:Georgia,'Times New Roman',serif;resize:vertical"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <button class="btn" id="ctSave">Guardar contrato</button>
+            <button class="btn" id="ctReset" style="background:#eef0f6;color:var(--navy)" title="Descarta los cambios guardados y vuelve al contrato original del documento VFF06072026">Restaurar original</button>
+            <span class="muted" id="ctMsg"></span>
+          </div>
+          <details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--navy)">Campos que se rellenan automáticamente</summary>
+            <p class="muted" style="font-size:12.5px;line-height:2;margin:8px 0 0" id="ctLegend"></p>
+          </details>
+        </div>
+      </div>
+      <div id="secTabUsers">
       <div class="sec" style="padding:18px">
         <div class="stitle" style="padding:0 0 6px">Niveles de cuenta</div>
         <p class="muted" style="margin:0">
@@ -477,6 +498,7 @@
           <tbody id="secBody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
+      </div><!-- /secTabUsers -->
     </section>
 
     <!-- ---------- CONFIGURACIÓN ---------- -->
@@ -1804,6 +1826,53 @@ async function loadSecurity(){
   const bt=$('suCreate');
   if(bt) bt.onclick=secCreateUser;
 }
+
+/* ------- Seguridad: pestañas (Usuarios / Contrato de crédito) ------- */
+let CT_LOADED=0;
+if($('secTabs')) $('secTabs').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  $('secTabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  const tab=b.dataset.stab;
+  $('secTabUsers').style.display = tab==='users' ? '' : 'none';
+  $('secTabContract').style.display = tab==='contract' ? '' : 'none';
+  if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); }
+});
+const CT_FIELDS=[
+  ['numero_contrato','Número de contrato'],['fecha_contrato','Fecha del contrato'],
+  ['comprador_nombre','Nombre del comprador'],['comprador_rfc','RFC del comprador'],['comprador_direccion','Dirección del comprador'],['comprador_telefono','Teléfono del comprador'],['comprador_email','Email del comprador'],
+  ['obligado_nombre','Nombre del obligado solidario'],['obligado_rfc','RFC del obligado'],['obligado_direccion','Dirección del obligado'],['obligado_telefono','Teléfono del obligado'],['obligado_email','Email del obligado'],
+  ['bien_numero','No. de bien mueble'],['bien_descripcion','Descripción del bien'],['bien_serie','Número de serie'],['bien_modelo','Modelo'],
+  ['monto_contado','Monto de contado'],['monto_enganche','Enganche'],['monto_credito','Monto del crédito'],['monto_pago','Monto del pago'],['periodicidad','Periodicidad'],['numero_pagos','Número de pagos'],['monto_total','Monto total a pagar'],
+  ['monto_exencion','Exención de responsabilidad'],['cuota_procesamiento','Cuota de procesamiento'],['tasa_ordinaria','Tasa ordinaria %'],['tasa_moratoria','Tasa moratoria %'],['descuento_anticipado','Descuento pago anticipado %'],['cat','CAT %'],
+  ['moneda_mxn','Marca (X) MXN'],['moneda_usd','Marca (X) USD'],['exencion_si','Marca (X) exención Sí'],['exencion_no','Marca (X) exención No'],['mercadeo_si','Marca (X) mercadeo Sí'],['mercadeo_no','Marca (X) mercadeo No'],
+  ['entrega_calle','Calle de entrega'],['entrega_num_ext','No. exterior'],['entrega_num_int','No. interior'],['entrega_colonia','Colonia'],['entrega_ciudad','Ciudad'],['entrega_estado','Estado'],['entrega_cp','C.P.'],['entrega_recibe','Persona que recibe'],
+  ['tabla_pagos','Tabla de pagos del Anexo A (se genera sola)']
+];
+async function loadContractTpl(){
+  $('ctMsg').textContent='Cargando…';
+  const r=await api('GET','/api/settings/contract');
+  if(!r.ok||!r.data){ $('ctMsg').textContent='No se pudo cargar el contrato.'; CT_LOADED=0; return; }
+  $('ctText').value=r.data.content||'';
+  $('ctInfo').textContent = r.data.custom ? ('Versión editada — último cambio: '+fdate(r.data.updated_at)) : 'Versión original del documento (VFF06072026), sin cambios guardados.';
+  $('ctMsg').textContent='';
+  $('ctLegend').innerHTML=CT_FIELDS.map(f=>`<code style="background:#f2f4f8;border:1px solid var(--line);border-radius:6px;padding:1px 6px">{{${f[0]}}}</code> ${esc(f[1])}`).join(' · ');
+}
+if($('ctSave')) $('ctSave').onclick=async()=>{
+  const txt=$('ctText').value;
+  if(!txt.trim()){ $('ctMsg').textContent='El contrato no puede quedar vacío.'; return; }
+  $('ctMsg').textContent='Guardando…'; $('ctSave').disabled=true;
+  const r=await api('PUT','/api/settings/contract',{content:txt});
+  $('ctSave').disabled=false;
+  if(r.ok){ $('ctMsg').textContent='✓ Contrato guardado.'; $('ctInfo').textContent='Versión editada — último cambio: '+fdate(r.data&&r.data.updated_at); }
+  else { $('ctMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
+};
+if($('ctReset')) $('ctReset').onclick=async()=>{
+  if(!confirm('¿Descartar los cambios guardados y volver al contrato ORIGINAL?\n\nEsta acción no se puede deshacer.')) return;
+  $('ctMsg').textContent='Restaurando…';
+  const r=await api('PUT','/api/settings/contract',{reset:true});
+  if(r.ok){ $('ctText').value=(r.data&&r.data.content)||''; $('ctInfo').textContent='Versión original del documento (VFF06072026), sin cambios guardados.'; $('ctMsg').textContent='✓ Restaurado.'; }
+  else { $('ctMsg').textContent=(r.data&&r.data.error)||'No se pudo restaurar.'; }
+};
 async function loadSecUsers(){
   const body=$('secBody');
   const r=await api('GET','/api/users?page=-1');

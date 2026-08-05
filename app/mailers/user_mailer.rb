@@ -41,10 +41,21 @@ class UserMailer < ApplicationMailer
     mail to: @user.email, subject: 'Restablece tu contraseña / Reset your password — acasa'
   end
 
-  # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno)
+  # Enlace para FIRMAR el contrato (respaldo/refuerzo del WhatsApp — bilingüe ES/EN).
+  def send_contract_signing
+    @user = params[:user]
+    @contract = params[:contract]
+    @sign_url = "#{frontend_base_url}/contratos/#{@contract.id}/firmar"
+
+    mail to: @user.email, subject: "Firma tu contrato #{@contract.contract_number} / Sign your contract — acasa"
+  end
+
+  # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno).
+  # SIN direcciones de la agencia: sólo lo que esté configurado (o el buzón propio).
   def send_new_order_notification
     @order = params[:order]
-    addresses = ["edcantu@hotmail.com", "diego@lagom.agency", "ruben@lagom.agency"] #ENV.fetch('NOTIFICATE_TO', '').split(',').map(&:strip).reject(&:blank?)
+    addresses = ENV.fetch('NOTIFICATE_TO', '').split(',').map(&:strip).reject(&:blank?)
+    addresses = ['clientes@acasamx.com'] if addresses.empty?
     return if addresses.empty?
 
     mail to: addresses, subject: "Nueva orden ##{@order.id} - acasa"

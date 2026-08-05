@@ -816,9 +816,13 @@ async function openOrderVerify(id){
     $('ovMsg').textContent='Generando contrato…'; dbtn.disabled=true;
     const r2=await api('POST','/api/contracts/'+encodeURIComponent(pick(o,['contract_id'],''))+'/generate_document',{send_whatsapp:true});
     dbtn.disabled=false;
-    if(r2.ok){ const wa=r2.data&&r2.data.whatsapp;
-      $('ovMsg').textContent = (wa&&wa.ok) ? '✓ Contrato generado y WhatsApp de firma enviado.' : ('✓ Contrato generado. '+((wa&&wa.error)||''));
-      setTimeout(async()=>{ await loadOrders('all'); openOrderVerify(id); }, 2200);
+    if(r2.ok){ const wa=r2.data&&r2.data.whatsapp, em=r2.data&&r2.data.email;
+      let msg='✓ Contrato generado.';
+      if(wa&&wa.ok) msg+=' WhatsApp de firma enviado.';
+      else if(em&&em.ok) msg+=' WhatsApp no disponible; enlace de firma enviado por CORREO a '+(em.sent_to||'el cliente')+'.';
+      else msg+=' '+((wa&&wa.error)||'')+((em&&em.error)?(' · '+em.error):'');
+      $('ovMsg').textContent=msg;
+      setTimeout(async()=>{ await loadOrders('all'); openOrderVerify(id); }, 3200);
     } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo generar el contrato.'; }
   };
   $('ovApprove').onclick=async()=>{

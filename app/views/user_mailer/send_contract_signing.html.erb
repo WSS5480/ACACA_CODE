@@ -1,0 +1,29 @@
+<% content_for :email_title do %>
+  Firma tu contrato
+<% end %>
+
+<p style="margin-bottom: 20px;">
+  Hola <%= @user&.name || '' %>, ¡tu contrato <strong><%= @contract.contract_number %></strong> de acasa está listo! 🎉
+  Revísalo con calma y fírmalo desde tu celular (con el dedo) o desde tu computadora (con el mouse).
+</p>
+
+<p style="margin: 20px 0;">
+  <a href="<%= @sign_url %>" style="display: inline-block; background-color: #FF7517; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Revisar y firmar mi contrato</a>
+</p>
+
+<p style="margin-bottom: 20px; font-size: 13px; color: #666;">
+  Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+  <a href="<%= @sign_url %>" style="color: #2563eb; word-break: break-all;"><%= @sign_url %></a>
+</p>
+
+<p style="margin-bottom: 20px;">
+  Necesitarás iniciar sesión con tu cuenta. Tu firma electrónica tiene la misma validez que una firma autógrafa y queda guardada en tu expediente.
+</p>
+
+<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;"/>
+
+<p style="margin-bottom: 12px; color: #444;">
+  <strong>English:</strong> Your acasa contract <strong><%= @contract.contract_number %></strong> is ready!
+  Click the button above (or the link) to log in, review it, and sign with your finger (phone) or mouse (computer).
+  Your electronic signature is legally valid and is stored in your file.
+</p>

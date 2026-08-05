@@ -1,0 +1,14 @@
+Hola <%= @user&.name || '' %>,
+
+¡Tu contrato <%= @contract.contract_number %> de acasa está listo!
+
+Revísalo y fírmalo aquí (inicia sesión con tu cuenta; puedes firmar con el dedo desde tu celular o con el mouse desde tu computadora):
+<%= @sign_url %>
+
+Tu firma electrónica tiene la misma validez que una firma autógrafa y queda guardada en tu expediente.
+
+---
+English: Your acasa contract <%= @contract.contract_number %> is ready.
+Log in, review it, and sign it here (finger on your phone or mouse on your computer):
+<%= @sign_url %>
+Your electronic signature is legally valid and is stored in your file.

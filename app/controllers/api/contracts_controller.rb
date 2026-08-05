@@ -235,11 +235,15 @@ module Api
       contract.update!(document_text: text, document_generated_at: Time.current)
 
       wa = nil
+      em = nil
       if ActiveModel::Type::Boolean.new.cast(params[:send_whatsapp])
         wa = send_signing_whatsapp(contract)
-        contract.update_column(:document_sent_at, Time.current) if wa[:ok]
+        # Respaldo por CORREO: si el WhatsApp no salió (o no está configurado), el enlace
+        # de firma le llega al cliente por email con el servicio SMTP que ya funciona.
+        em = send_signing_email(contract) unless wa[:ok]
+        contract.update_column(:document_sent_at, Time.current) if wa[:ok] || (em && em[:ok])
       end
-      render json: { ok: true, generated_at: contract.document_generated_at, whatsapp: wa }, status: :ok
+      render json: { ok: true, generated_at: contract.document_generated_at, whatsapp: wa, email: em }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     end
@@ -336,6 +340,17 @@ module Api
         signature_url: sig_url,
         text: contract.document_text
       }
+    end
+
+    def send_signing_email(contract)
+      user = contract.user
+      return { ok: false, error: 'El cliente no tiene email registrado' } if user&.email.blank?
+
+      UserMailer.with(user: user, contract: contract).send_contract_signing.deliver_now
+      { ok: true, sent_to: user.email }
+    rescue StandardError => e
+      Rails.logger.error "No se pudo enviar el correo de firma (contrato #{contract.id}): #{e.class}: #{e.message}"
+      { ok: false, error: "No se pudo enviar el correo: #{e.class}: #{e.message.to_s.strip[0, 200]}" }
     end
 
     def send_signing_whatsapp(contract)

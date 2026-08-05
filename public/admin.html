@@ -776,7 +776,7 @@ async function openOrderVerify(id){
   const benName=ben?[ben.name,ben.last_name].filter(Boolean).join(' '):'';
   const buyName=buy?[buy.name,buy.last_name].filter(Boolean).join(' '):'';
   const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
-  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
+  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:''),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:'')].join('') : '');
   const refInner = refs.length ? refs.map((rf,i)=>{
     const rn=[rf.name,rf.last_name].filter(Boolean).join(' ');
     const rphone=rf.phone||((rf.phone_code||'')+(rf.phone_number||''))||null;
@@ -1007,7 +1007,12 @@ async function openClientSheet(uid){
         + qaTxt('Teléfono', buy.phone) + qaTxt('Teléfono del trabajo', buy.phone_work) + qaTxt('Email', buy.email)
         + qaTxt('Domicilio (EUA)', joinAddr([buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code]))
         + qaTxt('Dirección de entrega (México)', joinAddr([buy.delivery_address1,buy.delivery_address2,buy.delivery_city,buy.delivery_state,buy.delivery_zip_code]))
-        + qaTxt('Teléfono del beneficiario', buy.phone_beneficiary);
+        + qaTxt('Teléfono del beneficiario', buy.phone_beneficiary)
+        + qaRow('Copias entregadas (expediente)',
+            [ buy.identification_url?('<a href="'+esc(buy.identification_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700">&#128206; Identificación</a>'):null,
+              buy.proof_of_address_url?('<a href="'+esc(buy.proof_of_address_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700">&#128206; Comprobante de domicilio</a>'):null,
+              buy.proof_of_income_url?('<a href="'+esc(buy.proof_of_income_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700">&#128206; Comprobante de ingresos</a>'):null
+            ].filter(Boolean).join(' · ') || null);
     }
     if(ben){
       const bn=[ben.name,ben.last_name].filter(Boolean).join(' ')||'—';

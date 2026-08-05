@@ -283,7 +283,11 @@ class Api::UsersController < ApplicationController
         relationship_with_beneficiary: buy.relationship_with_beneficiary,
         delivery_address1: buy.delivery_address1, delivery_address2: buy.delivery_address2,
         delivery_zip_code: buy.delivery_zip_code, delivery_state: buy.delivery_state,
-        delivery_city: buy.delivery_city, phone_beneficiary: buy.phone_beneficiary
+        delivery_city: buy.delivery_city, phone_beneficiary: buy.phone_beneficiary,
+        # Copias entregadas por el cliente (expediente)
+        identification_url: attach_url(buy, :identification),
+        proof_of_address_url: attach_url(buy, :proof_of_address),
+        proof_of_income_url: attach_url(buy, :proof_of_income)
       },
       beneficiary: ben && {
         name: ben.name, last_name: ben.last_name, phone: ben.phone, email: ben.email,
@@ -305,6 +309,19 @@ class Api::UsersController < ApplicationController
 
   def try_f(rec, field)
     rec.respond_to?(field) ? rec.public_send(field) : nil
+  end
+
+  # URL de un documento adjunto (identificación, comprobantes) o nil.
+  def attach_url(rec, name)
+    att = rec.public_send(name)
+    return nil unless att.respond_to?(:attached?) && att.attached?
+    att.url(expires_in: 1.hour)
+  rescue StandardError
+    begin
+      Rails.application.routes.url_helpers.rails_blob_url(rec.public_send(name))
+    rescue StandardError
+      nil
+    end
   end
 
   # Contrato + estado de firma para la ficha del cliente.

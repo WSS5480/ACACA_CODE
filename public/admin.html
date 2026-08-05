@@ -1399,10 +1399,15 @@ async function openContract(id){
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <input id="payAmt" type="number" min="0" step="0.01" placeholder="Monto" style="width:130px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
         <select class="sel" id="payMethod"><option value="cash">Efectivo</option><option value="card">Tarjeta</option><option value="transfer">Transferencia</option></select>
+        <select class="sel" id="payApply" title="Si el pago EXCEDE la cuota próxima: PLAZO adelanta cuotas futuras (mismo plazo); SALDO abona el excedente a capital, ACORTA el plazo y perdona el interés (${esc(String(pick(c,['interest_rate'],25)))}%) sobre ese excedente.">
+          <option value="plazo">Excedente → Plazo (adelanta cuotas)</option>
+          <option value="saldo">Excedente → Saldo (acorta plazo, ahorra interés)</option>
+        </select>
         <input id="payNote" placeholder="Nota (opcional)" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
         <button class="btn" id="payBtn">Registrar</button>
         <span class="muted" id="payMsg"></span>
       </div>
+      <p class="muted" style="margin:8px 0 0;font-size:12px">La elección sólo aplica cuando el monto excede la cuota próxima pendiente. <b>Saldo</b> = el excedente paga capital: menos cuotas y se perdona el cargo financiero sobre ese monto.</p>
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 8px">Tabla de amortizacion</div>
@@ -1414,7 +1419,7 @@ async function openContract(id){
     const amt=parseFloat($('payAmt').value);
     if(!(amt>0)){ $('payMsg').textContent='Ingresa un monto valido.'; return; }
     $('payBtn').disabled=true; $('payMsg').textContent='Registrando...';
-    const pr=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/record_payment',{amount:amt,method:$('payMethod').value,note:$('payNote').value});
+    const pr=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/record_payment',{amount:amt,method:$('payMethod').value,note:$('payNote').value,apply_to:$('payApply')?$('payApply').value:'plazo'});
     $('payBtn').disabled=false;
     if(pr.ok&&pr.data&&pr.data.ok){ $('payMsg').textContent='OK - pago registrado'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(id); }
     else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }

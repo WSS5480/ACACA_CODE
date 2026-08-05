@@ -1437,6 +1437,12 @@ async function openContract(id){
         <span class="muted" id="payMsg"></span>
       </div>
       <p class="muted" style="margin:8px 0 0;font-size:12px">La elección sólo aplica cuando el monto excede la cuota próxima pendiente. <b>Saldo</b> = el excedente paga capital: menos cuotas y se perdona el cargo financiero sobre ese monto.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+        <span class="muted" style="font-size:12px;font-weight:700">🧪 PRUEBAS · Próximo vencimiento:</span>
+        <input id="ndDate" type="date" value="${esc(String(pick(c,['next_due_date'],'')||''))}" style="padding:7px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
+        <button class="btn" id="ndSet" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:13px">Mover vencimiento</button>
+        <span class="muted" id="ndMsg" style="font-size:12px">Mueve la próxima cuota (y desplaza las siguientes). Fechas pasadas simulan atrasos y moratorios para probar cobranza.</span>
+      </div>
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 8px">Tabla de amortizacion</div>
@@ -1452,6 +1458,17 @@ async function openContract(id){
     $('payBtn').disabled=false;
     if(pr.ok&&pr.data&&pr.data.ok){ $('payMsg').textContent='OK - pago registrado'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(id); }
     else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
+  };
+  // PRUEBAS: mover el próximo vencimiento (desplaza toda la cola pendiente) para simular atrasos.
+  if($('ndSet')) $('ndSet').onclick=async()=>{
+    const d2=$('ndDate').value; if(!d2){ $('ndMsg').textContent='Elige una fecha.'; return; }
+    if(!confirm('¿Mover el próximo vencimiento a '+d2+'?\n\nLas cuotas pendientes se desplazan la misma cantidad de días. (Herramienta de pruebas)')) return;
+    $('ndMsg').textContent='Moviendo…';
+    const r3=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/set_next_due',{date:d2});
+    if(r3.ok&&r3.data&&r3.data.ok){
+      $('ndMsg').textContent='✓ Movido '+r3.data.moved_days+' día(s). Vencido: $'+(r3.data.past_due_amount||0)+(Number(r3.data.late_fee_amount)>0?(' · moratorios $'+r3.data.late_fee_amount):'');
+      setTimeout(()=>openContract(id), 1200);
+    } else { $('ndMsg').textContent=(r3.data&&r3.data.error)||'No se pudo mover.'; }
   };
 }
 async function deleteContract(id){

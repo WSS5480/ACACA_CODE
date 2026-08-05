@@ -102,6 +102,7 @@ Rails.application.routes.draw do
       post 'autopay', on: :member
       post 'generate_document', on: :member # staff: genera el contrato desde la plantilla y avisa por WhatsApp
       post 'sign', on: :member              # cliente: firma electrónica (imagen)
+      post 'set_next_due', on: :member      # staff: mover el próximo vencimiento (PRUEBAS de cobranza)
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'

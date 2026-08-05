@@ -226,6 +226,37 @@ module Api
     end
 
     # DELETE /api/contracts/:id  -> herramienta de limpieza (pruebas). Restaura el saldo al credito.
+    # POST /api/contracts/:id/set_next_due { date: 'YYYY-MM-DD' }  (solo master/admin — PRUEBAS)
+    # Mueve el PRÓXIMO vencimiento pendiente a la fecha dada y desplaza el resto de las
+    # cuotas pendientes la misma cantidad de días. Fechas pasadas simulan atrasos
+    # (vencidos + moratorios) para probar el sistema de cobranza.
+    def set_next_due
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff?
+
+      contract = Contract.find(params[:id])
+      new_date = Date.parse(params[:date].to_s) rescue nil
+      return render(json: { error: 'Fecha inválida (YYYY-MM-DD)' }, status: :unprocessable_entity) unless new_date
+
+      first_pending = contract.contract_installments.where.not(status: 'paid').order(:number).first
+      return render(json: { error: 'Este contrato no tiene cuotas pendientes' }, status: :unprocessable_entity) unless first_pending
+
+      delta = (new_date - first_pending.due_date).to_i
+      contract.contract_installments.where.not(status: 'paid').find_each do |inst|
+        inst.update_columns(due_date: inst.due_date + delta)
+      end
+      contract.reload
+      render json: {
+        ok: true, moved_days: delta,
+        next_due_date: contract.next_due_date,
+        days_past_due: contract.days_past_due,
+        past_due_amount: contract.past_due_amount,
+        late_fee_amount: (contract.respond_to?(:late_fee_amount) ? contract.late_fee_amount : 0),
+        payment_status: contract.payment_status
+      }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
     # POST /api/contracts/:id/generate_document  { send_whatsapp: true }
     # Genera el contrato del cliente desde la plantilla legal (rellena carátula, montos y
     # tabla de pagos) y le avisa por WhatsApp para que entre a firmarlo. Sólo staff.

@@ -25,12 +25,14 @@ class OrderSerializer
     end
   end
 
-  # Enganche / pago inicial recibido: el contrato de la orden ya tiene al menos un pago.
+  # Enganche / pago inicial recibido: el contrato de la orden ya tiene su primer pago
+  # (o es venta de contado). Sin contrato (órdenes antiguas) se considera pagado
+  # para no esconder el historial previo al flujo de contratos.
   attribute :downpayment_paid do |order|
     contract = order.respond_to?(:contract) ? order.contract : nil
-    contract ? contract.payments.exists? : false
+    contract ? contract.initial_paid? : true
   rescue StandardError
-    false
+    true
   end
 
   # pendiente -> aprobado (por entregar) -> entregado

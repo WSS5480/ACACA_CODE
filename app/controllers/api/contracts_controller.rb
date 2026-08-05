@@ -24,7 +24,15 @@ module Api
       return render(json: { error: 'No autorizado' }, status: :forbidden) if client? && contract.user_id != @current_user.id
       data = ContractSerializer.new(contract).serializable_hash[:data][:attributes]
       data[:items] = contract.orders.map { |o| OrderSerializer.new(o).serializable_hash[:data][:attributes] }
-      data[:installments] = contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
+      # El CLIENTE no ve el calendario de pagos hasta que realice el pago inicial;
+      # el staff siempre lo ve completo.
+      pending_initial = !contract.initial_paid?
+      data[:pending_initial_payment] = pending_initial
+      data[:installments] = if client? && pending_initial
+                              []
+                            else
+                              contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
+                            end
       render json: { data: data }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found

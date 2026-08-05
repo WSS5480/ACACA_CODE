@@ -40,6 +40,16 @@ class ContractSerializer
   attribute :initial_payment do |c|
     c.initial_payment
   end
+  # Pago inicial recibido (false = intento de compra pendiente → CRM)
+  attribute :initial_paid do |c|
+    c.respond_to?(:initial_paid?) ? c.initial_paid? : true
+  end
+  attribute :client_phone do |c|
+    c.user&.phone
+  end
+  attribute :client_email do |c|
+    c.user&.email
+  end
   attribute :autopay do |c|
     c.respond_to?(:autopay) ? c.autopay : false
   end

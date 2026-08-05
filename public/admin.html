@@ -145,6 +145,7 @@
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
       <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
       <a data-view="contratos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Contratos</a>
+      <a data-view="crm"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg> CRM</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
       <div class="sep"></div>
       <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
@@ -227,6 +228,20 @@
           <th class="right">Pago x Semana</th><th>Estado</th><th style="text-align:center" title="Pago inicial (enganche + primera cuota) recibido">Enganche</th><th>Verificación</th><th>WA</th>
         </tr></thead><tbody id="allOrdBody"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody></table>
       </div></div></div>
+    </section>
+
+    <!-- ---------- CRM · ventas por cerrar ---------- -->
+    <section class="view hide" data-v="crm">
+      <div class="head"><h1>CRM — Ventas por cerrar</h1><div class="sp"></div>
+        <button class="btn" id="crmRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
+      </div>
+      <p class="muted" style="margin:-6px 0 14px">Clientes que confirmaron su carrito y <b>llegaron a la pantalla de pago pero no han realizado el pago inicial</b>. Su contrato está reservado (no aparece en Órdenes y el cliente no ve su calendario hasta pagar). Contáctalos por WhatsApp para cerrar la venta; eliminar un intento libera su crédito.</p>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Cliente</th><th>Teléfono</th><th class="right">Artículos</th><th class="right">Contado</th>
+          <th class="right" title="Enganche + primer pago">Pago inicial</th><th>Creado</th><th>Esperando</th><th class="right">Acciones</th>
+        </tr></thead><tbody id="crmBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
     </section>
 
     <!-- ---------- CATÁLOGOS ---------- -->
@@ -578,6 +593,7 @@ function show(view){
   if(view==='clientes' && !loaded.cli){ loadClients(); }
   if(view==='creditos' && !loaded.cre){ loadCredits(); }
   if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
+  if(view==='crm'){ loadCrm(); }
   if(view==='contratos' && !loaded.con){ loadContracts(); loaded.con=1; }
   if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
   if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
@@ -664,6 +680,9 @@ async function loadOrders(where){
   const r=await api('GET','/api/orders?page=-1');
   if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
   let list=rows(r.data);
+  // Una orden entra al pipeline SOLO cuando el pago inicial fue recibido.
+  // Los intentos sin pago (llegaron a la pantalla de pago y no pagaron) viven en el CRM.
+  list=list.filter(o=>pick(o,['downpayment_paid'],true));
   if(where==='dashboard' && ordStatus) list=list.filter(o=>{
     const st=String(pick(o,['status','state'],'')).toLowerCase();
     const adminOk=!!pick(o,['admin_approved'],false);
@@ -1085,6 +1104,46 @@ async function loadContracts(userId){
   CONLIST=list; renderConStats(list);
 }
 let CONLIST=[];
+
+/* ---------------- CRM: ventas por cerrar (pago inicial pendiente) ---------------- */
+async function loadCrm(){
+  const body=$('crmBody'); if(!body) return;
+  body.innerHTML='<tr><td colspan="8" class="empty">Cargando…</td></tr>';
+  const r=await api('GET','/api/contracts');
+  if(!r.ok){ body.innerHTML='<tr><td colspan="8" class="empty">No se pudo cargar.</td></tr>'; return; }
+  const list=rows(r.data).filter(c=>String(pick(c,['status'],''))==='active' && !pick(c,['initial_paid'],true));
+  list.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
+  const now=Date.now();
+  body.innerHTML = list.length ? list.map(c=>{
+    const name=pick(c,['client_name'],'—')||'—', phone=pick(c,['client_phone'],''), uid=pick(c,['user_id'],null);
+    const created=pick(c,['created_at'],null);
+    const hrs=created?Math.max(0,Math.round((now-new Date(created).getTime())/36e5)):null;
+    const wait=hrs==null?'—':(hrs<48?(hrs+' h'):(Math.round(hrs/24)+' días'));
+    const hot=hrs!=null&&hrs<24; // caliente: recién abandonó, mejor momento para contactar
+    return `<tr class="crm-row" data-cid="${esc(String(c.id))}" style="cursor:pointer">
+      <td style="font-weight:600">${esc(name)}</td>
+      <td class="mono">${esc(phone||'—')}</td>
+      <td class="right">${esc(String(pick(c,['items_count'],0)))}</td>
+      <td class="right mono">${money(pick(c,['total_amount'],0))}</td>
+      <td class="right mono" style="font-weight:700;color:var(--brand-d)">${money(pick(c,['initial_payment'],0))}</td>
+      <td>${fdate(created)}</td>
+      <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo esperando'}">${wait}</span></td>
+      <td class="right">
+        <button class="crmwa" data-uid="${esc(String(uid||''))}" data-name="${esc(name)}" data-phone="${esc(phone||'')}" onclick="event.stopPropagation()" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
+        <button class="crmdel" data-cid="${esc(String(c.id))}" data-name="${esc(name)}" onclick="event.stopPropagation()" title="Eliminar intento (libera su crédito)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑️</button>
+      </td></tr>`;
+  }).join('') : '<tr><td colspan="8" class="empty">Sin ventas pendientes de pago — todos los que llegaron a la pantalla de pago, pagaron. 🎉</td></tr>';
+  body.querySelectorAll('.crm-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
+  body.querySelectorAll('.crmwa').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
+    convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}); });
+  body.querySelectorAll('.crmdel').forEach(b=>b.onclick=async(e)=>{ e.stopPropagation();
+    if(!confirm('¿Eliminar el intento de compra de '+(b.dataset.name||'este cliente')+'?\n\nSe libera su crédito y los artículos vuelven a estar disponibles. No se puede deshacer.')) return;
+    const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(b.dataset.cid));
+    if(r2.ok||r2.status===204){ loadCrm(); } else { alert((r2.data&&r2.data.error)||'No se pudo eliminar.'); }
+  });
+}
+if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;
+
 function conStatCard(label,val,color){ return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px"><div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.03em">${label}</div><div style="font-size:20px;font-weight:800;${color?('color:'+color):''}">${val}</div></div>`; }
 function renderConStats(list){
   const el=$('conStats'); if(!el) return;

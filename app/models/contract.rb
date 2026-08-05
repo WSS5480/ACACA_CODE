@@ -19,6 +19,14 @@ class Contract < ApplicationRecord
     payments.sum(:amount).to_f
   end
 
+  # ¿Ya se recibió el pago inicial (enganche + primera cuota)?
+  # Un contrato de contado (status 'paid') cuenta como pagado.
+  # Mientras NO esté pagado, el contrato es un intento de compra (CRM): el cliente
+  # llegó a la pantalla de pago pero no ha pagado; no aparece en Órdenes ni ve su calendario.
+  def initial_paid?
+    status == 'paid' || payments.exists?
+  end
+
   # Saldo pendiente del monto financiado (los pagos semanales lo van liquidando).
   def balance
     [(financed_amount.to_f - total_paid).round(2), 0].max

@@ -955,7 +955,7 @@ async function openClientSheet(uid){
   fi.style.display=''; fi.innerHTML='<p class="muted">Cargando ficha…</p>';
   const r=await api('GET','/api/users/'+encodeURIComponent(uid)+'/full_info');
   if(!r.ok||!r.data||!r.data.user){ fi.innerHTML='<p class="empty">No se pudo cargar la ficha.'+((r.data&&r.data.error)?(' '+esc(r.data.error)):'')+'</p>'; return; }
-  const u=r.data.user, bens=r.data.beneficiaries||[], ords=r.data.orders||[], logs=r.data.contact_logs||[];
+  const u=r.data.user, bens=r.data.beneficiaries||[], ords=r.data.orders||[], logs=r.data.contact_logs||[], ctrs=r.data.contracts||[];
   const uName=[u.name,u.last_name].filter(Boolean).join(' ')||u.email||('Cliente #'+u.id);
   const uConv={user_id:u.id, name:uName, phone:u.phone, person_type:'customer'};
 
@@ -1047,6 +1047,15 @@ async function openClientSheet(uid){
       <div class="sp"></div><span class="muted">Ficha de información</span></div>
     ${fichaSec('Datos de la cuenta', cuenta)}
     ${fichaSec('Solicitud — preguntas y respuestas', solicitud)}
+    ${fichaSec('Contratos y firmas ('+ctrs.length+')', ctrs.length ? ctrs.map(ct=>{
+      const num=ct.contract_number||ct.order_ref||('#'+ct.id);
+      let estado;
+      if(ct.signed_at) estado='<span class="pill p-appr">&#9997;&#65039; Firmado por '+esc(ct.signature_name||'')+' el '+fdate(ct.signed_at)+'</span>'+(ct.signature_url?(' <a href="'+esc(ct.signature_url)+'" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:12.5px">ver firma</a>'):'');
+      else if(ct.document_generated_at) estado='<span class="pill p-pend">Contrato enviado '+fdate(ct.document_sent_at||ct.document_generated_at)+' — esperando firma</span>';
+      else if(ct.initial_paid) estado='<span class="pill p-other">Pagado — contrato sin generar</span>';
+      else estado='<span class="pill p-canc">Pedido sin pago inicial (CRM)</span>';
+      return qaRow(num+' · '+money(ct.total_amount)+' · '+fdate(ct.created_at), estado);
+    }).join('') : '<p class="muted">Sin contratos todavía.</p>')}
     ${fichaSec('Beneficiarios ('+bens.length+')', bensHtml)}
     ${ordsHtml}
     ${fichaSec('Bitácora de conversaciones ('+logs.length+')', logsHtml)}`;

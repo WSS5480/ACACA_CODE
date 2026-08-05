@@ -115,6 +115,7 @@ class Api::UsersController < ApplicationController
           address1: b.address1, address2: b.address2, zip_code: b.zip_code, state: b.state, city: b.city }
       end,
       orders: orders.map { |o| order_full_info(o) },
+      contracts: user.contracts.order(:created_at).map { |c| contract_sign_info(c) },
       contact_logs: ContactLog.where(user_id: user.id).order(:created_at).last(300).map do |l|
         { id: l.id, order_id: l.order_id, person_type: l.person_type, person_name: l.person_name,
           phone: l.phone, body: l.body, author_name: l.author_name, created_at: l.created_at }
@@ -304,6 +305,35 @@ class Api::UsersController < ApplicationController
 
   def try_f(rec, field)
     rec.respond_to?(field) ? rec.public_send(field) : nil
+  end
+
+  # Contrato + estado de firma para la ficha del cliente.
+  def contract_sign_info(c)
+    sig_url = nil
+    if c.respond_to?(:signature) && c.signature.attached?
+      sig_url = begin
+        c.signature.url(expires_in: 1.hour)
+      rescue StandardError
+        begin
+          Rails.application.routes.url_helpers.rails_blob_url(c.signature)
+        rescue StandardError
+          nil
+        end
+      end
+    end
+    {
+      id: c.id,
+      contract_number: c.contract_number,
+      order_ref: (c.respond_to?(:order_ref) ? c.order_ref : "PED-#{c.id}"),
+      status: c.status, payment_status: c.payment_status,
+      total_amount: c.total_amount, created_at: c.created_at,
+      initial_paid: (c.respond_to?(:initial_paid?) ? c.initial_paid? : true),
+      document_generated_at: try_f(c, :document_generated_at),
+      document_sent_at: try_f(c, :document_sent_at),
+      signed_at: try_f(c, :signed_at),
+      signature_name: try_f(c, :signature_name),
+      signature_url: sig_url
+    }
   end
 
   def set_user

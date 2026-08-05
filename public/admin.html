@@ -232,7 +232,10 @@
     <!-- ---------- CATÁLOGOS ---------- -->
     <!-- ---------- CONTRATOS ---------- -->
     <section class="view hide" data-v="contratos">
-      <div class="head"><h1 id="conTitle">Gestion de Contratos</h1><div class="sp"></div>
+      <div class="head"><h1 id="conTitle">Gestion de Contratos</h1>
+        <button class="btn" id="conFichaBtn" style="display:none;margin-left:14px">Ficha del cliente</button>
+        <button class="btn" id="conConvBtn" style="display:none;background:#25D366;margin-left:8px">&#9990; Conversación</button>
+        <div class="sp"></div>
         <button class="btn" id="conNewBtn" style="margin-right:10px">+ Nuevo contrato</button>
         <button class="btn" id="conAgingBtn" style="margin-right:10px;background:#eef0f6;color:var(--navy)">Account Aging</button>
         <a href="#" id="conClearFilter" style="display:none;color:var(--brand-d);font-weight:700">Ver todos</a>
@@ -246,6 +249,7 @@
         </tr></thead><tbody id="conBody"><tr><td colspan="11" class="empty">Cargando...</td></tr></tbody></table>
       </div></div></div>
       <div id="conDetail" style="display:none"></div>
+      <div id="cliFicha" style="display:none"></div>
     </section>
 
     <section class="view hide" data-v="catalogos">
@@ -682,9 +686,17 @@ async function openOrderVerify(id){
   const zBox=sec=>zAlerts.filter(a=>a.section===sec).map(a=>`<div style="background:#fdecea;border:1px solid #f5c6c2;color:#b3261e;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600">&#9888; ${esc(a.message||'')}</div>`).join('');
   const asin=pick(o,['product_asin'],null);
   const approved=!!o.admin_approved, delivered=!!o.delivered_at;
-  const benInner = zBox('beneficiary') + (ben ? [vField('Nombre',[ben.name,ben.last_name].filter(Boolean).join(' ')),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
-  const buyInner = zBox('buyer') + (buy ? [vField('Nombre',[buy.name,buy.last_name].filter(Boolean).join(' ')),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
-  const refInner = refs.length ? refs.map((rf,i)=>vField(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`,[rf.name,rf.last_name].filter(Boolean).join(' ')+' · '+((rf.phone_code||'')+' '+(rf.phone_number||'')))).join('') : '';
+  // Nombre con botón de conversación (bitácora + WhatsApp) por persona.
+  const vPerson=(label,who,conv)=>`<div style="min-width:150px"><div class="muted" style="font-size:11.5px">${esc(label)}</div><div style="font-weight:600;font-size:13.5px">${who?esc(who):'—'}${(conv&&conv.phone)?convBtnHtml(conv):''}</div></div>`;
+  const benName=ben?[ben.name,ben.last_name].filter(Boolean).join(' '):'';
+  const buyName=buy?[buy.name,buy.last_name].filter(Boolean).join(' '):'';
+  const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
+  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
+  const refInner = refs.length ? refs.map((rf,i)=>{
+    const rn=[rf.name,rf.last_name].filter(Boolean).join(' ');
+    const rphone=rf.phone||((rf.phone_code||'')+(rf.phone_number||''))||null;
+    return vPerson(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`, rn+(rphone?(' · '+rphone):''), {phone:rphone,name:rn||('Referencia '+(i+1)),user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'});
+  }).join('') : '';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="ovBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a órdenes</a></div>
     <div class="head"><h1 style="font-size:20px">Orden #${esc(o.id)} — ${esc([o.user_name,o.user_last_name].filter(Boolean).join(' '))}</h1><div class="sp"></div>${fulfillPill(o)}</div>
@@ -706,6 +718,7 @@ async function openOrderVerify(id){
     ${!approved?'<p class="muted" style="font-size:12.5px">La compra en Amazon se habilita hasta que las tres secciones estén verificadas y la orden aprobada.</p>':''}`;
   $('ovBack').onclick=(e)=>{e.preventDefault(); d.style.display='none'; d.innerHTML=''; if(wrap) wrap.style.display=''; loadOrders('all');};
   if($('ovWa')) $('ovWa').onclick=()=>waChatOpen(pick(o,['user_id'],null), [o.user_name,o.user_last_name].filter(Boolean).join(' '));
+  bindConvBtns(d); // botones de conversación junto a cada nombre (beneficiario, comprador, referencias)
   const collect=()=>{ const b={};
     d.querySelectorAll('.vchk').forEach(c=>b[c.dataset.k+'_verified']=c.checked);
     d.querySelectorAll('.vcom').forEach(c=>b[c.dataset.k+'_comment']=c.value);
@@ -728,62 +741,216 @@ async function openOrderVerify(id){
   };
 }
 
-/* ---------------- WhatsApp chat (archivo del cliente) ---------------- */
-let WA_UID=null, WA_TIMER=null;
-function waChatOpen(uid, name){
-  if(!uid){ alert('Esta orden no tiene cliente ligado.'); return; }
-  WA_UID=uid;
-  let ov=$('waOverlay');
+/* ---------------- Conversaciones por persona: bitácora + WhatsApp ---------------- */
+// Popup único para CUALQUIER persona (cliente, comprador, beneficiario o referencia):
+// muestra el hilo de WhatsApp + las notas de la bitácora intercaladas, deja registrar
+// una nota de conversación (llamada, acuerdo) y enviar/recibir WhatsApp.
+let CONV=null, CONV_TIMER=null, CONV_REG=[];
+const CONV_LABEL={customer:'Cliente',buyer:'Comprador',beneficiary:'Beneficiario',reference:'Referencia',guarantor:'Aval'};
+function convBtnHtml(p){ CONV_REG.push(p); return `<button class="convbtn" data-ci="${CONV_REG.length-1}" title="Conversación / WhatsApp" onclick="event.stopPropagation()" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;vertical-align:middle;margin-left:8px">&#9990;</button>`; }
+function bindConvBtns(root){ (root||document).querySelectorAll('.convbtn').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); convOpen(CONV_REG[+b.dataset.ci]);}); }
+function waChatOpen(uid, name){ convOpen({user_id:uid, name:name, person_type:'customer'}); } // compatibilidad con botones existentes
+function convOpen(p){
+  if(!p || (!p.phone && !p.user_id)){ alert('Esta persona no tiene teléfono ni cuenta ligada.'); return; }
+  CONV=p;
+  let ov=$('convOverlay');
   if(!ov){
-    ov=document.createElement('div'); ov.id='waOverlay';
+    ov=document.createElement('div'); ov.id='convOverlay';
     ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.45);z-index:999;display:flex;align-items:center;justify-content:center';
-    ov.innerHTML=`<div style="background:#fff;border-radius:16px;width:min(480px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
-      <div style="background:#25D366;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">✆</span><b id="waName" style="flex:1;font-size:15px"></b>
-        <button id="waClose" style="border:0;background:none;color:#fff;font-size:20px;cursor:pointer">×</button>
+    ov.innerHTML=`<div style="background:#fff;border-radius:16px;width:min(520px,94vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:#25D366;color:#fff;padding:13px 18px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">&#9990;</span>
+        <div style="flex:1"><b id="convName" style="font-size:15px;display:block"></b><span id="convSub" style="font-size:11.5px;opacity:.9"></span></div>
+        <button id="convClose" style="border:0;background:none;color:#fff;font-size:20px;cursor:pointer">×</button>
       </div>
-      <div id="waMsgs" style="flex:1;overflow-y:auto;padding:14px;background:#efe7dd;min-height:260px;max-height:52vh"></div>
-      <div style="display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)">
-        <input id="waInput" placeholder="Escribe un mensaje…" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px">
-        <button id="waSend" class="btn" style="background:#25D366">Enviar</button>
-      </div>
-      <div class="muted" id="waStatus" style="padding:0 14px 10px;font-size:12px"></div></div>`;
+      <div id="convMsgs" style="flex:1;overflow-y:auto;padding:14px;background:#efe7dd;min-height:260px;max-height:50vh"></div>
+      <div style="padding:12px;border-top:1px solid var(--line)">
+        <textarea id="convInput" placeholder="Escribe el mensaje o la nota de la llamada…" style="width:100%;min-height:52px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button id="convNote" class="btn" style="background:#eef0f6;color:var(--navy)" title="Guarda la nota en la bitácora (NO envía nada)">&#128221; Guardar nota</button>
+          <div class="sp" style="flex:1"></div>
+          <button id="convWa" class="btn" style="background:#25D366" title="Envía por WhatsApp">Enviar WhatsApp &#10148;</button>
+        </div>
+        <div class="muted" id="convStatus" style="padding-top:6px;font-size:12px"></div>
+      </div></div>`;
     document.body.appendChild(ov);
-    $('waClose').onclick=()=>{ ov.style.display='none'; WA_UID=null; if(WA_TIMER){clearInterval(WA_TIMER);WA_TIMER=null;} };
-    $('waSend').onclick=waSendMsg;
-    $('waInput').addEventListener('keydown',e=>{ if(e.key==='Enter') waSendMsg(); });
+    $('convClose').onclick=()=>{ ov.style.display='none'; CONV=null; if(CONV_TIMER){clearInterval(CONV_TIMER);CONV_TIMER=null;} };
+    $('convNote').onclick=convSaveNote;
+    $('convWa').onclick=convSendWa;
+    $('convInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); convSendWa(); } });
   }
-  ov.style.display='flex'; $('waName').textContent=name||('Cliente #'+uid); $('waMsgs').innerHTML='<p class="muted">Cargando…</p>'; $('waStatus').textContent='';
-  waLoad();
-  if(WA_TIMER) clearInterval(WA_TIMER);
-  WA_TIMER=setInterval(()=>{ if(WA_UID) waLoad(true); }, 15000);
+  ov.style.display='flex';
+  $('convName').textContent=p.name||('Cliente #'+(p.user_id||''));
+  $('convSub').textContent=[CONV_LABEL[p.person_type]||'',p.phone?('Tel: '+p.phone):''].filter(Boolean).join(' · ');
+  $('convMsgs').innerHTML='<p class="muted">Cargando…</p>'; $('convStatus').textContent='';
+  convLoad();
+  if(CONV_TIMER) clearInterval(CONV_TIMER);
+  CONV_TIMER=setInterval(()=>{ if(CONV) convLoad(true); }, 15000);
 }
-async function waLoad(silent){
-  if(!WA_UID) return;
-  const r=await api('GET','/api/whatsapp/messages?user_id='+encodeURIComponent(WA_UID));
-  const box=$('waMsgs'); if(!box) return;
-  if(!r.ok){ if(!silent) box.innerHTML='<p class="empty">No se pudo cargar la conversación.</p>'; return; }
-  const list=(r.data&&r.data.messages)||[];
-  box.innerHTML = list.length ? list.map(m=>{
-    const mine=m.direction==='out';
+async function convLoad(silent){
+  if(!CONV) return;
+  const box=$('convMsgs'); if(!box) return;
+  const qWa = CONV.phone ? ('phone='+encodeURIComponent(CONV.phone)) : ('user_id='+encodeURIComponent(CONV.user_id));
+  const qLog = CONV.phone ? ('phone='+encodeURIComponent(CONV.phone)) : ('user_id='+encodeURIComponent(CONV.user_id));
+  const [rw,rl]=await Promise.all([ api('GET','/api/whatsapp/messages?'+qWa), api('GET','/api/contact_logs?'+qLog) ]);
+  if(!rw.ok && !rl.ok){ if(!silent) box.innerHTML='<p class="empty">No se pudo cargar la conversación.</p>'; return; }
+  const msgs=((rw.data&&rw.data.messages)||[]).map(m=>({t:new Date(m.created_at).getTime(),kind:'wa',m:m}));
+  const notes=((rl.data&&rl.data.logs)||[]).map(l=>({t:new Date(l.created_at).getTime(),kind:'note',m:l}));
+  const all=msgs.concat(notes).sort((a,b)=>a.t-b.t);
+  box.innerHTML = all.length ? all.map(x=>{
+    const when=fdate(x.m.created_at)+' '+new Date(x.m.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    if(x.kind==='note'){
+      return `<div style="display:flex;justify-content:center;margin-bottom:8px">
+        <div style="max-width:88%;background:#fff8e1;border:1px solid #f2d99b;border-radius:10px;padding:8px 11px;font-size:13px">
+          <div style="font-weight:700;font-size:11.5px;color:#8a6d1a;margin-bottom:2px">&#128221; Nota${x.m.author_name?(' — '+esc(x.m.author_name)):''}${x.m.person_type&&CONV_LABEL[x.m.person_type]?(' · '+CONV_LABEL[x.m.person_type]):''}</div>
+          ${esc(x.m.body||'')}
+          <div class="muted" style="font-size:10.5px;text-align:right;margin-top:3px">${when}</div>
+        </div></div>`;
+    }
+    const m=x.m, mine=m.direction==='out';
     const media = m.media_url ? (String(m.media_type)==='image'
       ? `<a href="${esc(m.media_url)}" target="_blank" rel="noopener"><img src="${esc(m.media_url)}" style="max-width:200px;border-radius:8px;display:block;margin-bottom:4px"></a>`
-      : `<a href="${esc(m.media_url)}" target="_blank" rel="noopener" style="font-weight:700">📎 ${esc(m.media_type||'archivo')}</a><br>`) : '';
+      : `<a href="${esc(m.media_url)}" target="_blank" rel="noopener" style="font-weight:700">&#128206; ${esc(m.media_type||'archivo')}</a><br>`) : '';
     return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin-bottom:8px">
       <div style="max-width:78%;background:${mine?'#d9fdd3':'#fff'};border-radius:10px;padding:8px 11px;font-size:13.5px;box-shadow:0 1px 1px rgba(0,0,0,.08)">
         ${media}${m.body?esc(m.body):''}
-        <div class="muted" style="font-size:10.5px;text-align:right;margin-top:3px">${fdate(m.created_at)} ${new Date(m.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="muted" style="font-size:10.5px;text-align:right;margin-top:3px">${when}</div>
       </div></div>`;
-  }).join('') : '<p class="muted" style="text-align:center">Sin mensajes todavía. Los mensajes y fotos que envíe el cliente quedan archivados aquí.</p>';
+  }).join('') : '<p class="muted" style="text-align:center">Sin mensajes ni notas todavía.<br>Lo que la persona envíe por WhatsApp queda archivado aquí; usa &#128221; para registrar llamadas.</p>';
   box.scrollTop=box.scrollHeight;
 }
-async function waSendMsg(){
-  const inp=$('waInput'); const txt=(inp.value||'').trim(); if(!txt||!WA_UID) return;
-  $('waStatus').textContent='Enviando…'; $('waSend').disabled=true;
-  const r=await api('POST','/api/whatsapp/send',{user_id:WA_UID,message:txt});
-  $('waSend').disabled=false;
-  if(r.ok){ inp.value=''; $('waStatus').textContent=''; waLoad(); }
-  else { $('waStatus').textContent=(r.data&&r.data.error)||'No se pudo enviar.'; }
+async function convSaveNote(){
+  const inp=$('convInput'); const txt=(inp.value||'').trim(); if(!txt||!CONV) return;
+  $('convStatus').textContent='Guardando nota…'; $('convNote').disabled=true;
+  const r=await api('POST','/api/contact_logs',{user_id:CONV.user_id||null, order_id:CONV.order_id||null,
+    person_type:CONV.person_type||null, person_name:CONV.name||null, phone:CONV.phone||null, body:txt});
+  $('convNote').disabled=false;
+  if(r.ok){ inp.value=''; $('convStatus').textContent='✓ Nota guardada en la bitácora.'; convLoad(); }
+  else { $('convStatus').textContent=(r.data&&r.data.error)||'No se pudo guardar la nota.'; }
+}
+async function convSendWa(){
+  const inp=$('convInput'); const txt=(inp.value||'').trim(); if(!txt||!CONV) return;
+  $('convStatus').textContent='Enviando WhatsApp…'; $('convWa').disabled=true;
+  const body={message:txt}; if(CONV.phone) body.phone=CONV.phone; if(CONV.user_id) body.user_id=CONV.user_id;
+  const r=await api('POST','/api/whatsapp/send',body);
+  $('convWa').disabled=false;
+  if(r.ok){ inp.value=''; $('convStatus').textContent=''; convLoad(); }
+  else { $('convStatus').textContent=(r.data&&r.data.error)||'No se pudo enviar.'; }
+}
+
+/* ---------------- Ficha del cliente (hoja de información completa) ---------------- */
+const QA_HOUSING={owner:'Propia',tenant:'Rentada'};
+const QA_NATION={mexican:'Mexicana',american:'Estadounidense',canadian:'Canadiense',other:'Otra'};
+function qaRow(q,a){ return `<div style="display:flex;gap:14px;padding:7px 0;border-bottom:1px dashed var(--line)"><div class="muted" style="flex:0 0 46%;font-size:12.5px">${esc(q)}</div><div style="font-weight:600;font-size:13.5px;flex:1">${a==null||a===''?'—':a}</div></div>`; }
+function qaTxt(q,a){ return qaRow(q, a==null||a===''?null:esc(String(a))); }
+function fichaSec(title,inner,extra){ return `<div class="sec" style="padding:16px 18px;margin-bottom:14px"><div class="stitle" style="padding:0 0 8px">${title}${extra||''}</div>${inner}</div>`; }
+function joinAddr(parts){ const s=parts.filter(Boolean).join(', '); return s||null; }
+async function openClientSheet(uid){
+  const fi=$('cliFicha'); if(!fi||!uid) return;
+  const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
+  const st=$('conStats'); if(st) st.style.display='none';
+  const d=$('conDetail'); if(d){ d.style.display='none'; }
+  const ag=$('conAging'); if(ag) ag.style.display='none';
+  fi.style.display=''; fi.innerHTML='<p class="muted">Cargando ficha…</p>';
+  const r=await api('GET','/api/users/'+encodeURIComponent(uid)+'/full_info');
+  if(!r.ok||!r.data||!r.data.user){ fi.innerHTML='<p class="empty">No se pudo cargar la ficha.'+((r.data&&r.data.error)?(' '+esc(r.data.error)):'')+'</p>'; return; }
+  const u=r.data.user, bens=r.data.beneficiaries||[], ords=r.data.orders||[], logs=r.data.contact_logs||[];
+  const uName=[u.name,u.last_name].filter(Boolean).join(' ')||u.email||('Cliente #'+u.id);
+  const uConv={user_id:u.id, name:uName, phone:u.phone, person_type:'customer'};
+
+  const cuenta =
+    qaTxt('Email', u.email) +
+    qaRow('Teléfono', u.phone?esc(u.phone)+convBtnHtml(uConv):null) +
+    qaTxt('Número de cliente', u.number) +
+    qaTxt('Registrado', fdate(u.created_at)) +
+    qaTxt('Línea de crédito', u.credit_limit!=null?money(u.credit_limit):null) +
+    qaTxt('Crédito disponible', u.available_credit!=null?money(u.available_credit):null) +
+    qaTxt('Versión del motor de riesgo', u.risk_version!=null?('v'+u.risk_version):null);
+
+  const solicitud =
+    qaTxt('¿Vivienda propia o rentada?', QA_HOUSING[u.housing_type]||u.housing_type) +
+    qaTxt('¿Cuántos meses lleva en Estados Unidos?', u.months_usa) +
+    qaTxt('¿Cuántos meses en su domicilio actual?', u.months_address) +
+    qaTxt('¿Cuántos meses en su empleo actual?', u.months_job) +
+    qaTxt('¿Ingreso semanal estimado (USD)?', u.estimated_income) +
+    qaTxt('¿País de entrega?', u.delivery_country) +
+    qaTxt('¿Comparte ingresos?', u.shared_income);
+
+  const bensHtml = bens.length ? bens.map(b=>{
+    const bn=[b.name,b.last_name].filter(Boolean).join(' ')||'—';
+    return qaRow(bn, [b.phone?esc(b.phone):null, b.email?esc(b.email):null, joinAddr([b.address1,b.address2,b.city,b.state,b.zip_code])?esc(joinAddr([b.address1,b.address2,b.city,b.state,b.zip_code])):null].filter(Boolean).join(' · ')
+      + (b.phone?convBtnHtml({phone:b.phone, name:bn, user_id:u.id, person_type:'beneficiary'}):''));
+  }).join('') : '<p class="muted">Sin beneficiarios registrados.</p>';
+
+  const ordsHtml = ords.length ? ords.map(o=>{
+    const v=o.verification||{}, buy=o.buyer, ben=o.beneficiary, gua=o.guarantor, refs=o.referrals||[];
+    let inner='';
+    inner += qaTxt('Producto', o.product_title) + qaTxt('Estado', o.status) + qaTxt('Contrato', o.contract_number)
+           + qaTxt('Pago semanal', o.weekly_payment!=null?money(o.weekly_payment):null)
+           + qaTxt('Fecha', fdate(o.created_at));
+    if(buy){
+      const bn=[buy.name,buy.last_name].filter(Boolean).join(' ')||'—';
+      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Comprador — cuestionario ${buy.phone?convBtnHtml({phone:buy.phone, name:bn, user_id:u.id, order_id:o.id, person_type:'buyer'}):''}</div>`
+        + qaTxt('Nombre', bn)
+        + qaTxt('¿Nacionalidad?', QA_NATION[buy.nationality]||buy.nationality)
+        + qaTxt('¿Estado donde reside?', buy.state_residence)
+        + qaTxt('¿Vivienda propia o rentada?', QA_HOUSING[buy.housing_type]||buy.housing_type)
+        + qaTxt('¿Meses viviendo en Estados Unidos?', buy.months_usa)
+        + qaTxt('¿Meses en el domicilio actual?', buy.months_address)
+        + qaTxt('¿Dónde trabaja?', buy.job)
+        + qaTxt('¿Ingreso semanal (USD)?', buy.weekly_income!=null?money(buy.weekly_income):null)
+        + qaTxt('¿Parentesco con el beneficiario?', buy.relationship_with_beneficiary)
+        + qaTxt('Teléfono', buy.phone) + qaTxt('Teléfono del trabajo', buy.phone_work) + qaTxt('Email', buy.email)
+        + qaTxt('Domicilio (EUA)', joinAddr([buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code]))
+        + qaTxt('Dirección de entrega (México)', joinAddr([buy.delivery_address1,buy.delivery_address2,buy.delivery_city,buy.delivery_state,buy.delivery_zip_code]))
+        + qaTxt('Teléfono del beneficiario', buy.phone_beneficiary);
+    }
+    if(ben){
+      const bn=[ben.name,ben.last_name].filter(Boolean).join(' ')||'—';
+      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Beneficiario ${ben.phone?convBtnHtml({phone:ben.phone, name:bn, user_id:u.id, order_id:o.id, person_type:'beneficiary'}):''}</div>`
+        + qaTxt('Nombre', bn) + qaTxt('Teléfono', ben.phone) + qaTxt('Email', ben.email)
+        + qaTxt('Parentesco', ben.relationship)
+        + qaTxt('Dirección', joinAddr([ben.address1,ben.address2,ben.city,ben.state,ben.zip_code]));
+    }
+    if(gua){
+      const gn=[gua.name,gua.last_name].filter(Boolean).join(' ')||'—';
+      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Aval ${gua.phone?convBtnHtml({phone:gua.phone, name:gn, user_id:u.id, order_id:o.id, person_type:'guarantor'}):''}</div>`
+        + qaTxt('Nombre', gn) + qaTxt('Teléfono', gua.phone) + qaTxt('Email', gua.email)
+        + qaTxt('Dirección', joinAddr([gua.address1,gua.address2,gua.city,gua.state,gua.zip_code]));
+    }
+    if(refs.length){
+      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Referencias (${refs.length})</div>`
+        + refs.map((rf,i)=>{ const rn=[rf.name,rf.last_name].filter(Boolean).join(' ')||('Ref '+(i+1));
+            return qaRow('Referencia '+(i+1)+(rf.nationality?(' ('+(rf.nationality==='mexican'?'MX':'US')+')'):''),
+              esc(rn)+(rf.phone?(' · '+esc(rf.phone)):'')+(rf.phone_work?(' · trabajo: '+esc(rf.phone_work)):'')
+              + (rf.phone?convBtnHtml({phone:rf.phone, name:rn, user_id:u.id, order_id:o.id, person_type:'reference'}):'')); }).join('');
+    }
+    const vRow=(lbl,ok,com)=>qaRow(lbl, `<span class="pill ${ok?'p-appr':'p-pend'}">${ok?'Verificado':'Pendiente'}</span>`+(com?(' <span style="font-weight:500">'+esc(com)+'</span>'):''));
+    inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Verificación — comentarios y respuestas</div>`
+      + vRow('Beneficiario', v.beneficiary_verified, v.beneficiary_comment)
+      + vRow('Comprador', v.buyer_verified, v.buyer_comment)
+      + vRow('Referencias', v.references_verified, v.references_comment);
+    return fichaSec('Orden #'+esc(String(o.id))+' — '+esc(o.product_title||''), inner,
+      ` <a href="#" onclick="event.preventDefault();show('ordenes');openOrderVerify('${esc(String(o.id))}')" style="font-size:12px;color:var(--brand-d);font-weight:700;margin-left:10px">abrir verificación &rarr;</a>`);
+  }).join('') : fichaSec('Órdenes','<p class="muted">Sin órdenes todavía.</p>');
+
+  const logsHtml = logs.length ? logs.slice().reverse().map(l=>
+    qaRow(fdate(l.created_at)+' '+new Date(l.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+      '<b>'+esc(l.person_name||CONV_LABEL[l.person_type]||'')+'</b>'+(CONV_LABEL[l.person_type]?(' <span class="muted">('+CONV_LABEL[l.person_type]+')</span>'):'')+': '+esc(l.body||'')+(l.author_name?(' <span class="muted">— '+esc(l.author_name)+'</span>'):''))
+  ).join('') : '<p class="muted">Sin notas registradas. Usa el botón verde de cualquier persona para registrar llamadas.</p>';
+
+  fi.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="fichaBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a la pantalla del cliente</a></div>
+    <div class="head"><h1>${esc(uName)}</h1>
+      <span style="margin-left:12px">${convBtnHtml(uConv)}</span>
+      <div class="sp"></div><span class="muted">Ficha de información</span></div>
+    ${fichaSec('Datos de la cuenta', cuenta)}
+    ${fichaSec('Solicitud — preguntas y respuestas', solicitud)}
+    ${fichaSec('Beneficiarios ('+bens.length+')', bensHtml)}
+    ${ordsHtml}
+    ${fichaSec('Bitácora de conversaciones ('+logs.length+')', logsHtml)}`;
+  $('fichaBack').onclick=(e)=>{e.preventDefault(); fi.style.display='none'; fi.innerHTML=''; const w=$('conTableWrap'); if(w) w.style.display=''; const s2=$('conStats'); if(s2) s2.style.display='flex'; };
+  bindConvBtns(fi);
 }
 
 /* ---------------- Clients / Credits ---------------- */
@@ -801,8 +968,9 @@ async function loadClients(){
       return `<tr><td><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
-        <td class="right"><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
+        <td class="right"><button class="convcli" data-id="${esc(id)}" data-name="${esc(name)}" data-phone="${esc(pick(u,['phone'],'')||'')}" title="Conversación / WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;margin-right:8px">&#9990;</button><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
     }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;
+    $('cliBody').querySelectorAll('.convcli').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.id, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
     $('cliBody').querySelectorAll('.recalccli').forEach(b=>b.onclick=()=>recalcClient(b.dataset.id));
     $('cliBody').querySelectorAll('.setcredit').forEach(b=>b.onclick=()=>setClientCredit(b.dataset.id));
@@ -857,7 +1025,17 @@ async function loadContracts(userId){
   const wrap=$('conTableWrap'); if(wrap) wrap.style.display='';
   const body=$('conBody'); if(!body) return;
   body.innerHTML='<tr><td colspan="11" class="empty">Cargando...</td></tr>';
-  $('conTitle').textContent = userId ? 'Contratos del cliente' : 'Gestion de Contratos';
+  // Pantalla del cliente: su NOMBRE es el encabezado (en lugar de "Contratos del cliente"),
+  // con botones junto al nombre: Ficha del cliente y Conversación.
+  let cliRec=null;
+  if(userId){ try{ cliRec=(await fetchClients()).find(u=>String(pick(u,['id'],''))===String(userId))||null; }catch(e){} }
+  const cliName = cliRec ? (([pick(cliRec,['name','first_name'],''),pick(cliRec,['last_name'],'')].filter(Boolean).join(' '))||pick(cliRec,['email'],'Cliente')) : null;
+  $('conTitle').textContent = userId ? (cliName||'Cliente') : 'Gestion de Contratos';
+  const fb=$('conFichaBtn'), cb=$('conConvBtn'), fich=$('cliFicha');
+  if(fich){ fich.style.display='none'; fich.innerHTML=''; }
+  if(fb){ fb.style.display = userId ? '' : 'none'; fb.onclick=()=>openClientSheet(userId); }
+  if(cb){ cb.style.display = userId ? '' : 'none';
+    cb.onclick=()=>convOpen({user_id:userId, name:cliName||('Cliente #'+userId), phone:cliRec?pick(cliRec,['phone'],null):null, person_type:'customer'}); }
   const cf=$('conClearFilter'); if(cf){ cf.style.display = userId ? '' : 'none'; cf.onclick=(e)=>{e.preventDefault(); loadContracts(null);}; }
   const r=await api('GET','/api/contracts'+(userId?('?user_id='+encodeURIComponent(userId)):''));
   if(!r.ok){ body.innerHTML='<tr><td colspan="11" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
@@ -901,6 +1079,7 @@ function renderConStats(list){
 async function openAging(){
   const wrap=$('conTableWrap'), d=$('conDetail'), ag=$('conAging'), st=$('conStats');
   if(wrap) wrap.style.display='none'; if(d){d.style.display='none';} if(st) st.style.display='none';
+  const fi=$('cliFicha'); if(fi) fi.style.display='none';
   ag.style.display=''; ag.innerHTML='<p class="muted">Cargando...</p>';
   const r=await api('GET','/api/contracts');
   if(!r.ok){ ag.innerHTML='<p class="empty">No se pudo cargar.</p>'; return; }
@@ -949,6 +1128,7 @@ if($('conAgingBtn')) $('conAgingBtn').onclick=openAging;
 async function openContract(id){
   const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
   const st=$('conStats'); if(st) st.style.display='none'; const ag=$('conAging'); if(ag) ag.style.display='none';
+  { const fiX=$('cliFicha'); if(fiX) fiX.style.display='none'; }
   d.style.display=''; d.innerHTML='<p class="muted">Cargando contrato...</p>';
   const r=await api('GET','/api/contracts/'+encodeURIComponent(id));
   if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar el contrato.</p>'; return; }
@@ -1801,6 +1981,7 @@ function ncRenderCart(){
 async function newContractForm(){
   const d=$('conDetail'); const wrap=$('conTableWrap'); if(wrap) wrap.style.display='none';
   const st=$('conStats'); if(st) st.style.display='none'; const ag=$('conAging'); if(ag) ag.style.display='none';
+  { const fiX=$('cliFicha'); if(fiX) fiX.style.display='none'; }
   d.style.display=''; d.innerHTML='<p class="muted">Cargando...</p>'; NC_CART=[];
   const clients=await fetchClients(); const prods=await ncLoadProducts();
   const PMAP={}; prods.forEach(p=>PMAP[String(p.id)]=p);

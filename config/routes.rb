@@ -67,6 +67,7 @@ Rails.application.routes.draw do
       post 'client_register', on: :collection
       post 'set_credit', on: :member
       post 'send_password_setup', on: :member
+      get 'full_info', on: :member
     end
 
     get 'current_user', to: 'api/users#current_user'
@@ -122,6 +123,9 @@ Rails.application.routes.draw do
 
     get  'whatsapp/messages', to: 'api/whatsapp_messages#index'
     post 'whatsapp/send',     to: 'api/whatsapp_messages#create'
+
+    # Bitácora de conversaciones (notas de llamadas) por persona
+    resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create]
 
     post 'autopay/run', to: 'api/autopay#run'
   end

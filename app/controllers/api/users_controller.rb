@@ -8,7 +8,7 @@ class Api::UsersController < ApplicationController
   skip_before_action :authenticate_entity!
   skip_before_action :authenticate_client_or_user!
   # Nivel 2: Solo JWT para index, create, destroy
-  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit, :send_password_setup]
+  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit, :send_password_setup, :full_info]
   # Nivel 3: Cliente o JWT para show, update, current_user
   before_action :authenticate_client_or_user!, only: [:show, :update, :current_user]
   # Otros callbacks
@@ -83,6 +83,43 @@ class Api::UsersController < ApplicationController
     else
       render json: { error: "No se pudo ENVIAR el correo a #{user.email}. Detalle SMTP: #{err}" }, status: :unprocessable_entity
     end
+  end
+
+  # GET /api/users/:id/full_info  (solo staff)
+  # Ficha completa del cliente: datos de cuenta, cuestionario (preguntas y respuestas),
+  # direcciones, beneficiarios, referencias, comentarios de verificación y bitácora.
+  def full_info
+    unless %w[master admin sistema editor operador].include?(@current_user&.role&.name)
+      return render json: { error: 'No autorizado' }, status: :forbidden
+    end
+
+    user = User.includes(:role, :credit).find_by(id: params[:id])
+    return render(json: { error: 'Cliente no encontrado' }, status: :not_found) unless user
+
+    orders = user.orders.includes(:buyer, :guarantor, :referrals, :beneficiary).order(:created_at)
+
+    render json: {
+      user: {
+        id: user.id, name: user.name, last_name: user.last_name, email: user.email,
+        phone: user.phone, number: user.number, created_at: user.created_at,
+        risk_version: (user.respond_to?(:risk_version) ? user.risk_version : nil),
+        credit_limit: user.credit_limit, available_credit: user.available_credit,
+        # Respuestas del registro (precalificación)
+        housing_type: user.housing_type, months_usa: user.months_usa,
+        months_address: user.months_address, months_job: user.months_job,
+        estimated_income: user.estimated_income, delivery_country: user.delivery_country,
+        shared_income: user.shared_income
+      },
+      beneficiaries: user.beneficiaries.map do |b|
+        { id: b.id, name: b.name, last_name: b.last_name, phone: b.phone, email: b.email,
+          address1: b.address1, address2: b.address2, zip_code: b.zip_code, state: b.state, city: b.city }
+      end,
+      orders: orders.map { |o| order_full_info(o) },
+      contact_logs: ContactLog.where(user_id: user.id).order(:created_at).last(300).map do |l|
+        { id: l.id, order_id: l.order_id, person_type: l.person_type, person_name: l.person_name,
+          phone: l.phone, body: l.body, author_name: l.author_name, created_at: l.created_at }
+      end
+    }, status: :ok
   end
 
   # PATCH/PUT /api/users/:id
@@ -215,6 +252,59 @@ class Api::UsersController < ApplicationController
   end
 
   private
+
+  # Toda la información de una orden para la ficha del cliente.
+  def order_full_info(o)
+    buy = o.buyer
+    ben = o.beneficiary
+    gua = o.respond_to?(:guarantor) ? o.guarantor : nil
+    {
+      id: o.id, product_title: o.product_title, product_asin: o.product_asin,
+      status: o.status, created_at: o.created_at,
+      weekly_payment: o.weekly_payment, credit_duration: o.credit_duration,
+      downpayment: o.downpayment, used_credit: o.used_credit,
+      contract_number: (o.respond_to?(:contract) ? o.contract&.contract_number : nil),
+      admin_approved: (o.respond_to?(:admin_approved) ? o.admin_approved : nil),
+      delivered_at: (o.respond_to?(:delivered_at) ? o.delivered_at : nil),
+      verification: {
+        beneficiary_verified: try_f(o, :beneficiary_verified), beneficiary_comment: try_f(o, :beneficiary_comment),
+        buyer_verified: try_f(o, :buyer_verified), buyer_comment: try_f(o, :buyer_comment),
+        references_verified: try_f(o, :references_verified), references_comment: try_f(o, :references_comment)
+      },
+      buyer: buy && {
+        name: buy.name, last_name: buy.last_name, nationality: buy.nationality,
+        state_residence: buy.state_residence,
+        living_address1: buy.living_address1, living_address2: buy.living_address2,
+        living_zip_code: buy.living_zip_code, living_state: buy.living_state, living_city: buy.living_city,
+        housing_type: buy.housing_type, months_usa: buy.months_usa, months_address: buy.months_address,
+        job: buy.job, weekly_income: buy.weekly_income,
+        phone: buy.phone, phone_work: buy.phone_work, email: buy.email,
+        relationship_with_beneficiary: buy.relationship_with_beneficiary,
+        delivery_address1: buy.delivery_address1, delivery_address2: buy.delivery_address2,
+        delivery_zip_code: buy.delivery_zip_code, delivery_state: buy.delivery_state,
+        delivery_city: buy.delivery_city, phone_beneficiary: buy.phone_beneficiary
+      },
+      beneficiary: ben && {
+        name: ben.name, last_name: ben.last_name, phone: ben.phone, email: ben.email,
+        address1: ben.address1, address2: ben.address2, zip_code: ben.zip_code,
+        state: ben.state, city: ben.city,
+        relationship: (ben.respond_to?(:relationship) ? ben.relationship : nil)
+      },
+      guarantor: gua && {
+        name: gua.name, last_name: gua.last_name, phone: gua.phone, email: gua.email,
+        address1: gua.address1, address2: gua.address2, zip_code: gua.zip_code,
+        state: gua.state, city: gua.city
+      },
+      referrals: o.referrals.map do |rf|
+        { name: rf.name, last_name: rf.last_name, nationality: rf.nationality,
+          phone: rf.phone, phone_work: rf.phone_work }
+      end
+    }
+  end
+
+  def try_f(rec, field)
+    rec.respond_to?(field) ? rec.public_send(field) : nil
+  end
 
   def set_user
     @user = User.find(params[:id])

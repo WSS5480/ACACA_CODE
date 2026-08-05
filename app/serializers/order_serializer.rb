@@ -25,6 +25,14 @@ class OrderSerializer
     end
   end
 
+  # Enganche / pago inicial recibido: el contrato de la orden ya tiene al menos un pago.
+  attribute :downpayment_paid do |order|
+    contract = order.respond_to?(:contract) ? order.contract : nil
+    contract ? contract.payments.exists? : false
+  rescue StandardError
+    false
+  end
+
   # pendiente -> aprobado (por entregar) -> entregado
   attribute :fulfillment_status do |order|
     if order.respond_to?(:delivered_at) && order.delivered_at.present?

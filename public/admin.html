@@ -224,8 +224,8 @@
       <div id="ordTableWrap"><div class="sec"><div style="overflow-x:auto">
         <table><thead><tr>
           <th>Orden</th><th>Cliente</th><th>Producto</th><th class="right">Precio</th><th>Plazo</th>
-          <th class="right">Pago x Semana</th><th>Estado</th><th>Verificación</th><th>WA</th>
-        </tr></thead><tbody id="allOrdBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
+          <th class="right">Pago x Semana</th><th>Estado</th><th style="text-align:center" title="Pago inicial (enganche + primera cuota) recibido">Enganche</th><th>Verificación</th><th>WA</th>
+        </tr></thead><tbody id="allOrdBody"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody></table>
       </div></div></div>
     </section>
 
@@ -645,9 +645,12 @@ function orderRow(o,withStatus){
   const id = pick(o,['id','order_id','number'],'—');
   if(withStatus){
     const uid=pick(o,['user_id'],null);
+    // Enganche / pago inicial: verde $ si el contrato ya registró el pago, alto rojo si no.
+    const dpPaid=!!pick(o,['downpayment_paid'],false);
+    const dpCell=`<td style="text-align:center" title="${dpPaid?'Pago inicial recibido':'Sin pago inicial todavía'}">${dpPaid?'<span style="color:#12b76a;font-weight:800;font-size:16px">$</span>':'<span style="font-size:15px">&#128721;</span>'}</td>`;
     return `<tr class="ord-row" data-oid="${esc(id)}" style="cursor:pointer"><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${prodCell}</td>
       <td class="right mono">${precio!=null?money(precio):'—'}</td><td>${plazo!=null?esc(plazo)+' sem':'—'}</td>
-      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td><td>${fulfillPill(o)}</td>
+      <td class="right mono">${pago!=null?money(pago):'—'}</td><td>${estadoPill(o)}</td>${dpCell}<td>${fulfillPill(o)}</td>
       <td>${uid?`<button class="wabtn" data-uid="${esc(uid)}" data-name="${esc(cliente)}" onclick="event.stopPropagation()" title="WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:15px">✆</button>`:''}</td></tr>`;
   }
   return `<tr><td class="mono">#${esc(id)}</td><td>${esc(cliente)}</td><td>${esc(prod)}</td>
@@ -657,7 +660,7 @@ function orderRow(o,withStatus){
 }
 async function loadOrders(where){
   const body = where==='all' ? $('allOrdBody') : $('ordBody');
-  const cols = where==='all'?9:8;
+  const cols = where==='all'?10:8;
   const r=await api('GET','/api/orders?page=-1');
   if(!r.ok){ body.innerHTML=`<tr><td colspan="${cols}" class="empty">No se pudieron cargar las órdenes.</td></tr>`; return; }
   let list=rows(r.data);

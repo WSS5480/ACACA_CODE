@@ -117,13 +117,13 @@ module Api
       # PRINCIPAL = contado - enganche (esto es lo que consume credito).
       # FINANCIADO (a pagar) = principal x 1.25 (cargo financiero).
       principal = (total - down).round(2)
-      financed = (principal * Product::FINANCE_FACTOR).round(2)
+      financed = (principal * Product.finance_factor).round(2)
 
       available = user.credit&.amount.to_f
       return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if principal > available + 0.01
 
       freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
-      waiver_pct = ActiveModel::Type::Boolean.new.cast(params[:waiver]) ? 10 : nil
+      waiver_pct = ActiveModel::Type::Boolean.new.cast(params[:waiver]) ? Product.waiver_rate : nil
       # Beneficiario (opcional pero recomendado): debe pertenecer al cliente.
       beneficiary_id = params[:beneficiary_id].present? ? user.beneficiaries.where(id: params[:beneficiary_id]).pick(:id) : nil
       weekly = (financed / weeks).round(2)

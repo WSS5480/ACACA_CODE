@@ -15,7 +15,8 @@ module Api
       fee = params[:waiver_fee].to_f.round(2)
       return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if base <= 0
 
-      total_cents = ((base + fee) * 100).round
+      tax = (((base + fee) * Product.tax_rate) / 100.0).round(2)
+      total_cents = ((base + fee + tax) * 100).round
       customer_id = ensure_stripe_customer!(@current_user)
 
       pi = StripeClient.request(:post, '/v1/payment_intents', {
@@ -25,7 +26,7 @@ module Api
         setup_future_usage: 'off_session',
         automatic_payment_methods: { enabled: true },
         description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
-        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: params[:kind].to_s, apply_to: params[:apply_to].to_s }
+        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, tax_amount: tax, kind: params[:kind].to_s, apply_to: params[:apply_to].to_s }
       })
       render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'] }, status: :ok
     rescue StripeClient::Error => e
@@ -65,15 +66,16 @@ module Api
         return render(json: { error: 'No hay tarjeta guardada' }, status: :unprocessable_entity) if pm.blank?
       end
 
+      tax = (((base + fee) * Product.tax_rate) / 100.0).round(2)
       pi = StripeClient.request(:post, '/v1/payment_intents', {
-        amount: ((base + fee) * 100).round,
+        amount: ((base + fee + tax) * 100).round,
         currency: 'usd',
         customer: cid,
         payment_method: pm,
         off_session: 'true',
         confirm: 'true',
         description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
-        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, kind: 'saved', apply_to: params[:apply_to].to_s }
+        metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, tax_amount: tax, kind: 'saved', apply_to: params[:apply_to].to_s }
       })
       if pi['status'] == 'succeeded'
         payment = apply_stripe_payment!(pi)
@@ -156,8 +158,10 @@ module Api
       fee = pi.dig('metadata', 'waiver_fee').to_f
       total = (pi['amount'].to_i / 100.0).round(2)
       base = total if base <= 0
+      tax = pi.dig('metadata', 'tax_amount').to_f
       note = "Stripe #{pi_id}"
       note += " | cargos adicionales (enganche/seguro) $#{'%.2f' % fee}" if fee > 0
+      note += " | IVA $#{'%.2f' % tax}" if tax > 0
       note += " | total cobrado $#{'%.2f' % total}"
 
       pmt = contract.payments.new(amount: base, method: 'stripe', note: note, stripe_payment_intent_id: pi_id)

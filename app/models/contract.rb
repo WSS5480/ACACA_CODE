@@ -173,7 +173,7 @@ class Contract < ApplicationRecord
   # Cargo financiero implícito del modelo: la diferencia del factor a 100.
   # factor 1.25 → 25% sobre el principal financiado.
   def finance_factor
-    defined?(Product::FINANCE_FACTOR) ? Product::FINANCE_FACTOR : 1.25
+    Product.respond_to?(:finance_factor) ? Product.finance_factor : 1.25
   end
 
   def interest_rate

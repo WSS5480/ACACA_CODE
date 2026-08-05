@@ -38,7 +38,7 @@ class Product < ApplicationRecord
   # PRECIO DE CONTADO (cash price) = costo x turns x factor. Base de enganche y financiamiento.
   def total_price
     return 0 if effective_price.blank?
-    (effective_price.to_f * (turns || 3.5).to_f * (decimal_factor || 0.75).to_f).round(2)
+    (effective_price.to_f * (turns || 3.5).to_f * (decimal_factor || Product.default_cash_factor).to_f).round(2)
   end
 
   # TOTAL (precio a credito de referencia) = costo x turns (sin factor).
@@ -52,17 +52,45 @@ class Product < ApplicationRecord
     (total_price * 0.10).round(2)
   end
 
-  # Pago semanal: financiado = (contado - enganche) x 1.25; pago = financiado / semanas.
-  FINANCE_FACTOR = 1.25
+  # Pago semanal: financiado = (contado - enganche) x factor de financiamiento.
+  # El factor sale de la TASA DE INTERÉS configurable (Seguridad → Tasas e impuestos):
+  # factor = 1 + tasa/100 (25% → 1.25). El factor de contado es su inverso: 100/(100+tasa).
+  FINANCE_FACTOR = 1.25 # respaldo si no hay configuración
+
+  def self.interest_rate
+    AppSetting.rate('interest_rate', 25.0)
+  rescue StandardError
+    25.0
+  end
+
+  def self.finance_factor
+    (1 + interest_rate / 100.0).round(4)
+  end
+
+  def self.default_cash_factor
+    (100.0 / (100.0 + interest_rate)).round(4)
+  end
+
+  def self.tax_rate
+    AppSetting.rate('tax_rate', 0.0)
+  rescue StandardError
+    0.0
+  end
+
+  def self.waiver_rate
+    AppSetting.rate('waiver_rate', 10.0)
+  rescue StandardError
+    10.0
+  end
 
   def calculate_weekly_payment(weeks:, downpayment: nil, product_cost_usd: nil, used_credit: 0, turns: nil, decimal_factor: nil)
     cost = (product_cost_usd || effective_price).to_f
     t = (turns || self.turns || 3.5).to_f
-    f = (decimal_factor || self.decimal_factor || 0.75).to_f
+    f = (decimal_factor || self.decimal_factor || Product.default_cash_factor).to_f
     return 0 if cost <= 0 || weeks.to_f <= 0
     cash = cost * t * f
     dp = (downpayment || cash * 0.10).to_f
-    financed = (cash - dp) * FINANCE_FACTOR
+    financed = (cash - dp) * Product.finance_factor
     return 0 if financed <= 0
     (financed / weeks.to_f).round(2)
   end

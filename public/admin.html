@@ -469,6 +469,27 @@
       <div class="tabs" id="secTabs" style="margin-bottom:14px">
         <button data-stab="users" class="on">Usuarios y accesos</button>
         <button data-stab="contract">Control de documentos legales</button>
+        <button data-stab="rates">Tasas e impuestos</button>
+      </div>
+      <div id="secTabRates" style="display:none">
+        <div class="sec" style="padding:18px">
+          <div class="stitle" style="padding:0 0 6px">Tasas e impuestos</div>
+          <p class="muted" style="margin:0 0 14px">Estos valores rigen TODA la operación: precios, planes de pago, cobros y el contrato. La <b>tasa de interés</b> define los factores automáticamente: factor de financiamiento = 1 + tasa/100, y factor de contado = 100 / (100 + tasa) — la diferencia a 100.</p>
+          <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Impuesto / IVA (%)</div>
+              <input id="rtTax" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Se agrega a cada cobro/pago</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Tasa de interés (%)</div>
+              <input id="rtInt" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px" id="rtFactors">factores: — / —</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Seguro / Waiver (%)</div>
+              <input id="rtWaiver" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Exención de responsabilidad por pago</div></div>
+            <button class="btn" id="rtSave">Guardar tasas</button>
+            <span class="muted" id="rtMsg"></span>
+          </div>
+          <p class="muted" style="margin:14px 0 0;font-size:12px">Los cambios aplican a compras y cobros NUEVOS. Los contratos ya firmados conservan sus términos; los productos con factor propio en Catálogos conservan el suyo (el nuevo factor de contado es el valor por defecto).</p>
+        </div>
       </div>
       <div id="secTabContract" style="display:none">
         <div class="sec" style="padding:18px">
@@ -2048,8 +2069,28 @@ if($('secTabs')) $('secTabs').addEventListener('click',e=>{
   const tab=b.dataset.stab;
   $('secTabUsers').style.display = tab==='users' ? '' : 'none';
   $('secTabContract').style.display = tab==='contract' ? '' : 'none';
+  $('secTabRates').style.display = tab==='rates' ? '' : 'none';
   if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); }
+  if(tab==='rates') loadRates();
 });
+async function loadRates(){
+  const r=await api('GET','/api/settings/rates');
+  if(!r.ok||!r.data){ $('rtMsg').textContent='No se pudieron cargar las tasas.'; return; }
+  $('rtTax').value=r.data.tax_rate; $('rtInt').value=r.data.interest_rate; $('rtWaiver').value=r.data.waiver_rate;
+  rtShowFactors();
+}
+function rtShowFactors(){
+  const r=parseFloat($('rtInt').value)||0;
+  $('rtFactors').textContent='factores: financiamiento '+((1+r/100).toFixed(4))+' · contado '+((100/(100+r)).toFixed(4));
+}
+if($('rtInt')) $('rtInt').addEventListener('input',rtShowFactors);
+if($('rtSave')) $('rtSave').onclick=async()=>{
+  $('rtMsg').textContent='Guardando…'; $('rtSave').disabled=true;
+  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0});
+  $('rtSave').disabled=false;
+  if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); }
+  else { $('rtMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
+};
 const CT_FIELDS=[
   ['numero_contrato','Número de contrato'],['fecha_contrato','Fecha del contrato'],
   ['comprador_nombre','Nombre del comprador'],['comprador_rfc','RFC del comprador'],['comprador_direccion','Dirección del comprador'],['comprador_telefono','Teléfono del comprador'],['comprador_email','Email del comprador'],

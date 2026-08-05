@@ -47,6 +47,10 @@ Rails.application.routes.draw do
     get 'settings/contract', to: 'api/settings#contract_template'
     put 'settings/contract', to: 'api/settings#update_contract_template'
 
+    # Tasas e impuestos (Seguridad): IVA, tasa de interés (define los factores) y seguro/waiver
+    get 'settings/rates', to: 'api/settings#rates'
+    put 'settings/rates', to: 'api/settings#update_rates'
+
     resources :products, controller: 'api/products' do
       post 'manage_collection', on: :collection
       post 'import_search', on: :collection

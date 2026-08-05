@@ -134,20 +134,24 @@ class ContractDocument
     rows = @c.contract_installments.order(:number).to_a
     return '(Sin tabla de pagos: el calendario se genera al activarse el contrato.)' if rows.empty?
 
-    header = format('%4s  %-12s %14s %14s %14s %16s', '#', 'FECHA', 'PAGO', 'EXENCION', 'TOTAL', 'SALDO DESPUES')
+    tax = Product.respond_to?(:tax_rate) ? Product.tax_rate : 0.0
+    header = format('%4s  %-12s %16s %16s %16s %16s', '#', 'FECHA', 'PAGO CON IVA', 'EXENCION C/IVA', 'TOTAL CON IVA', 'SALDO DESPUES')
     saldo = @c.financed_amount.to_f
     lines = rows.map do |i|
       saldo = (saldo - i.amount.to_f).round(2)
       saldo = 0 if saldo.negative?
-      total_row = (i.amount.to_f + exencion.to_f).round(2)
-      format('%4d  %-12s %14s %14s %14s %16s',
-             i.number, fdate(i.due_date), "$#{money(i.amount)}",
-             exencion ? "$#{money(exencion)}" : '$0.00',
+      pago_iva = (i.amount.to_f * (1 + tax / 100.0)).round(2)
+      exen_iva = (exencion.to_f * (1 + tax / 100.0)).round(2)
+      total_row = (pago_iva + exen_iva).round(2)
+      format('%4d  %-12s %16s %16s %16s %16s',
+             i.number, fdate(i.due_date), "$#{money(pago_iva)}",
+             exencion ? "$#{money(exen_iva)}" : '$0.00',
              "$#{money(total_row)}", "$#{money(saldo)}")
     end
     rate = @c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0
     factor = @c.respond_to?(:finance_factor) ? @c.finance_factor : 1.25
     note = format("\nTasa de interés (cargo financiero) aplicada al monto financiado: %g%% — corresponde a la diferencia a 100 del factor de financiamiento (%.2f).", rate, factor)
+    note += format("\nIVA aplicado a cada pago: %g%%.", tax) if tax.positive?
     ([header] + lines).join("\n") + note
   end
 end

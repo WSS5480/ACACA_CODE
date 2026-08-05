@@ -13,4 +13,12 @@ class AppSetting < ApplicationRecord
     record.save!
     record
   end
+
+  # Tasa numérica configurable (Seguridad → Tasas e impuestos) con valor por defecto.
+  def self.rate(key, default)
+    v = get(key)
+    v.present? ? v.to_f : default.to_f
+  rescue StandardError
+    default.to_f
+  end
 end

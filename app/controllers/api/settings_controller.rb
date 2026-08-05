@@ -1,7 +1,38 @@
 class Api::SettingsController < ApplicationController
   include TokenAuthenticatable
 
+  # La lectura de tasas es PÚBLICA: la tienda la usa para calcular precios y pagos.
+  skip_before_action :authenticate_entity!, only: [:rates], raise: false
+
   CONTRACT_KEY = 'contract_template'
+
+  # GET /api/settings/rates  (público)
+  # Tasas configurables + factores derivados de la tasa de interés:
+  # factor de financiamiento = 1 + tasa/100 · factor de contado = 100/(100+tasa).
+  def rates
+    render json: {
+      tax_rate: Product.tax_rate,
+      interest_rate: Product.interest_rate,
+      waiver_rate: Product.waiver_rate,
+      finance_factor: Product.finance_factor,
+      cash_factor: Product.default_cash_factor
+    }, status: :ok
+  end
+
+  # PUT /api/settings/rates { tax_rate, interest_rate, waiver_rate }  (solo master/admin)
+  def update_rates
+    unless %w[master admin].include?(@current_user&.role&.name)
+      return render json: { error: 'Solo master o admin pueden cambiar las tasas' }, status: :forbidden
+    end
+
+    %w[tax_rate interest_rate waiver_rate].each do |k|
+      next unless params.key?(k)
+      v = params[k].to_f
+      return render(json: { error: "Valor inválido para #{k} (0 a 100)" }, status: :unprocessable_entity) if v.negative? || v > 100
+      AppSetting.set(k, v.round(4).to_s)
+    end
+    rates
+  end
 
   # GET /api/settings/rainforest
   # Devuelve si hay API key configurada (nunca el valor en claro).

@@ -1687,7 +1687,7 @@ async function openWaThread(tail){
         <div style="font-size:12px;opacity:.92">${esc([t.person_label||'Sin cuenta', ph, t.contract_number?('Contrato '+t.contract_number):null].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0">
-        ${['master','admin'].includes(MYROLE)?`<button id="waDelThread" style="background:rgba(255,255,255,.18);border:0;color:#ffd7d7;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer" title="Eliminar la conversación COMPLETA (solo admins; queda en la bitácora)">🗑</button>`:''}
+        ${['master','admin'].includes(MYROLE)?`<button id="waDelThread" style="background:#b71c1c;border:0;color:#fff;font-size:12px;font-weight:800;border-radius:8px;padding:6px 12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25)" title="Eliminar la conversación COMPLETA (solo admins; queda en la bitácora)">🗑 Eliminar chat</button>`:''}
         <button id="waCallBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer" title="Llamar con la app de llamadas de tu equipo (Teléfono/Phone Link/Skype)">📞 Llamar</button>
         ${t.user_id?`<button id="waFichaBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📋 Ficha</button>`:''}
         ${t.contract_id?`<button id="waContractBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📄 Contrato</button>`:''}

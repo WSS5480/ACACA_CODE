@@ -277,6 +277,20 @@
         </select>
         <div class="search" style="max-width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="waSearch" placeholder="Nombre o teléfono…"></div>
         <button class="btn" id="waRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
+        <button class="btn" id="waNew" style="background:#25D366">＋ Nuevo chat</button>
+      </div>
+      <div id="waNewBox" style="display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:12px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Lada</div>
+            <select id="waNewCc" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px"><option value="+1">EE.UU. +1</option><option value="+52">México +52</option><option value="">Otra (escríbela con +)</option></select></div>
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Número</div>
+            <input id="waNewPhone" placeholder="512 555 1234" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:170px"></div>
+          <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Nombre (opcional)</div>
+            <input id="waNewName" placeholder="¿Quién es?" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:150px"></div>
+          <button class="btn" id="waNewGo" style="padding:9px 16px">Abrir chat</button>
+          <span class="muted" id="waNewMsg" style="font-size:12px"></span>
+        </div>
+        <p class="muted" style="margin:8px 0 0;font-size:11.5px">⚠ WhatsApp sólo entrega TEXTO LIBRE a números que nos hayan escrito en las últimas 24 horas. A un número totalmente nuevo, el primer mensaje debe ser una <b>plantilla aprobada</b> por Meta (aún no configuradas) — o pídele a la persona que nos escriba primero.</p>
       </div>
       <p class="muted" style="margin:-6px 0 14px">Todas las conversaciones — clientes, compradores, beneficiarios y referencias — en un solo lugar. Cada persona tiene UNA página: aquí cae todo lo enviado y recibido desde cualquier pantalla (verificación, CRM, ficha), junto con las notas de llamada. El globo verde del menú marca los hilos con mensajes nuevos.</p>
       <div style="display:grid;grid-template-columns:380px 1fr;gap:14px;height:calc(100vh - 190px);min-height:460px">
@@ -1581,6 +1595,7 @@ async function openWaThread(tail){
         <div style="font-size:12px;opacity:.92">${esc([t.person_label||'Sin cuenta', ph, t.contract_number?('Contrato '+t.contract_number):null].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0">
+        <button id="waCallBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer" title="Llamar con la app de llamadas de tu equipo (Teléfono/Phone Link/Skype)">📞 Llamar</button>
         ${t.user_id?`<button id="waFichaBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📋 Ficha</button>`:''}
         ${t.contract_id?`<button id="waContractBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📄 Contrato</button>`:''}
       </div>
@@ -1598,6 +1613,14 @@ async function openWaThread(tail){
     </div>
     <div class="muted" id="waThreadMsg" style="padding:0 16px 8px;font-size:12px;background:#fff"></div>`;
   const mb=$('waMsgs'); mb.scrollTop=mb.scrollHeight;
+  // Llamada: abre la app de llamadas del equipo (tel:) y deja lista la nota para registrarla.
+  if($('waCallBtn')) $('waCallBtn').onclick=()=>{
+    const telp=String(ph).replace(/[^0-9+]/g,'');
+    window.location.href='tel:'+telp;
+    const ta=$('waText');
+    if(ta && !ta.value){ ta.value='📞 Llamada: '; ta.focus(); }
+    $('waThreadMsg').textContent='Se abrió tu app de llamadas. Al colgar, escribe cómo fue y guárdala con 📝 Nota — queda en la página de esta persona.';
+  };
   if($('waFichaBtn')) $('waFichaBtn').onclick=()=>openClientSheet(t.user_id);
   if($('waContractBtn')) $('waContractBtn').onclick=()=>{ loaded.con=1; show('contratos'); openContract(String(t.contract_id)); };
   $('waSendBtn').onclick=async()=>{
@@ -1622,6 +1645,27 @@ async function openWaThread(tail){
 if($('waRefresh')) $('waRefresh').onclick=loadWaInbox;
 if($('waSearch')) $('waSearch').addEventListener('input',renderWaList);
 if($('waFilter')) $('waFilter').addEventListener('change',renderWaList);
+// NUEVO CHAT: escribir (o llamar) a un número que aún no tiene conversación.
+if($('waNew')) $('waNew').onclick=()=>{ const b=$('waNewBox'); b.style.display=b.style.display==='none'?'':'none'; if(b.style.display===''){ $('waNewPhone').focus(); } };
+if($('waNewGo')) $('waNewGo').onclick=()=>{
+  const cc=$('waNewCc').value;
+  let raw=$('waNewPhone').value.trim();
+  if(!raw){ $('waNewMsg').textContent='Escribe el número.'; return; }
+  let full=(cc?cc:'')+raw;
+  const digits=full.replace(/\D/g,'');
+  if(digits.length<10){ $('waNewMsg').textContent='Número incompleto: incluye la lada del país.'; return; }
+  const tail=digits.length>10?digits.slice(-10):digits;
+  $('waNewMsg').textContent='';
+  const existing=WA_THREADS.find(x=>String(x.tail)===tail);
+  if(existing){ $('waNewBox').style.display='none'; openWaThread(existing.tail); return; }
+  const name=$('waNewName').value.trim();
+  const t={ tail:tail, phone:'+'+digits, name:(name||('+'+digits)), person_type:null, person_label:null,
+            unread:0, last_at:null, last_preview:'(conversación nueva)', last_dir:null, user_id:null };
+  WA_THREADS.unshift(t);
+  $('waNewBox').style.display='none'; $('waNewPhone').value=''; $('waNewName').value='';
+  renderWaList(); openWaThread(tail);
+};
+if($('waNewPhone')) $('waNewPhone').addEventListener('keydown',e=>{ if(e.key==='Enter') $('waNewGo').click(); });
 
 function conStatCard(label,val,color){ return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px"><div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.03em">${label}</div><div style="font-size:20px;font-weight:800;${color?('color:'+color):''}">${val}</div></div>`; }
 function renderConStats(list){

@@ -136,6 +136,10 @@ Rails.application.routes.draw do
 
     get  'whatsapp/messages', to: 'api/whatsapp_messages#index'
     post 'whatsapp/send',     to: 'api/whatsapp_messages#create'
+    # Bandeja de WhatsApp del admin: hilos por persona + no leídos
+    get  'whatsapp/threads',      to: 'api/whatsapp_messages#threads'
+    post 'whatsapp/read',         to: 'api/whatsapp_messages#mark_read'
+    get  'whatsapp/unread_count', to: 'api/whatsapp_messages#unread_count'
 
     # Bitácora de conversaciones (notas de llamadas) por persona
     resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create]

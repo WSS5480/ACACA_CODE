@@ -59,6 +59,16 @@ class ContractSerializer
   attribute :initial_paid do |c|
     c.respond_to?(:initial_paid?) ? c.initial_paid? : true
   end
+  # Estado del CICLO DE VIDA de la cuenta (Mi cuenta del cliente):
+  # pending_initial | missing_info | pending_approval | pending_signature |
+  # pending_delivery | active | paid_off
+  attribute :account_status do |c|
+    c.respond_to?(:account_status) ? c.account_status : nil
+  end
+  # Expediente completo: comprador + las 4 referencias (2 MX + 2 US)
+  attribute :datos_complete do |c|
+    c.respond_to?(:datos_complete?) ? c.datos_complete? : true
+  end
   # Número de PEDIDO (existe desde el checkout; el número de contrato nace al pagar)
   attribute :order_ref do |c|
     c.respond_to?(:order_ref) ? c.order_ref : "PED-#{c.id}"

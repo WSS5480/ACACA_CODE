@@ -29,11 +29,10 @@ module Api
       # el staff siempre lo ve completo.
       pending_initial = !contract.initial_paid?
       data[:pending_initial_payment] = pending_initial
-      # Datos completos = el comprador llenó su cuestionario Y capturó referencias.
+      # Datos completos = comprador capturado Y las 4 referencias (2 MX + 2 US).
+      # Con menos referencias ("las guardo después"), el expediente sigue INCOMPLETO.
       first_order = contract.orders.first
-      datos_complete = first_order.present? &&
-                       (first_order.respond_to?(:buyer) ? first_order.buyer.present? : true) &&
-                       first_order.referrals.exists?
+      datos_complete = contract.respond_to?(:datos_complete?) ? contract.datos_complete? : true
       # CLIENTE APROBADO que regresa: si esta compra aún no tiene datos, se
       # REUTILIZAN los de su última compra APROBADA (verificada). Menos de 6
       # meses desde la aprobación: se copian solos, sin pedirlos otra vez.
@@ -43,7 +42,7 @@ module Api
         if src && src[:fresh]
           copy_datos!(src[:data_order], first_order)
           first_order = contract.orders.reload.first
-          datos_complete = first_order.buyer.present? && first_order.referrals.exists?
+          datos_complete = contract.respond_to?(:datos_complete?) ? contract.reload.datos_complete? : true
           data[:datos_reused] = true if datos_complete
         elsif src
           data[:needs_reconfirm] = true
@@ -346,7 +345,9 @@ module Api
 
       copy_datos!(src[:data_order], first_order)
       fo = first_order.reload
-      render json: { ok: true, datos_complete: fo.buyer.present? && fo.referrals.exists?, first_order_id: fo.id }, status: :ok
+      render json: { ok: true,
+                     datos_complete: (contract.respond_to?(:datos_complete?) ? contract.reload.datos_complete? : true),
+                     first_order_id: fo.id }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     rescue StandardError => e

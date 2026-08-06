@@ -59,6 +59,35 @@ class Contract < ApplicationRecord
     balance <= 0.009
   end
 
+  # ¿El expediente de la compra está COMPLETO? Comprador capturado y las 4
+  # referencias (2 MX + 2 US). Con 3 guardadas "para después", sigue incompleto.
+  # Los datos viven en una de las órdenes del grupo (normalmente la primera).
+  def datos_complete?
+    os = orders.to_a
+    return true if os.empty? || financed_amount.to_f <= 0 # contado: no aplica
+
+    has_buyer = os.any? { |o| o.respond_to?(:buyer) && o.buyer.present? }
+    refs = os.map { |o| o.referrals.size }.max.to_i
+    has_buyer && refs >= 4
+  end
+
+  # Estado de la CUENTA para el cliente (Mi cuenta), en orden del ciclo de vida:
+  # pending_initial -> missing_info -> pending_approval -> pending_signature ->
+  # pending_delivery -> active -> paid_off.
+  def account_status
+    return 'paid_off' if status == 'paid' || (initial_paid? && paid_off?)
+    return 'pending_initial' unless initial_paid?
+    return 'missing_info' unless datos_complete?
+
+    os = orders.to_a
+    if os.any?
+      return 'pending_approval' unless os.all? { |o| o.respond_to?(:admin_approved) && o.admin_approved }
+      return 'pending_signature' if respond_to?(:signed_at) && signed_at.blank?
+      return 'pending_delivery' unless os.all? { |o| o.respond_to?(:delivered_at) && o.delivered_at.present? }
+    end
+    'active'
+  end
+
   # ----- estado de amortizacion -----
   def overdue?
     contract_installments.where.not(status: 'paid').where('due_date < ?', Date.current).exists?

@@ -1263,8 +1263,16 @@ async function toggleClientContracts(btn){
   tr.after(sub);
   const r=await api('GET','/api/contracts?user_id='+encodeURIComponent(btn.dataset.id));
   const list=r.ok?rows(r.data):[];
-  const visibles=list.filter(c=>pick(c,['initial_paid'],true)||String(pick(c,['status'],''))!=='active'); // pedidos sin pago viven en CRM
-  sub.firstElementChild.innerHTML = visibles.length ? ('<div style="padding:4px 0 2px;font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em">Contratos de este cliente</div>'+visibles.map(c=>{
+  // La CUENTA del cliente sólo tiene contratos ENTREGADOS (activos pagando o
+  // liquidados). Antes de la entrega viven en su etapa: sin pago inicial -> CRM;
+  // pagados y en proceso -> Órdenes (trabajo de la orden).
+  const visibles=list.filter(c=>{
+    const paid=pick(c,['initial_paid'],true);
+    if(!paid) return false; // CRM
+    const f=String(pick(c,['fulfillment'],'')||'');
+    return f==='entregado' || f===''; // en proceso (pendiente/por_entregar) -> Órdenes
+  });
+  sub.firstElementChild.innerHTML = visibles.length ? ('<div style="padding:4px 0 2px;font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em">Cuenta del cliente — contratos entregados</div>'+visibles.map(c=>{
     const ps=String(pick(c,['payment_status'],''));
     const act=['current','past_due','active'].includes(ps)?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>';
     const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||('#'+c.id);
@@ -1277,7 +1285,7 @@ async function toggleClientContracts(btn){
       <span class="mono">Saldo ${bal!=null?money(bal):'—'}</span>
       <span class="muted">${fdate(pick(c,['created_at'],null))}</span>
     </div>`;
-  }).join('')) : '<span class="muted">Sin contratos todavía (los pedidos sin pago inicial están en el CRM).</span>';
+  }).join('')) : '<span class="muted">Sin contratos ENTREGADOS todavía — los pedidos sin pago inicial están en el CRM y las compras pagadas en proceso están en Órdenes hasta entregarse.</span>';
 }
 
 async function recalcClient(id){

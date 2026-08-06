@@ -1,0 +1,26 @@
+<% content_for :email_title do %>
+  Firma requerida
+<% end %>
+
+<p style="margin-bottom: 20px;">
+  Hola <%= @admin&.name || '' %>, hay un cambio en <strong><%= @kind_label %></strong> que requiere tu firma de administrador antes de aplicarse.
+</p>
+
+<div style="background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+  <p style="margin: 0 0 6px;"><strong>Cambio propuesto:</strong> <%= @change.summary %></p>
+  <p style="margin: 0 0 6px; font-size: 13px; color: #555;">Propuesto por: <%= @change.proposed_by_email %> · <%= @change.created_at&.strftime('%d/%m/%Y %H:%M') %></p>
+  <p style="margin: 0; font-size: 13px; color: #555;">Firmas requeridas: <strong><%= @change.required_signatures %></strong> (la del proponente ya cuenta). El cambio NO se aplica hasta completarlas.</p>
+</div>
+
+<p style="margin: 20px 0;">
+  <a href="<%= @admin_url %>" style="display: inline-block; background-color: #FF7517; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Entrar al panel y firmar</a>
+</p>
+
+<p style="margin-bottom: 20px; font-size: 13px; color: #666;">
+  Inicia sesión en el panel de administración y ve a <strong>Seguridad</strong>: ahí verás el cambio pendiente con los botones <em>Firmar</em> o <em>Rechazar</em>. Tu firma queda registrada de forma permanente en la bitácora.
+</p>
+
+<p style="margin-bottom: 20px; font-size: 13px; color: #666;">
+  Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+  <a href="<%= @admin_url %>" style="color: #2563eb; word-break: break-all;"><%= @admin_url %></a>
+</p>

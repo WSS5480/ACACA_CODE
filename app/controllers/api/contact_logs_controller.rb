@@ -51,7 +51,7 @@ module Api
     end
 
     def authorize_staff!
-      return if %w[master admin sistema editor operador].include?(@current_user&.role&.name)
+      return if %w[master admin sistema editor operador gerente admin_cuentas admin_redes].include?(@current_user&.role&.name)
       render json: { error: 'No autorizado' }, status: :forbidden
     end
   end

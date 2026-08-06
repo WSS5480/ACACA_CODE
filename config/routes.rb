@@ -142,6 +142,13 @@ Rails.application.routes.draw do
     # pagos, aprobaciones, entregas, firmas, eliminaciones...
     resources :audit_logs, controller: 'api/audit_logs', only: [:index]
 
+    # Cambios sensibles con FIRMAS de administradores (tasas, documentos legales,
+    # revocaciones de acceso del equipo): 4 firmas, o todas si hay menos de 4.
+    resources :change_requests, controller: 'api/change_requests', only: [:index] do
+      post 'sign', on: :member
+      post 'reject', on: :member
+    end
+
     post 'autopay/run', to: 'api/autopay#run'
   end
 end

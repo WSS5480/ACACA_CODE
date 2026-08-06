@@ -22,16 +22,20 @@ class Api::SettingsController < ApplicationController
     }, status: :ok
   end
 
-  # PUT /api/settings/rates { tax_rate, interest_rate, waiver_rate }  (solo master/admin)
+  # PUT /api/settings/rates { tax_rate, interest_rate, waiver_rate... }
+  # master/admin: el cambio queda PENDIENTE hasta reunir las firmas de
+  # administradores requeridas (4, o todos si hay menos). sistema: aplica directo.
   def update_rates
-    unless %w[master admin].include?(@current_user&.role&.name)
-      return render json: { error: 'Solo master o admin pueden cambiar las tasas' }, status: :forbidden
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden cambiar las tasas' }, status: :forbidden
     end
 
     limits = { 'tax_rate' => 100, 'interest_rate' => 100, 'waiver_rate' => 100,
                'mora_rate' => 500, 'cat_rate' => 1000, 'processing_fee' => 10_000 }
     defaults = { 'tax_rate' => 0, 'interest_rate' => 25, 'waiver_rate' => 0,
                  'mora_rate' => 0, 'cat_rate' => 0, 'processing_fee' => 0 }
+    proposed = {}
     changes = []
     limits.each_key do |k|
       next unless params.key?(k)
@@ -39,14 +43,27 @@ class Api::SettingsController < ApplicationController
       return render(json: { error: "Valor inválido para #{k} (0 a #{limits[k]})" }, status: :unprocessable_entity) if v.negative? || v > limits[k]
       old = AppSetting.rate(k, defaults[k])
       new_v = v.round(4)
-      changes << "#{k}: #{format('%g', old)} → #{format('%g', new_v)}" if old != new_v
-      AppSetting.set(k, new_v.to_s)
+      next if old == new_v
+      proposed[k] = new_v
+      changes << "#{k}: #{format('%g', old)} → #{format('%g', new_v)}"
     end
-    if changes.any?
+    return rates if proposed.empty? # nada cambió
+
+    # Rol sistema (Admin de sistemas) aplica directo; también si aún no corre la migración.
+    if role == 'sistema' || !approvals_ready?
+      proposed.each { |k, v| AppSetting.set(k, v.to_s) }
       AuditLog.record!(actor: @current_user, action: 'rates_updated',
                        label: 'Tasas e impuestos', details: changes.join(' · '))
+      return rates
     end
-    rates
+
+    cr = ChangeRequest.propose!(kind: 'rates', payload: proposed,
+                                summary: changes.join(' · '), proposer: @current_user)
+    return rates if cr.status == 'applied' # equipo chico: tu firma bastó
+
+    render json: { pending: true, change_request: cr.as_api,
+                   message: "Cambio propuesto: requiere #{cr.required_signatures} firmas de administradores (la tuya ya cuenta). Se avisó por correo a los demás." },
+           status: :accepted
   end
 
   # GET /api/settings/rainforest
@@ -79,32 +96,64 @@ class Api::SettingsController < ApplicationController
     render json: { content: content, custom: rec.present?, updated_at: rec&.updated_at }, status: :ok
   end
 
-  # PUT /api/settings/contract  { content: '...' }  (solo master/admin)
+  # PUT /api/settings/contract  { content: '...' }
   # PUT /api/settings/contract  { reset: true }     -> vuelve a la plantilla original
+  # master/admin: queda PENDIENTE hasta reunir las firmas. sistema: aplica directo.
   def update_contract_template
-    unless %w[master admin].include?(@current_user&.role&.name)
-      return render json: { error: 'Solo master o admin pueden editar el contrato' }, status: :forbidden
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden editar el contrato' }, status: :forbidden
     end
 
+    direct = role == 'sistema' || !approvals_ready?
+
     if ActiveModel::Type::Boolean.new.cast(params[:reset])
-      AppSetting.find_by(key: CONTRACT_KEY)&.destroy
-      AuditLog.record!(actor: @current_user, action: 'template_reset',
-                       label: 'Control de documentos legales',
-                       details: 'Restauró la plantilla original del contrato')
-      return render json: { content: default_contract_template, custom: false, updated_at: nil }, status: :ok
+      if direct
+        AppSetting.find_by(key: CONTRACT_KEY)&.destroy
+        AuditLog.record!(actor: @current_user, action: 'template_reset',
+                         label: 'Control de documentos legales',
+                         details: 'Restauró la plantilla original del contrato')
+        return render json: { content: default_contract_template, custom: false, updated_at: nil }, status: :ok
+      end
+      cr = ChangeRequest.propose!(kind: 'contract_template', payload: { 'reset' => true },
+                                  summary: 'Restaurar la plantilla ORIGINAL del contrato',
+                                  proposer: @current_user)
+      return render(json: { content: default_contract_template, custom: false, updated_at: nil }, status: :ok) if cr.status == 'applied'
+
+      return render json: { pending: true, change_request: cr.as_api,
+                            message: "Restauración propuesta: requiere #{cr.required_signatures} firmas de administradores (la tuya ya cuenta)." },
+                    status: :accepted
     end
 
     val = params[:content].to_s
     return render json: { error: 'El contrato no puede quedar vacío.' }, status: :unprocessable_entity if val.strip.blank?
 
-    rec = AppSetting.set(CONTRACT_KEY, val)
-    AuditLog.record!(actor: @current_user, action: 'template_updated',
-                     label: 'Control de documentos legales',
-                     details: "Guardó la plantilla del contrato (#{val.length} caracteres)")
-    render json: { ok: true, custom: true, updated_at: rec.updated_at }, status: :ok
+    if direct
+      rec = AppSetting.set(CONTRACT_KEY, val)
+      AuditLog.record!(actor: @current_user, action: 'template_updated',
+                       label: 'Control de documentos legales',
+                       details: "Guardó la plantilla del contrato (#{val.length} caracteres)")
+      return render json: { ok: true, custom: true, updated_at: rec.updated_at }, status: :ok
+    end
+
+    cr = ChangeRequest.propose!(kind: 'contract_template', payload: { 'content' => val },
+                                summary: "Editó la plantilla del contrato (#{val.length} caracteres)",
+                                proposer: @current_user)
+    return render(json: { ok: true, custom: true, updated_at: Time.current }, status: :ok) if cr.status == 'applied'
+
+    render json: { pending: true, change_request: cr.as_api,
+                   message: "Cambio propuesto: requiere #{cr.required_signatures} firmas de administradores (la tuya ya cuenta). La plantilla actual sigue vigente mientras tanto." },
+           status: :accepted
   end
 
   private
+
+  # ¿Ya existe la tabla de aprobaciones? (si no, se aplica directo para no bloquear)
+  def approvals_ready?
+    ChangeRequest.table_exists?
+  rescue StandardError
+    false
+  end
 
   def default_contract_template
     path = Rails.root.join('db', 'templates', 'contract_template.txt')

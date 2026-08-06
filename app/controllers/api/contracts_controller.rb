@@ -269,7 +269,7 @@ module Api
     # Genera el contrato del cliente desde la plantilla legal (rellena carátula, montos y
     # tabla de pagos) y le avisa por WhatsApp para que entre a firmarlo. Sólo staff.
     def generate_document
-      unless %w[master admin sistema editor operador].include?(@current_user&.role&.name)
+      unless %w[master admin sistema editor operador gerente admin_cuentas admin_redes].include?(@current_user&.role&.name)
         return render json: { error: 'No autorizado' }, status: :forbidden
       end
       contract = Contract.find(params[:id])

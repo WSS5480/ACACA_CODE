@@ -17,7 +17,11 @@ class AuditLog < ApplicationRecord
     'contract_deleted'     => 'Eliminó contrato/pedido',
     'credit_set'           => 'Fijó línea de crédito',
     'client_deleted'       => 'Eliminó cliente',
-    'due_date_moved'       => 'Movió vencimiento (pruebas)'
+    'due_date_moved'       => 'Movió vencimiento (pruebas)',
+    'change_proposed'      => 'Propuso cambio (pendiente de firmas)',
+    'change_signed'        => 'Firmó cambio propuesto',
+    'change_rejected'      => 'Rechazó cambio propuesto',
+    'staff_deleted'        => 'Revocó acceso de usuario del equipo'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

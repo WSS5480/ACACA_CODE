@@ -47,6 +47,9 @@ class Api::RolesController < ApplicationController
       { name: 'sistema', label: 'Sistema' },
       { name: 'editor', label: 'Editor' },
       { name: 'operador', label: 'Operador' },
+      { name: 'gerente', label: 'Gerente' },
+      { name: 'admin_cuentas', label: 'Administrador de cuentas' },
+      { name: 'admin_redes', label: 'Administrador de Redes sociales' },
       { name: 'cliente', label: 'Cliente' }
     ]
 
@@ -81,4 +84,3 @@ class Api::RolesController < ApplicationController
     params.require(:role).permit(:name, :label)
   end
 end
-

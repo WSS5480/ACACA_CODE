@@ -1,0 +1,13 @@
+Hola <%= @admin&.name || '' %>,
+
+Hay un cambio en <%= @kind_label %> que requiere tu firma de administrador antes de aplicarse.
+
+Cambio propuesto: <%= @change.summary %>
+Propuesto por: <%= @change.proposed_by_email %> · <%= @change.created_at&.strftime('%d/%m/%Y %H:%M') %>
+Firmas requeridas: <%= @change.required_signatures %> (la del proponente ya cuenta). El cambio NO se aplica hasta completarlas.
+
+Entra al panel de administración, inicia sesión y ve a Seguridad: ahí verás el cambio pendiente con los botones Firmar o Rechazar. Tu firma queda registrada de forma permanente en la bitácora.
+
+<%= @admin_url %>
+
+— acasa

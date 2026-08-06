@@ -89,7 +89,7 @@ class Api::UsersController < ApplicationController
   # Ficha completa del cliente: datos de cuenta, cuestionario (preguntas y respuestas),
   # direcciones, beneficiarios, referencias, comentarios de verificación y bitácora.
   def full_info
-    unless %w[master admin sistema editor operador].include?(@current_user&.role&.name)
+    unless %w[master admin sistema editor operador gerente admin_cuentas admin_redes].include?(@current_user&.role&.name)
       return render json: { error: 'No autorizado' }, status: :forbidden
     end
 
@@ -144,9 +144,16 @@ class Api::UsersController < ApplicationController
   end
 
   # DELETE /api/users/:id
+  # Cliente: lo elimina el staff operativo (admin si tiene contratos entregados).
+  # USUARIO DEL EQUIPO (revocar acceso): master/admin — requiere las firmas de
+  # administradores (4, o todos si hay menos); el rol 'sistema' revoca directo.
   def destroy
     role = @current_user&.role&.name
-    unless %w[master admin sistema editor operador].include?(role)
+    target_role = @user.role&.name
+
+    return revoke_staff_access!(role, target_role) if target_role.present? && target_role != 'cliente'
+
+    unless %w[master admin sistema editor operador gerente admin_cuentas admin_redes].include?(role)
       return render json: { error: 'No autorizado' }, status: :forbidden
     end
 
@@ -175,6 +182,56 @@ class Api::UsersController < ApplicationController
                      label: (client_name.present? ? client_name : client_email),
                      details: "Cliente eliminado (#{client_email}) con #{contracts.size} contrato(s)")
     head :no_content
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # Revocar el acceso de un usuario del EQUIPO: propone el cambio y exige las
+  # firmas de administradores; 'sistema' (Admin de sistemas) lo aplica directo.
+  def revoke_staff_access!(role, target_role)
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden revocar acceso del equipo.' }, status: :forbidden
+    end
+    if target_role == 'master' && role != 'master'
+      return render json: { error: 'Solo un usuario master puede revocar a otro master.' }, status: :forbidden
+    end
+    if @user.id == @current_user.id
+      return render json: { error: 'No puedes revocar tu propia cuenta.' }, status: :unprocessable_entity
+    end
+
+    label = [@user.name, @user.last_name].compact.join(' ').strip.presence || @user.email
+
+    approvals = begin
+      ChangeRequest.table_exists?
+    rescue StandardError
+      false
+    end
+
+    if role == 'sistema' || !approvals
+      @user.destroy!
+      AuditLog.record!(actor: @current_user, action: 'staff_deleted', target: @user,
+                       label: label, details: "Acceso revocado (#{@user.email}, rol #{target_role})")
+      return head :no_content
+    end
+
+    existing = ChangeRequest.pending.where(kind: 'staff_delete').detect { |c| c.target_user_id == @user.id }
+    if existing
+      return render json: { pending: true, change_request: existing.as_api,
+                            message: 'Ya hay una revocación PENDIENTE para este usuario: falta que la firmen los demás administradores.' },
+                    status: :accepted
+    end
+
+    cr = ChangeRequest.propose!(
+      kind: 'staff_delete',
+      payload: { 'user_id' => @user.id, 'email' => @user.email, 'role' => target_role },
+      summary: "Revocar acceso de #{label} (#{@user.email}, rol #{target_role})",
+      proposer: @current_user, exclude_id: @user.id
+    )
+    return head :no_content if cr.status == 'applied' # tu firma bastó (equipo chico)
+
+    render json: { pending: true, change_request: cr.as_api,
+                   message: "Revocación propuesta: requiere #{cr.required_signatures} firmas de administradores (la tuya ya cuenta). El usuario conserva su acceso hasta completar las firmas." },
+           status: :accepted
   rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end

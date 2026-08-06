@@ -472,6 +472,8 @@
         <button data-stab="rates">Tasas e impuestos</button>
         <button data-stab="audit">Bitácora de cambios</button>
       </div>
+      <!-- Cambios sensibles pendientes de FIRMA (visible en toda la sección Seguridad) -->
+      <div id="secChanges"></div>
       <div id="secTabAudit" style="display:none">
         <div class="sec" style="padding:18px">
           <div class="stitle" style="padding:0 0 6px">Bitácora de cambios y transacciones</div>
@@ -549,8 +551,10 @@
         <p class="muted" style="margin:0">
           <b>master</b>: control total, único que administra usuarios master. ·
           <b>admin</b>: control total excepto usuarios master; puede eliminar clientes con contratos ENTREGADOS. ·
-          <b>sistema / editor / operador</b>: operación diaria; no administran usuarios ni pueden eliminar clientes con contratos entregados.
+          <b>sistema</b> (Admin de sistemas): operación diaria y ÚNICO rol que aplica cambios sensibles (tasas, documentos legales, revocaciones) SIN firmas. ·
+          <b>editor / operador / gerente / administrador de cuentas / administrador de redes sociales</b>: operación diaria; no administran usuarios ni tocan cambios sensibles.
         </p>
+        <p class="muted" style="margin:8px 0 0;font-size:12px">Cambios sensibles (Tasas e impuestos, Control de documentos legales y revocar acceso del equipo) hechos por master/admin requieren <b>4 firmas</b> de administradores — o todas si hay menos de 4; la del proponente cuenta. Se avisa por correo a cada admin para que entre a firmar. Todo queda guardado y en la Bitácora.</p>
       </div>
       <div class="sec" style="padding:18px">
         <div class="stitle" style="padding:0 0 10px">Agregar usuario del equipo</div>
@@ -658,6 +662,7 @@ function show(view){
   if(view==='riesgo' && !loaded.rk){ loadVersions(); loadRecalcList(); loaded.rk=1; }
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
   if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
+  if(view==='security') loadChangeReqs();
 }
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
@@ -2192,6 +2197,62 @@ if($('secTabAudit')) $('secTabAudit').addEventListener('click',e=>{
   });
   renderAudit();
 });
+/* ------- Seguridad: cambios sensibles con FIRMAS de administradores ------- */
+let CRQ_CAN_SIGN=false, CRQ_ME=null;
+async function loadChangeReqs(){
+  const box=$('secChanges'); if(!box) return;
+  const r=await api('GET','/api/change_requests');
+  if(!r.ok||!r.data){ box.innerHTML=''; return; }
+  CRQ_CAN_SIGN=!!r.data.can_sign; CRQ_ME=r.data.me;
+  const pend=r.data.pending||[], recent=(r.data.recent||[]).slice(0,6);
+  const card=c=>{
+    const sigs=c.signatures||[];
+    const mine=sigs.some(s=>String(s.user_id)===String(CRQ_ME));
+    const who=sigs.map(s=>esc(s.user_email||('#'+s.user_id))).join(', ');
+    const st=c.status==='pending'
+      ? `<span style="color:#b26a00;font-weight:700;white-space:nowrap">PENDIENTE · ${sigs.length}/${c.required_signatures} firmas</span>`
+      : c.status==='applied'
+        ? '<span style="color:#1b8a3a;font-weight:700">APLICADO</span>'
+        : `<span style="color:#c62828;font-weight:700">RECHAZADO${c.rejected_by_email?(' · '+esc(c.rejected_by_email)):''}</span>`;
+    const btns=c.status==='pending'?[
+      (CRQ_CAN_SIGN&&!mine)?`<button class="btn crq-sign" data-id="${c.id}" style="padding:6px 12px;font-size:12.5px">Firmar</button>`:'',
+      mine?'<span class="muted" style="font-size:12px">✓ ya firmaste</span>':'',
+      CRQ_CAN_SIGN?`<button class="btn crq-rej" data-id="${c.id}" style="background:#eef0f6;color:#c62828;padding:6px 12px;font-size:12.5px">Rechazar</button>`:''
+    ].join(' '):'';
+    return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;background:#fff">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="min-width:240px;flex:1"><b>${esc(c.kind_label||c.kind)}</b> — ${esc(c.summary||'')}
+          <div class="muted" style="font-size:12px;margin-top:2px">Propuesto por ${esc(c.proposed_by_email||'—')} · ${esc(fdatetime(c.created_at))}${who?(' · firmas: '+who):''}</div></div>
+        <div style="display:flex;gap:8px;align-items:center">${st} ${btns}</div>
+      </div></div>`;
+  };
+  if(!pend.length&&!recent.length){ box.innerHTML=''; return; }
+  box.innerHTML=`<div class="sec" style="padding:14px 18px;margin-bottom:14px">
+    <div class="stitle" style="padding:0 0 4px">Firmas de administradores — cambios sensibles</div>
+    <p class="muted" style="margin:0 0 6px;font-size:12.5px">Los cambios en Tasas e impuestos, Control de documentos legales y las revocaciones de acceso del equipo requieren <b>4 firmas</b> de administradores (o todas si hay menos de 4). La del proponente cuenta como la primera. El rol <b>sistema</b> aplica directo. Cada cambio y cada firma quedan guardados y en la Bitácora.</p>
+    ${pend.length?pend.map(card).join(''):'<p class="muted" style="margin:4px 0">Sin cambios pendientes de firma.</p>'}
+    ${recent.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:#8a90a0">Últimos resueltos</summary>${recent.map(card).join('')}</details>`:''}
+  </div>`;
+  box.querySelectorAll('.crq-sign').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Firmar este cambio? Tu firma queda registrada de forma permanente. Al reunirse todas las firmas, el cambio SE APLICA.')) return;
+    const r2=await api('POST','/api/change_requests/'+b.dataset.id+'/sign');
+    if(r2.ok){
+      const cr=r2.data&&r2.data.change_request;
+      if(cr&&cr.status==='applied'){
+        alert('Firmas completas: el cambio quedó APLICADO.');
+        if(cr.kind==='rates') loadRates();
+        if(cr.kind==='contract_template') CT_LOADED=0;
+        if(cr.kind==='staff_delete') loadSecUsers();
+      }
+      loadChangeReqs();
+    } else alert((r2.data&&r2.data.error)||'No se pudo firmar.');
+  });
+  box.querySelectorAll('.crq-rej').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿RECHAZAR este cambio propuesto? El cambio NO se aplicará y el rechazo queda registrado en la bitácora.')) return;
+    const r2=await api('POST','/api/change_requests/'+b.dataset.id+'/reject');
+    if(r2.ok) loadChangeReqs(); else alert((r2.data&&r2.data.error)||'No se pudo rechazar.');
+  });
+}
 async function loadRates(){
   const r=await api('GET','/api/settings/rates');
   if(!r.ok||!r.data){ $('rtMsg').textContent='No se pudieron cargar las tasas.'; return; }
@@ -2208,7 +2269,8 @@ if($('rtSave')) $('rtSave').onclick=async()=>{
   $('rtMsg').textContent='Guardando…'; $('rtSave').disabled=true;
   const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0});
   $('rtSave').disabled=false;
-  if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); }
+  if(r.ok&&r.data&&r.data.pending){ $('rtMsg').textContent='⏳ '+(r.data.message||'Cambio propuesto: requiere las firmas de los administradores.'); loadChangeReqs(); loadRates(); }
+  else if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); loadChangeReqs(); }
   else { $('rtMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
 };
 const CT_FIELDS=[
@@ -2237,14 +2299,16 @@ if($('ctSave')) $('ctSave').onclick=async()=>{
   $('ctMsg').textContent='Guardando…'; $('ctSave').disabled=true;
   const r=await api('PUT','/api/settings/contract',{content:txt});
   $('ctSave').disabled=false;
-  if(r.ok){ $('ctMsg').textContent='✓ Contrato guardado.'; $('ctInfo').textContent='Versión editada — último cambio: '+fdate(r.data&&r.data.updated_at); }
+  if(r.ok&&r.data&&r.data.pending){ $('ctMsg').textContent='⏳ '+(r.data.message||'Cambio propuesto: requiere las firmas de los administradores. La plantilla actual sigue vigente.'); loadChangeReqs(); }
+  else if(r.ok){ $('ctMsg').textContent='✓ Contrato guardado.'; $('ctInfo').textContent='Versión editada — último cambio: '+fdate(r.data&&r.data.updated_at); loadChangeReqs(); }
   else { $('ctMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
 };
 if($('ctReset')) $('ctReset').onclick=async()=>{
   if(!confirm('¿Descartar los cambios guardados y volver al contrato ORIGINAL?\n\nEsta acción no se puede deshacer.')) return;
   $('ctMsg').textContent='Restaurando…';
   const r=await api('PUT','/api/settings/contract',{reset:true});
-  if(r.ok){ $('ctText').value=(r.data&&r.data.content)||''; $('ctInfo').textContent='Versión original del documento (VFF06072026), sin cambios guardados.'; $('ctMsg').textContent='✓ Restaurado.'; }
+  if(r.ok&&r.data&&r.data.pending){ $('ctMsg').textContent='⏳ '+(r.data.message||'Restauración propuesta: requiere las firmas de los administradores.'); loadChangeReqs(); }
+  else if(r.ok){ $('ctText').value=(r.data&&r.data.content)||''; $('ctInfo').textContent='Versión original del documento (VFF06072026), sin cambios guardados.'; $('ctMsg').textContent='✓ Restaurado.'; loadChangeReqs(); }
   else { $('ctMsg').textContent=(r.data&&r.data.error)||'No se pudo restaurar.'; }
 };
 async function loadSecUsers(){
@@ -2262,6 +2326,7 @@ async function loadSecUsers(){
       <td class="right">
         <button class="sec-save btn" data-id="${esc(String(u.id))}" style="background:#eef0f6;color:var(--navy);padding:6px 10px;font-size:12.5px">Guardar rol</button>
         <button class="sec-pass btn" data-id="${esc(String(u.id))}" style="background:var(--brand);padding:6px 10px;font-size:12.5px">Enviar enlace de contraseña</button>
+        <button class="sec-kill btn" data-id="${esc(String(u.id))}" data-name="${esc([u.name,u.last_name].filter(Boolean).join(' ')||u.email||'')}" style="background:#c62828;padding:6px 10px;font-size:12.5px" title="Elimina el acceso de este usuario del equipo. Requiere las firmas de administradores (el rol sistema lo aplica directo).">Revocar acceso</button>
       </td></tr>`;
   }).join('');
   body.querySelectorAll('.sec-save').forEach(b=>b.onclick=async()=>{
@@ -2273,6 +2338,13 @@ async function loadSecUsers(){
   body.querySelectorAll('.sec-pass').forEach(b=>b.onclick=async()=>{
     const r2=await api('POST','/api/users/'+encodeURIComponent(b.dataset.id)+'/send_password_setup');
     alert(r2.ok?('Enlace enviado a '+((r2.data&&r2.data.sent_to)||'su correo')+': el usuario creará su propia contraseña.'):((r2.data&&r2.data.error)||'No se pudo enviar.'));
+  });
+  body.querySelectorAll('.sec-kill').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Revocar el acceso de '+b.dataset.name+'?\n\nSi tu rol no es sistema, la revocación queda PENDIENTE hasta reunir las firmas de administradores requeridas (se les avisa por correo). El usuario conserva su acceso mientras tanto.')) return;
+    const r2=await api('DELETE','/api/users/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok&&r2.data&&r2.data.pending){ alert(r2.data.message||'Revocación propuesta: requiere firmas de administradores.'); loadChangeReqs(); }
+    else if(r2.ok){ alert('Acceso revocado.'); loadSecUsers(); loadChangeReqs(); }
+    else alert((r2.data&&r2.data.error)||'No se pudo revocar.');
   });
 }
 async function secCreateUser(){

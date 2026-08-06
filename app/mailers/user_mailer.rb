@@ -50,6 +50,18 @@ class UserMailer < ApplicationMailer
     mail to: @user.email, subject: "Firma tu contrato #{@contract.contract_number} / Sign your contract — acasa"
   end
 
+  # Aviso a un administrador: hay un cambio sensible PENDIENTE DE FIRMA
+  # (Tasas e impuestos, documentos legales o revocación de acceso del equipo).
+  def send_change_approval
+    @admin = params[:user]
+    @change = params[:change]
+    @kind_label = ChangeRequest::KINDS[@change.kind] || @change.kind
+    host = ENV['API_HOST'].presence || 'acasa-web.onrender.com'
+    @admin_url = "https://#{host.sub(%r{\Ahttps?://}, '').chomp('/')}/admin.html"
+
+    mail to: @admin.email, subject: "Firma requerida: cambio en #{@kind_label} — acasa"
+  end
+
   # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno).
   # SIN direcciones de la agencia: sólo lo que esté configurado (o el buzón propio).
   def send_new_order_notification

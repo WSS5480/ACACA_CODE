@@ -125,6 +125,40 @@ module Api
       render json: { error: 'Mensaje no encontrado' }, status: :not_found
     end
 
+    # GET /api/whatsapp/contacts
+    # DIRECTORIO completo para iniciar chats: clientes, USUARIOS DEL EQUIPO,
+    # compradores, beneficiarios y referencias — todos los que tengan teléfono.
+    def contacts
+      labels = { 'master' => 'Equipo · Master', 'admin' => 'Equipo · Admin', 'sistema' => 'Equipo · Sistema',
+                 'editor' => 'Equipo · Editor', 'operador' => 'Equipo · Operador', 'gerente' => 'Equipo · Gerente',
+                 'admin_cuentas' => 'Equipo · Cuentas', 'admin_redes' => 'Equipo · Redes' }
+      list = []
+      User.includes(:role).where.not(phone: [nil, '']).find_each do |u|
+        role = u.role&.name
+        list << { name: [u.name, u.last_name].compact.join(' ').strip.presence || u.email,
+                  phone: u.phone, type: (role == 'cliente' ? 'Cliente' : (labels[role] || 'Equipo')),
+                  person_type: (role == 'cliente' ? 'cliente' : 'equipo'), user_id: u.id }
+      end
+      Buyer.where.not(phone: [nil, '']).find_each do |b|
+        list << { name: [b.name, b.last_name].compact.join(' ').strip, phone: b.phone, type: 'Comprador', person_type: 'comprador' }
+      end
+      Beneficiary.where.not(phone: [nil, '']).find_each do |b|
+        list << { name: [b.name, b.last_name].compact.join(' ').strip, phone: b.phone, type: 'Beneficiario', person_type: 'beneficiario', user_id: b.user_id }
+      end
+      Referral.where.not(phone: [nil, '']).find_each do |r|
+        list << { name: [r.name, r.last_name].compact.join(' ').strip, phone: r.phone, type: 'Referencia', person_type: 'referencia' }
+      end
+      # Un contacto por teléfono (prioridad: usuarios > comprador > beneficiario > referencia)
+      seen = {}
+      list.each do |c|
+        t = phone_tail(c[:phone])
+        next if t.blank? || seen[t]
+
+        seen[t] = c.merge(tail: t)
+      end
+      render json: { contacts: seen.values.sort_by { |c| c[:name].to_s.downcase } }, status: :ok
+    end
+
     # DELETE /api/whatsapp/threads?phone=...  (SOLO master/admin)
     # Borra la conversación COMPLETA de un teléfono: todos sus mensajes de
     # WhatsApp y todas sus notas de llamada. No toca el teléfono del cliente.

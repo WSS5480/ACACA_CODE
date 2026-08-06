@@ -142,6 +142,7 @@ Rails.application.routes.draw do
     get  'whatsapp/unread_count', to: 'api/whatsapp_messages#unread_count'
     delete 'whatsapp/messages/:id', to: 'api/whatsapp_messages#destroy' # solo master/admin
     delete 'whatsapp/threads',      to: 'api/whatsapp_messages#destroy_thread' # conversación completa (solo master/admin)
+    get  'whatsapp/contacts',       to: 'api/whatsapp_messages#contacts' # directorio completo para Nuevo chat
 
     # Marketing en redes (Facebook + Instagram) — pestaña Marketing
     get  'marketing/overview', to: 'api/marketing#overview'

@@ -105,6 +105,24 @@ module Api
       render json: { ok: true }, status: :ok
     end
 
+    # DELETE /api/whatsapp/messages/:id  (SOLO master/admin)
+    # Borra el mensaje de NUESTRO registro. OJO: no se puede borrar del teléfono
+    # del cliente (WhatsApp no lo permite por API). Queda en la bitácora.
+    def destroy
+      unless %w[master admin].include?(@current_user&.role&.name)
+        return render json: { error: 'Solo master o admin pueden eliminar mensajes' }, status: :forbidden
+      end
+      m = WhatsappMessage.find(params[:id])
+      excerpt = m.body.to_s[0, 80]
+      phone = m.wa_phone
+      m.destroy!
+      AuditLog.record!(actor: @current_user, action: 'wa_message_deleted',
+                       label: phone.to_s, details: "#{m.direction == 'in' ? 'Recibido' : 'Enviado'}: “#{excerpt}”")
+      render json: { ok: true }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Mensaje no encontrado' }, status: :not_found
+    end
+
     # GET /api/whatsapp/unread_count -> hilos con mensajes nuevos (globo del menú)
     def unread_count
       unless WhatsappMessage.column_names.include?('read_at')

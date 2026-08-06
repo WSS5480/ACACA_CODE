@@ -146,6 +146,7 @@
       <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
       <a data-view="crm"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg> CRM</a>
       <a data-view="whatsapp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> WhatsApp <span id="waBadge" style="display:none;margin-left:6px;background:#25D366;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px">0</span></a>
+      <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Marketing</a>
       <div id="navAdmin" style="display:none">
       <div class="sep"></div>
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
@@ -297,6 +298,50 @@
         <div class="sec" style="overflow-y:auto;padding:0" id="waList"><p class="empty" style="padding:16px">Cargando…</p></div>
         <div class="sec" style="padding:0;display:flex;flex-direction:column;overflow:hidden" id="waThread">
           <p class="empty" style="padding:20px">Elige una conversación de la lista.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- MARKETING (Facebook + Instagram) ---------- -->
+    <section class="view hide" data-v="marketing">
+      <div class="head"><h1>Marketing — Facebook & Instagram</h1><div class="sp"></div>
+        <button class="btn" id="mktRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
+      </div>
+      <div id="mktSetup" style="display:none" class="sec">
+        <div style="padding:18px">
+          <div class="stitle" style="padding:0 0 6px">Conecta tu página de Facebook</div>
+          <p class="muted" style="margin:0 0 8px" id="mktSetupMsg"></p>
+          <p style="font-size:13.5px;line-height:1.8;margin:0">
+            1) En <b>Business Settings → Usuarios del sistema → acasa-api → Añadir activos</b>: agrega tu <b>Página de Facebook</b> (control total) y tu <b>cuenta de Instagram</b>.<br>
+            2) <b>Generar nuevo identificador</b> con permisos: <code>pages_manage_posts, pages_read_engagement, pages_read_user_content, pages_manage_engagement, instagram_basic, instagram_content_publish, instagram_manage_comments, read_insights, business_management</code> (más los de WhatsApp si reutilizas el mismo token).<br>
+            3) En Render agrega: <b>META_MKT_TOKEN</b> (ese token) y <b>FB_PAGE_ID</b> (el ID de tu página). El Instagram ligado a la página se detecta solo.
+          </p>
+        </div>
+      </div>
+      <div id="mktMain">
+        <div id="mktCards" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div class="sec" style="padding:16px;margin-bottom:14px">
+          <div class="stitle" style="padding:0 0 8px">✏️ Nueva publicación</div>
+          <textarea id="mktText" placeholder="¿Qué quieres publicar?" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;min-height:84px;font-family:inherit;resize:vertical"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+            <input id="mktImg" placeholder="URL de la imagen (obligatoria para Instagram)" style="flex:1;min-width:240px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px">
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+            <span style="font-size:12.5px;color:var(--mut);font-weight:700">Publicar en:</span>
+            <label style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1877F2;color:#1877F2;background:#eaf2ff;border-radius:999px;padding:6px 13px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="mktFb" checked style="accent-color:#1877F2"> ⓕ Facebook</label>
+            <label style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #E1306C;color:#E1306C;background:#fdeef4;border-radius:999px;padding:6px 13px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="mktIg" style="accent-color:#E1306C"> 📸 Instagram</label>
+            <div class="sp"></div>
+            <button class="btn" id="mktPub">Publicar ahora</button>
+            <span class="muted" style="font-size:13px">o</span>
+            <input type="datetime-local" id="mktWhen" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px">
+            <button class="btn" id="mktSched" style="background:#eef0f6;color:var(--navy)">🕐 Programar</button>
+          </div>
+          <p class="muted" id="mktMsg" style="margin:8px 0 0;font-size:12.5px"></p>
+          <p class="muted" style="margin:6px 0 0;font-size:11.5px">Instagram requiere imagen y NO permite programar por API (limitación de Meta) — en IG se publica al momento. La programación sí funciona en Facebook.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="sec" style="padding:16px"><div class="stitle" style="padding:0 0 8px">📰 Publicaciones recientes</div><div id="mktPosts"><p class="empty">Cargando…</p></div></div>
+          <div class="sec" style="padding:16px"><div class="stitle" style="padding:0 0 8px">💬 Comentarios</div><div id="mktComments"><p class="empty">Cargando…</p></div></div>
         </div>
       </div>
     </section>
@@ -712,6 +757,8 @@ async function applyRoleNav(){
   }catch(e){ MYROLE=''; }
   const el=$('navAdmin');
   if(el) el.style.display=['master','admin','sistema'].includes(MYROLE)?'':'none';
+  // Marketing: admins + Administrador de Redes sociales
+  if($('navMkt')) $('navMkt').style.display=['master','admin','sistema','admin_redes'].includes(MYROLE)?'':'none';
 }
 $('lg-btn').onclick=doLogin;
 $('lg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -728,6 +775,7 @@ function show(view){
   if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
   if(view==='crm'){ loadCrm(); }
   if(view==='whatsapp'){ loadWaInbox(); }
+  if(view==='marketing'){ loadMarketing(); }
   if(view==='contratos' && !loaded.con){ loadContracts(); loaded.con=1; }
   if(view==='catalogos' && !loaded.cat){ loadCatalog(); }
   if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
@@ -1585,8 +1633,8 @@ async function openWaThread(tail){
   const ph=t.phone||tail;
   const rm=await api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(ph));
   const rl=await api('GET','/api/contact_logs?phone='+encodeURIComponent(ph));
-  const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',dir:m.direction,body:m.body,at:m.created_at}));
-  const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',body:l.body,author:l.author_name,at:l.created_at}));
+  const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at}));
+  const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
   const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
   box.innerHTML=`
     <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;background:#25D366;color:#fff;flex-shrink:0">
@@ -1601,10 +1649,12 @@ async function openWaThread(tail){
       </div>
     </div>
     <div id="waMsgs" style="flex:1;overflow-y:auto;background:#f0ebe3;padding:16px;display:flex;flex-direction:column;gap:8px">
-      ${all.length?all.map(m=> m.kind==='note'
-        ? `<div style="background:#fef9e3;border:1px solid #f0e3ac;align-self:center;max-width:85%;font-size:12.5px;color:#6b5d1f;border-radius:12px;padding:8px 12px">📝 <b>${esc(m.author||'Nota')}</b>: ${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
-        : `<div style="max-width:72%;border-radius:12px;padding:8px 12px;font-size:13.5px;line-height:1.45;${m.dir==='out'?'background:#d7f7c8;align-self:flex-end;border-bottom-right-radius:3px;':'background:#fff;align-self:flex-start;border-bottom-left-radius:3px;'}box-shadow:0 1px 1px rgba(0,0,0,.06);white-space:pre-wrap;word-break:break-word">${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
-      ).join(''):'<p class="muted" style="align-self:center">Sin mensajes todavía — escribe el primero.</p>'}
+      ${(()=>{ const isAdm=['master','admin'].includes(MYROLE);
+        const del=(m)=>isAdm&&m.id?`<button class="${m.kind==='note'?'wandel':'wadel'}" data-id="${esc(String(m.id))}" title="Eliminar (solo admins; queda en la bitácora)" style="border:0;background:none;color:#c62828;font-size:11px;cursor:pointer;padding:0 2px;float:right;margin-left:6px">✕</button>`:'';
+        return all.length?all.map(m=> m.kind==='note'
+        ? `<div style="background:#fef9e3;border:1px solid #f0e3ac;align-self:center;max-width:85%;font-size:12.5px;color:#6b5d1f;border-radius:12px;padding:8px 12px">${del(m)}📝 <b>${esc(m.author||'Nota')}</b>: ${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
+        : `<div style="max-width:72%;border-radius:12px;padding:8px 12px;font-size:13.5px;line-height:1.45;${m.dir==='out'?'background:#d7f7c8;align-self:flex-end;border-bottom-right-radius:3px;':'background:#fff;align-self:flex-start;border-bottom-left-radius:3px;'}box-shadow:0 1px 1px rgba(0,0,0,.06);white-space:pre-wrap;word-break:break-word">${del(m)}${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
+      ).join(''):'<p class="muted" style="align-self:center">Sin mensajes todavía — escribe el primero.</p>'; })()}
     </div>
     <div style="padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end;background:#fff;flex-shrink:0">
       <textarea id="waText" placeholder="Escribe un WhatsApp o una nota…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;resize:none;height:46px;font-family:inherit"></textarea>
@@ -1613,15 +1663,29 @@ async function openWaThread(tail){
     </div>
     <div class="muted" id="waThreadMsg" style="padding:0 16px 8px;font-size:12px;background:#fff"></div>`;
   const mb=$('waMsgs'); mb.scrollTop=mb.scrollHeight;
-  // Llamada: abre la app de llamadas del equipo (tel:) y deja lista la nota para registrarla.
+  // Eliminar mensajes/notas (SOLO master/admin; queda en la bitácora de auditoría).
+  mb.querySelectorAll('.wadel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este mensaje de NUESTRO registro?\n\nNo se borra del teléfono del cliente (WhatsApp no lo permite). Queda registrado en la Bitácora.')) return;
+    const r2=await api('DELETE','/api/whatsapp/messages/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
+  });
+  mb.querySelectorAll('.wandel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar esta nota? Queda registrado en la Bitácora.')) return;
+    const r2=await api('DELETE','/api/contact_logs/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
+  });
+  // Llamada: copia el número, intenta abrir la app de llamadas (tel:) y deja
+  // lista la nota. Si no pasa nada al hacer clic: Windows necesita la app
+  // "Vincular al teléfono" (Phone Link) con tu celular vinculado, o Skype.
   if($('waCallBtn')) $('waCallBtn').onclick=()=>{
     const telp=String(ph).replace(/[^0-9+]/g,'');
-    window.location.href='tel:'+telp;
+    try{ navigator.clipboard&&navigator.clipboard.writeText(telp); }catch(e){}
+    const a=document.createElement('a'); a.href='tel:'+telp; document.body.appendChild(a); a.click(); a.remove();
     const ta=$('waText');
     if(ta && !ta.value){ ta.value='📞 Llamada: '; ta.focus(); }
-    $('waThreadMsg').textContent='Se abrió tu app de llamadas. Al colgar, escribe cómo fue y guárdala con 📝 Nota — queda en la página de esta persona.';
+    $('waThreadMsg').innerHTML='📞 <b>'+esc(telp)+'</b> — número COPIADO al portapapeles. Si no se abrió tu app de llamadas: en Windows abre <b>"Vincular al teléfono"</b> (Phone Link) con tu celular vinculado, o marca desde tu teléfono. Al colgar, registra la llamada con 📝 Nota.';
   };
-  if($('waFichaBtn')) $('waFichaBtn').onclick=()=>openClientSheet(t.user_id);
+  if($('waFichaBtn')) $('waFichaBtn').onclick=()=>{ loaded.con=1; show('contratos'); openClientSheet(t.user_id); };
   if($('waContractBtn')) $('waContractBtn').onclick=()=>{ loaded.con=1; show('contratos'); openContract(String(t.contract_id)); };
   $('waSendBtn').onclick=async()=>{
     const b=$('waText').value.trim(); if(!b) return;
@@ -1666,6 +1730,81 @@ if($('waNewGo')) $('waNewGo').onclick=()=>{
   renderWaList(); openWaThread(tail);
 };
 if($('waNewPhone')) $('waNewPhone').addEventListener('keydown',e=>{ if(e.key==='Enter') $('waNewGo').click(); });
+
+/* ================= MARKETING — Facebook + Instagram ================= */
+function mktCard(lbl,val,sub,color){ return `<div style="flex:1;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:${color};font-weight:800">${lbl}</div><div style="font-size:22px;font-weight:800;color:var(--navy)">${val}</div><div class="muted" style="font-size:11.5px">${sub}</div></div>`; }
+async function loadMarketing(){
+  $('mktMsg').textContent='';
+  const ov=await api('GET','/api/marketing/overview');
+  if(!ov.ok||!ov.data){ $('mktCards').innerHTML='<p class="empty">No se pudo cargar (¿tu rol tiene acceso?).</p>'; return; }
+  if(ov.data.configured===false){
+    $('mktSetup').style.display=''; $('mktMain').style.display='none';
+    $('mktSetupMsg').textContent=ov.data.error||'';
+    return;
+  }
+  $('mktSetup').style.display='none'; $('mktMain').style.display='';
+  const fb=ov.data.fb||{}, ig=ov.data.ig||null, reach=ov.data.reach_daily||[];
+  const tot=reach.reduce((s,d)=>s+(Number(d.value)||0),0);
+  $('mktCards').innerHTML =
+    mktCard('ⓕ Facebook · '+esc(fb.name||'página'), Number(fb.followers_count!=null?fb.followers_count:(fb.fan_count||0)).toLocaleString(), 'seguidores', '#1877F2')
+    +(ig?mktCard('📸 Instagram · @'+esc(ig.username||''), Number(ig.followers_count||0).toLocaleString(), 'seguidores', '#E1306C'):'')
+    +(reach.length?mktCard('👁 Alcance 7 días', tot.toLocaleString(), 'personas (Facebook)', '#1b2a4a'):'');
+  if(ov.data.error) $('mktMsg').textContent=ov.data.error;
+  loadMktPosts(); loadMktComments();
+}
+async function loadMktPosts(){
+  const r=await api('GET','/api/marketing/posts'); const b=$('mktPosts');
+  const ps=(r.data&&r.data.posts)||[];
+  b.innerHTML = ps.length ? ps.map(p=>`<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+    <div style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mut);margin-bottom:5px;flex-wrap:wrap">
+      ${p.network==='ig'?'<span style="background:#fdeef4;color:#E1306C;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px">📸 IG</span>':'<span style="background:#eaf2ff;color:#1877F2;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px">ⓕ FB</span>'}
+      ${p.scheduled?'<span style="background:#fff6e6;color:#9a6b00;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px">🕐 PROGRAMADO</span>':''}
+      ${esc(fdatetime(p.at))} ${p.url?`· <a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700">ver</a>`:''}
+    </div>
+    <div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap">${esc(String(p.text||'').slice(0,300))}</div>
+    ${p.img?`<img src="${esc(p.img)}" style="margin-top:8px;max-height:130px;border-radius:9px;max-width:100%">`:''}
+    ${!p.scheduled?`<div style="display:flex;gap:16px;margin-top:8px;font-size:12.5px;color:var(--mut);font-weight:600"><span>👍 ${Number(p.likes)||0}</span><span>💬 ${Number(p.comments)||0}</span>${p.network==='fb'?`<span>↗ ${Number(p.shares)||0}</span>`:''}</div>`:''}
+  </div>`).join('') : '<p class="empty">Sin publicaciones. '+esc((r.data&&r.data.error)||'')+'</p>';
+}
+async function loadMktComments(){
+  const r=await api('GET','/api/marketing/comments'); const b=$('mktComments');
+  const cs=(r.data&&r.data.comments)||[];
+  b.innerHTML = cs.length ? cs.map(c=>`<div style="border-left:3px solid ${c.network==='ig'?'#E1306C':'#1877F2'};padding:8px 12px;margin-bottom:10px">
+    <b style="color:var(--navy);font-size:13px">${esc(c.author||'—')}</b> <span class="muted" style="font-size:11px">· ${c.network==='ig'?'📸':'ⓕ'} · ${esc(fdatetime(c.at))}${c.post?(' · en “'+esc(c.post)+'…”'):''}</span>
+    <p style="font-size:13px;margin:3px 0 6px">${esc(c.text||'')}</p>
+    <div style="display:flex;gap:8px"><input class="mkt-reply" data-cid="${esc(String(c.id))}" data-net="${esc(c.network)}" placeholder="Responder…" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12.5px"><button class="mkt-reply-btn" data-cid="${esc(String(c.id))}" style="border:0;background:var(--navy);color:#fff;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer">Responder</button></div>
+  </div>`).join('') : '<p class="empty">Sin comentarios recientes. '+esc((r.data&&r.data.error)||'')+'</p>';
+  b.querySelectorAll('.mkt-reply-btn').forEach(btn=>btn.onclick=async()=>{
+    const inp=b.querySelector('.mkt-reply[data-cid="'+btn.dataset.cid+'"]');
+    const msg=(inp&&inp.value.trim())||''; if(!msg) return;
+    btn.disabled=true;
+    const r2=await api('POST','/api/marketing/reply',{comment_id:btn.dataset.cid, network:inp.dataset.net, message:msg});
+    btn.disabled=false;
+    if(r2.ok&&r2.data&&r2.data.ok){ inp.value=''; btn.textContent='✓'; setTimeout(loadMktComments,900); }
+    else alert((r2.data&&r2.data.error)||'No se pudo responder.');
+  });
+}
+async function mktPublish(sched){
+  const nets=[]; if($('mktFb').checked) nets.push('fb'); if($('mktIg').checked) nets.push('ig');
+  if(!nets.length){ $('mktMsg').textContent='Elige al menos una red.'; return; }
+  const body={message:$('mktText').value, image_url:$('mktImg').value.trim(), networks:nets};
+  if(sched){ const v=$('mktWhen').value; if(!v){ $('mktMsg').textContent='Elige la fecha y hora para programar.'; return; } body.scheduled_at=v; }
+  if(!confirm(sched?('¿PROGRAMAR esta publicación en '+nets.join(' + ').toUpperCase()+'?'):('¿PUBLICAR AHORA en '+nets.join(' + ').toUpperCase()+'? Será visible al público.'))) return;
+  $('mktMsg').textContent=sched?'Programando…':'Publicando…';
+  const r=await api('POST','/api/marketing/publish',body);
+  if(r.ok&&r.data&&r.data.ok){
+    $('mktMsg').textContent='✓ Listo.'; $('mktText').value=''; $('mktImg').value=''; $('mktWhen').value='';
+    setTimeout(loadMktPosts,1200);
+  } else {
+    const res=r.data&&r.data.results;
+    let msg=(r.data&&r.data.error)||'No se pudo publicar.';
+    if(res){ msg=Object.entries(res).map(([k,v])=>k.toUpperCase()+': '+((v&&v.id)?'✓ publicado':((v&&v.error&&v.error.message)||'falló'))).join(' · '); }
+    $('mktMsg').textContent=msg;
+  }
+}
+if($('mktPub')) $('mktPub').onclick=()=>mktPublish(false);
+if($('mktSched')) $('mktSched').onclick=()=>mktPublish(true);
+if($('mktRefresh')) $('mktRefresh').onclick=loadMarketing;
 
 function conStatCard(label,val,color){ return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px"><div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.03em">${label}</div><div style="font-size:20px;font-weight:800;${color?('color:'+color):''}">${val}</div></div>`; }
 function renderConStats(list){

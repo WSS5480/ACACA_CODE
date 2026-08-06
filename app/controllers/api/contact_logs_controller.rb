@@ -42,6 +42,21 @@ module Api
       render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
 
+    # DELETE /api/contact_logs/:id  (SOLO master/admin) — queda en la bitácora.
+    def destroy
+      unless %w[master admin].include?(@current_user&.role&.name)
+        return render json: { error: 'Solo master o admin pueden eliminar notas' }, status: :forbidden
+      end
+      l = ContactLog.find(params[:id])
+      excerpt = l.body.to_s[0, 80]
+      l.destroy!
+      AuditLog.record!(actor: @current_user, action: 'note_deleted',
+                       label: (l.person_name.presence || l.phone.to_s), details: "“#{excerpt}”")
+      render json: { ok: true }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Nota no encontrada' }, status: :not_found
+    end
+
     private
 
     def serialize(l)

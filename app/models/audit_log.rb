@@ -22,7 +22,10 @@ class AuditLog < ApplicationRecord
     'change_signed'        => 'Firmó cambio propuesto',
     'change_rejected'      => 'Rechazó cambio propuesto',
     'staff_deleted'        => 'Revocó acceso de usuario del equipo',
-    'contract_status_changed' => 'Cambió estado de cuenta (devuelto/castigado)'
+    'contract_status_changed' => 'Cambió estado de cuenta (devuelto/castigado)',
+    'marketing_post'       => 'Publicó en redes sociales',
+    'wa_message_deleted'   => 'Eliminó mensaje de WhatsApp',
+    'note_deleted'         => 'Eliminó nota de llamada'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

@@ -140,9 +140,17 @@ Rails.application.routes.draw do
     get  'whatsapp/threads',      to: 'api/whatsapp_messages#threads'
     post 'whatsapp/read',         to: 'api/whatsapp_messages#mark_read'
     get  'whatsapp/unread_count', to: 'api/whatsapp_messages#unread_count'
+    delete 'whatsapp/messages/:id', to: 'api/whatsapp_messages#destroy' # solo master/admin
+
+    # Marketing en redes (Facebook + Instagram) — pestaña Marketing
+    get  'marketing/overview', to: 'api/marketing#overview'
+    get  'marketing/posts',    to: 'api/marketing#posts'
+    get  'marketing/comments', to: 'api/marketing#comments'
+    post 'marketing/publish',  to: 'api/marketing#publish'
+    post 'marketing/reply',    to: 'api/marketing#reply'
 
     # Bitácora de conversaciones (notas de llamadas) por persona
-    resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create]
+    resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create, :destroy]
 
     # Bitácora de AUDITORÍA (solo master/admin): quién hizo qué — cambios de tasas,
     # pagos, aprobaciones, entregas, firmas, eliminaciones...

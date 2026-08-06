@@ -34,6 +34,26 @@ module Api
       datos_complete = first_order.present? &&
                        (first_order.respond_to?(:buyer) ? first_order.buyer.present? : true) &&
                        first_order.referrals.exists?
+      # CLIENTE APROBADO que regresa: si esta compra aún no tiene datos, se
+      # REUTILIZAN los de su última compra APROBADA (verificada). Menos de 6
+      # meses desde la aprobación: se copian solos, sin pedirlos otra vez.
+      # Más de 6 meses: se le muestran para CONFIRMAR (correcto / editar).
+      if client? && contract.user_id == @current_user.id && first_order.present? && !datos_complete
+        src = reusable_datos_source(contract)
+        if src && src[:fresh]
+          copy_datos!(src[:data_order], first_order)
+          first_order = contract.orders.reload.first
+          datos_complete = first_order.buyer.present? && first_order.referrals.exists?
+          data[:datos_reused] = true if datos_complete
+        elsif src
+          data[:needs_reconfirm] = true
+          data[:previous_datos] = {
+            verified_at: src[:verified_at],
+            buyer: (src[:buyer] ? BuyerSerializer.new(src[:buyer]).serializable_hash[:data][:attributes] : nil),
+            referrals: src[:referrals].map { |r| ReferralSerializer.new(r).serializable_hash[:data][:attributes] }
+          }
+        end
+      end
       data[:datos_complete] = datos_complete
       # El CLIENTE ve su calendario de pagos hasta que: pagó el inicial Y completó sus datos.
       data[:installments] = if client? && (pending_initial || !datos_complete)
@@ -310,6 +330,29 @@ module Api
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     end
 
+    # POST /api/contracts/:id/confirm_datos
+    # Cliente que regresa (>6 meses desde su última aprobación): confirma que
+    # sus datos siguen correctos — se COPIAN a esta compra (cada orden guarda
+    # su propia copia, con candado). También se usa antes de "Editar".
+    def confirm_datos
+      contract = Contract.find(params[:id])
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless client? && contract.user_id == @current_user.id
+
+      first_order = contract.orders.first
+      return render(json: { error: 'Esta compra no tiene artículos' }, status: :unprocessable_entity) unless first_order
+
+      src = reusable_datos_source(contract)
+      return render(json: { error: 'No encontramos datos anteriores verificados; captúralos de nuevo.' }, status: :unprocessable_entity) unless src
+
+      copy_datos!(src[:data_order], first_order)
+      fo = first_order.reload
+      render json: { ok: true, datos_complete: fo.buyer.present? && fo.referrals.exists?, first_order_id: fo.id }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     # POST /api/contracts/:id/sign  { signature: 'data:image/png;base64,...', name: 'Eddie Cantu' }
     # El CLIENTE firma su contrato (dibuja con dedo o mouse). La firma se guarda en su expediente.
     def sign
@@ -385,6 +428,62 @@ module Api
     end
 
     private
+
+    # Fuente para REUTILIZAR datos: la última orden APROBADA (verificación
+    # completa) del cliente con comprador y referencias capturados.
+    # fresh = la aprobación tiene menos de 6 meses (no se vuelve a pedir nada).
+    def reusable_datos_source(contract)
+      candidates = Order.where(user_id: contract.user_id, admin_approved: true)
+                        .where.not(contract_id: contract.id)
+                        .order(approved_at: :desc, id: :desc).limit(25).to_a
+      candidates.each do |cand|
+        group = cand.contract_id.present? ? Order.where(contract_id: cand.contract_id).order(:id).to_a : [cand]
+        data_order = group.find { |o| o.respond_to?(:buyer) && o.buyer.present? } ||
+                     group.find { |o| o.referrals.exists? }
+        next unless data_order
+        next unless data_order.buyer.present? || data_order.referrals.exists?
+
+        verified_at = cand.approved_at || cand.updated_at
+        return {
+          data_order: data_order,
+          buyer: data_order.buyer,
+          referrals: data_order.referrals.to_a,
+          verified_at: verified_at,
+          fresh: verified_at.present? && verified_at >= 6.months.ago
+        }
+      end
+      nil
+    end
+
+    # Copia comprador (con sus documentos), referencias y aval de una orden
+    # aprobada anterior a la PRIMERA orden de esta compra. Cada orden conserva
+    # SU PROPIA copia (candado por orden): editar los datos de una compra nueva
+    # nunca toca lo que quedó verificado en las anteriores.
+    def copy_datos!(src_order, target_order)
+      ActiveRecord::Base.transaction do
+        if src_order.respond_to?(:buyer) && src_order.buyer.present? && target_order.buyer.blank?
+          nb = Buyer.new(src_order.buyer.attributes.except('id', 'order_id', 'created_at', 'updated_at'))
+          nb.order_id = target_order.id
+          nb.save!
+          %i[identification proof_of_address proof_of_income].each do |att|
+            nb.public_send(att).attach(src_order.buyer.public_send(att).blob) if src_order.buyer.public_send(att).attached?
+          end
+        end
+        if target_order.referrals.none?
+          src_order.referrals.find_each do |rf|
+            Referral.create!(rf.attributes.except('id', 'created_at', 'updated_at').merge('order_id' => target_order.id))
+          end
+        end
+        if src_order.respond_to?(:guarantor) && src_order.guarantor.present? && target_order.guarantor.blank?
+          ng = Guarantor.new(src_order.guarantor.attributes.except('id', 'order_id', 'created_at', 'updated_at'))
+          ng.order_id = target_order.id
+          ng.save!
+          %i[identification proof_of_address].each do |att|
+            ng.public_send(att).attach(src_order.guarantor.public_send(att).blob) if src_order.guarantor.public_send(att).attached?
+          end
+        end
+      end
+    end
 
     # Etiqueta legible del contrato para la bitácora de auditoría.
     def audit_contract_label(contract)

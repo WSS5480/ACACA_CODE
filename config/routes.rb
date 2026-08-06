@@ -103,6 +103,7 @@ Rails.application.routes.draw do
       post 'generate_document', on: :member # staff: genera el contrato desde la plantilla y avisa por WhatsApp
       post 'sign', on: :member              # cliente: firma electrónica (imagen)
       post 'set_next_due', on: :member      # staff: mover el próximo vencimiento (PRUEBAS de cobranza)
+      post 'confirm_datos', on: :member     # cliente que regresa: reutilizar/confirmar sus datos verificados
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'

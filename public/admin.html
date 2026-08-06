@@ -1687,6 +1687,7 @@ async function openWaThread(tail){
         <div style="font-size:12px;opacity:.92">${esc([t.person_label||'Sin cuenta', ph, t.contract_number?('Contrato '+t.contract_number):null].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0">
+        ${['master','admin'].includes(MYROLE)?`<button id="waDelThread" style="background:rgba(255,255,255,.18);border:0;color:#ffd7d7;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer" title="Eliminar la conversación COMPLETA (solo admins; queda en la bitácora)">🗑</button>`:''}
         <button id="waCallBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer" title="Llamar con la app de llamadas de tu equipo (Teléfono/Phone Link/Skype)">📞 Llamar</button>
         ${t.user_id?`<button id="waFichaBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📋 Ficha</button>`:''}
         ${t.contract_id?`<button id="waContractBtn" style="background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer">📄 Contrato</button>`:''}
@@ -1707,6 +1708,17 @@ async function openWaThread(tail){
     </div>
     <div class="muted" id="waThreadMsg" style="padding:0 16px 8px;font-size:12px;background:#fff"></div>`;
   const mb=$('waMsgs'); mb.scrollTop=mb.scrollHeight;
+  // Eliminar la CONVERSACIÓN completa (SOLO master/admin; queda en la bitácora).
+  if($('waDelThread')) $('waDelThread').onclick=async()=>{
+    if(!confirm('¿Eliminar TODA la conversación con '+(t.name||ph)+'?\n\nSe borran TODOS sus mensajes de WhatsApp y notas de llamada de nuestro registro (no del teléfono del cliente). Esta acción queda en la Bitácora y NO se puede deshacer.')) return;
+    const r2=await api('DELETE','/api/whatsapp/threads?phone='+encodeURIComponent(ph));
+    if(r2.ok){
+      WA_THREADS=WA_THREADS.filter(x=>String(x.tail)!==String(tail));
+      WA_CUR=null;
+      $('waThread').innerHTML='<p class="empty" style="padding:20px">Conversación eliminada. Elige otra de la lista.</p>';
+      renderWaList(); pollWaBadge();
+    } else alert((r2.data&&r2.data.error)||'No se pudo eliminar la conversación.');
+  };
   // Eliminar mensajes/notas (SOLO master/admin; queda en la bitácora de auditoría).
   mb.querySelectorAll('.wadel').forEach(b=>b.onclick=async()=>{
     if(!confirm('¿Eliminar este mensaje de NUESTRO registro?\n\nNo se borra del teléfono del cliente (WhatsApp no lo permite). Queda registrado en la Bitácora.')) return;

@@ -125,6 +125,32 @@ module Api
       render json: { error: 'Mensaje no encontrado' }, status: :not_found
     end
 
+    # DELETE /api/whatsapp/threads?phone=...  (SOLO master/admin)
+    # Borra la conversación COMPLETA de un teléfono: todos sus mensajes de
+    # WhatsApp y todas sus notas de llamada. No toca el teléfono del cliente.
+    def destroy_thread
+      unless %w[master admin].include?(@current_user&.role&.name)
+        return render json: { error: 'Solo master o admin pueden eliminar conversaciones' }, status: :forbidden
+      end
+      tail = phone_tail(params[:phone])
+      return render(json: { error: 'Teléfono inválido' }, status: :unprocessable_entity) if tail.blank?
+
+      msgs = WhatsappMessage.where("regexp_replace(coalesce(wa_phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}")
+      notes = begin
+        ContactLog.for_phone(params[:phone])
+      rescue StandardError
+        ContactLog.none
+      end
+      mc = msgs.count
+      nc = notes.count
+      msgs.delete_all
+      notes.delete_all
+      AuditLog.record!(actor: @current_user, action: 'thread_deleted',
+                       label: params[:phone].to_s,
+                       details: "Conversación completa eliminada: #{mc} mensaje(s) y #{nc} nota(s)")
+      render json: { ok: true, messages: mc, notes: nc }, status: :ok
+    end
+
     # GET /api/whatsapp/unread_count -> hilos con mensajes nuevos (globo del menú)
     def unread_count
       unless WhatsappMessage.column_names.include?('read_at')

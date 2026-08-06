@@ -25,7 +25,8 @@ class AuditLog < ApplicationRecord
     'contract_status_changed' => 'Cambió estado de cuenta (devuelto/castigado)',
     'marketing_post'       => 'Publicó en redes sociales',
     'wa_message_deleted'   => 'Eliminó mensaje de WhatsApp',
-    'note_deleted'         => 'Eliminó nota de llamada'
+    'note_deleted'         => 'Eliminó nota de llamada',
+    'thread_deleted'       => 'Eliminó conversación completa'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

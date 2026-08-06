@@ -89,7 +89,9 @@ module Api
 
       identify_threads!(groups)
       threads = groups.values.sort_by { |g| [-g[:unread], -(g[:last_at]&.to_i || 0)] }
-      render json: { threads: threads, unread_threads: threads.count { |t| t[:unread].positive? } }, status: :ok
+      render json: { threads: threads,
+                     unread_threads: threads.count { |t| t[:unread].positive? },
+                     business_number: business_number }, status: :ok
     end
 
     # POST /api/whatsapp/read { phone } -> marca el hilo como leído
@@ -133,6 +135,24 @@ module Api
     end
 
     private
+
+    # NUESTRO número de envío (se consulta a Meta y se guarda en caché 12 h).
+    def business_number
+      Rails.cache.fetch('wa_business_display_number', expires_in: 12.hours) do
+        id = ENV['WHATSAPP_PHONE_NUMBER_ID']
+        tok = ENV['WHATSAPP_TOKEN']
+        if id.present? && tok.present?
+          require 'net/http'
+          uri = URI("https://graph.facebook.com/v25.0/#{id}?fields=display_phone_number")
+          req = Net::HTTP::Get.new(uri)
+          req['Authorization'] = "Bearer #{tok}"
+          res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |h| h.request(req) }
+          JSON.parse(res.body)['display_phone_number']
+        end
+      end
+    rescue StandardError
+      nil
+    end
 
     # Identificar a la persona de cada hilo por teléfono: cliente > comprador >
     # beneficiario > referencia; más su contrato reciente y carrito (CRM).

@@ -269,7 +269,9 @@
     <!-- ---------- CATÁLOGOS ---------- -->
     <!-- ---------- WHATSAPP (bandeja de conversaciones) ---------- -->
     <section class="view hide" data-v="whatsapp">
-      <div class="head"><h1>WhatsApp — Conversaciones</h1><div class="sp"></div>
+      <div class="head"><h1>WhatsApp — Conversaciones</h1>
+        <span id="waOurNum" style="display:none;margin-left:12px;background:#e9f9ee;color:#1b8a3a;border:1px solid #bfe8cc;border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700" title="Número de la empresa: todos los envíos salen desde aquí"></span>
+        <div class="sp"></div>
         <select class="sel" id="waFilter">
           <option value="">Todos</option><option value="unread">No leídos</option>
           <option value="cliente">Clientes</option><option value="comprador">Compradores</option>
@@ -1625,6 +1627,8 @@ async function loadWaInbox(){
   if(!r.ok||!r.data){ $('waList').innerHTML='<p class="empty" style="padding:16px">'+esc((r.data&&r.data.error)||'No se pudo cargar la bandeja.')+'</p>'; return; }
   WA_THREADS=r.data.threads||[];
   updateWaBadge(r.data.unread_threads);
+  // NUESTRO número (desde el que se envía) en el encabezado de la página
+  if(r.data.business_number&&$('waOurNum')){ $('waOurNum').textContent='📱 Nuestro número: '+r.data.business_number; $('waOurNum').style.display=''; }
   renderWaList();
 }
 function waTag(t){
@@ -1677,9 +1681,9 @@ async function openWaThread(tail){
   const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
   const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
   box.innerHTML=`
-    <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;background:#25D366;color:#fff;flex-shrink:0">
-      <div style="min-width:0">
-        <div style="font-weight:800;font-size:15px">${esc(t.name||ph)}</div>
+    <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;background:#25D366;color:#fff;flex-shrink:0" title="📞 ${esc(ph)}">
+      <div style="min-width:0" title="📞 ${esc(ph)}">
+        <div style="font-weight:800;font-size:15px;cursor:default" title="📞 ${esc(ph)}">${esc(t.name||ph)}</div>
         <div style="font-size:12px;opacity:.92">${esc([t.person_label||'Sin cuenta', ph, t.contract_number?('Contrato '+t.contract_number):null].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0">

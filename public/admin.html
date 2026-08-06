@@ -973,12 +973,25 @@ async function openOrderVerify(id){
   // guarda su propia copia: editar aquí no toca órdenes anteriores.
   const refDataOrderId = (refs.length && refs[0].order_id) ? refs[0].order_id : o.id;
   const refFormHtml=(rf)=>{ const v=k=>esc(String((rf&&rf[k])||''));
+    // Lada SIEMPRE explícita: si el teléfono guardado ya trae +lada, se separa
+    // para mostrarla en el selector; al guardar se vuelve a unir.
+    const splitPhone=(p)=>{ p=String(p||'').trim();
+      if(p.startsWith('+52')) return ['+52', p.slice(3).trim()];
+      if(p.startsWith('+1')) return ['+1', p.slice(2).trim()];
+      if(p.startsWith('+')) { const m=p.match(/^(\+\d{1,3})\s*(.*)$/); return m?[m[1],m[2]]:['',p]; }
+      return ['', p];
+    };
+    const [pc,pn]=splitPhone(rf&&rf.phone), [wc,wn]=splitPhone(rf&&rf.phone_work);
+    const ccSel=(cls,cur)=>`<select class="${cls}" style="padding:7px 6px;border:1px solid #dfe3ea;border-radius:8px">
+      <option value="+52" ${cur==='+52'?'selected':''}>🇲🇽 +52</option>
+      <option value="+1" ${cur==='+1'?'selected':''}>🇺🇸 +1</option>
+      <option value="" ${!cur?'selected':''}>otra</option></select>`;
     return `<div class="refform" id="refform-${rf?esc(String(rf.id)):'new'}" style="display:none;flex-basis:100%;background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div><div class="muted" style="font-size:11px">Nombre(s)</div><input class="rf-name" value="${v('name')}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:130px"></div>
         <div><div class="muted" style="font-size:11px">Apellido(s)</div><input class="rf-last" value="${v('last_name')}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:130px"></div>
-        <div><div class="muted" style="font-size:11px">Teléfono</div><input class="rf-phone" value="${v('phone')}" placeholder="+52 55..." style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:140px"></div>
-        <div><div class="muted" style="font-size:11px">Tel. trabajo</div><input class="rf-pwork" value="${v('phone_work')}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:140px"></div>
+        <div><div class="muted" style="font-size:11px">Lada · Teléfono</div><div style="display:flex;gap:4px">${ccSel('rf-cc',pc)}<input class="rf-phone" value="${esc(pn)}" placeholder="55 1234 5678" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:120px"></div></div>
+        <div><div class="muted" style="font-size:11px">Lada · Tel. trabajo</div><div style="display:flex;gap:4px">${ccSel('rf-wcc',wc)}<input class="rf-pwork" value="${esc(wn)}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:120px"></div></div>
         <div><div class="muted" style="font-size:11px">País</div><select class="rf-nat" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px"><option value="mexican" ${rf&&rf.nationality==='mexican'?'selected':''}>México</option><option value="american" ${(!rf||rf.nationality!=='mexican')?'selected':''}>EE.UU.</option></select></div>
         <button class="btn refsave" data-rid="${rf?esc(String(rf.id)):''}" style="padding:7px 12px;font-size:12.5px">Guardar</button>
         ${rf?`<button class="btn refdel" data-rid="${esc(String(rf.id))}" style="background:#eef0f6;color:#c62828;padding:7px 12px;font-size:12.5px">Eliminar</button>`:''}
@@ -1021,8 +1034,13 @@ async function openOrderVerify(id){
   const raBtn=$('refAdd'); if(raBtn) raBtn.onclick=()=>{ const f=$('refform-new'); if(f) f.style.display=f.style.display==='none'?'':'none'; };
   d.querySelectorAll('.refsave').forEach(b=>b.onclick=async()=>{
     const f=b.closest('.refform');
+    // Unir lada + número. EE.UU. (+1) se guarda SIN lada: WhatsApp la agrega
+    // solo. México (+52) y otras sí se guardan explícitas.
+    const join=(ccCls,numCls)=>{ const n=f.querySelector(numCls).value.trim(); if(!n) return '';
+      if(n.startsWith('+')) return n; const cc=f.querySelector(ccCls).value;
+      if(!cc||cc==='+1') return n; return cc+' '+n; };
     const payload={ name:f.querySelector('.rf-name').value.trim(), last_name:f.querySelector('.rf-last').value.trim(),
-                    phone:f.querySelector('.rf-phone').value.trim(), phone_work:f.querySelector('.rf-pwork').value.trim(),
+                    phone:join('.rf-cc','.rf-phone'), phone_work:join('.rf-wcc','.rf-pwork'),
                     nationality:f.querySelector('.rf-nat').value };
     if(!payload.name||!payload.phone){ alert('Nombre y teléfono son obligatorios.'); return; }
     b.disabled=true;

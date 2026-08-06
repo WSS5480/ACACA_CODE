@@ -737,10 +737,19 @@ async function doLogin(){
   if(r.auth){ TOKEN=r.auth; EMAIL=email; enterApp(); }
   else { $('lg-msg').textContent = (r.status===0?'No se pudo conectar con el servidor.':'Correo o contraseña incorrectos.'); }
 }
-function enterApp(){
+async function enterApp(){
+  // SEGURIDAD: el panel es SOLO para el equipo. Las cuentas de CLIENTE usan
+  // la tienda (www.acasamx.com); aquí se les niega la entrada por completo.
+  await applyRoleNav();
+  if(MYROLE==='cliente'){
+    TOKEN=null;
+    $('lg-msg').textContent='Esta área es exclusiva del equipo de acasa. Tu cuenta de cliente funciona en www.acasamx.com';
+    $('lg-pass').value='';
+    $('lock').classList.remove('hide'); $('app').classList.add('hide');
+    return;
+  }
   $('lock').classList.add('hide'); $('app').classList.remove('hide');
   $('who').textContent=EMAIL; $('av').textContent=(EMAIL[0]||'A').toUpperCase();
-  applyRoleNav();
   // Globo de WhatsApp: hilos con mensajes nuevos (se refresca cada 30 s)
   pollWaBadge();
   if(!window.WA_POLL) window.WA_POLL=setInterval(pollWaBadge,30000);

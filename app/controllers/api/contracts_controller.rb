@@ -284,6 +284,29 @@ module Api
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     end
 
+    # POST /api/contracts/:id/set_status { status: 'returned' | 'charged_off' | 'active' }
+    # Estado de la CUENTA (solo master/admin): devuelto (mercancía devuelta),
+    # castigado (incobrable) o reactivado. Queda en la bitácora de auditoría.
+    def set_status
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff?
+
+      contract = Contract.find(params[:id])
+      st = params[:status].to_s
+      return render(json: { error: 'Estado inválido' }, status: :unprocessable_entity) unless %w[returned charged_off active].include?(st)
+      unless contract.initial_paid?
+        return render(json: { error: 'Un pedido sin pago inicial se CANCELA (se elimina), no se marca devuelto/castigado.' }, status: :unprocessable_entity)
+      end
+
+      old = contract.status
+      contract.update!(status: st)
+      labels = { 'returned' => 'DEVUELTO (mercancía devuelta)', 'charged_off' => 'CASTIGADO (cuenta incobrable)', 'active' => 'ACTIVO (cuenta reactivada)' }
+      AuditLog.record!(actor: @current_user, action: 'contract_status_changed', target: contract,
+                       label: audit_contract_label(contract), details: "#{old} → #{st} · #{labels[st]}")
+      render json: { ok: true, status: contract.status, payment_status: contract.payment_status }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
     # POST /api/contracts/:id/generate_document  { send_whatsapp: true }
     # Genera el contrato del cliente desde la plantilla legal (rellena carátula, montos y
     # tabla de pagos) y le avisa por WhatsApp para que entre a firmarlo. Sólo staff.

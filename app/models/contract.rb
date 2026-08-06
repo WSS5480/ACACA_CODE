@@ -75,6 +75,8 @@ class Contract < ApplicationRecord
   # pending_initial -> missing_info -> pending_approval -> pending_signature ->
   # pending_delivery -> active -> paid_off.
   def account_status
+    return 'returned' if status == 'returned'
+    return 'charged_off' if status == 'charged_off'
     return 'paid_off' if status == 'paid' || (initial_paid? && paid_off?)
     return 'pending_initial' unless initial_paid?
     return 'missing_info' unless datos_complete?
@@ -110,9 +112,11 @@ class Contract < ApplicationRecord
     d ? (Date.current - d).to_i : 0
   end
 
-  # current / past_due / paid / cancelled
+  # current / past_due / paid / cancelled / returned (devuelto) / charged_off (castigado)
   def payment_status
     return 'cancelled' if status == 'cancelled'
+    return 'returned' if status == 'returned'
+    return 'charged_off' if status == 'charged_off'
     return 'paid' if status == 'paid' || paid_off?
     overdue? ? 'past_due' : 'current'
   end

@@ -203,11 +203,20 @@
     <!-- ---------- CLIENTES ---------- -->
     <section class="view hide" data-v="clientes">
       <div class="head"><h1>Clientes</h1><div class="sp"></div>
+        <select id="cliStateF" class="sel" title="Filtrar por estado de la cuenta">
+          <option value="">Cuenta: todas</option>
+          <option value="active">Activo</option>
+          <option value="paid_off">Liquidado</option>
+          <option value="returned">Devuelto</option>
+          <option value="charged_off">Castigado</option>
+          <option value="none">Sin contratos</option>
+        </select>
         <div class="search" style="max-width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="cliSearch" placeholder="Buscar…"></div>
+        <button class="btn" id="cliClearF" style="background:#eef0f6;color:var(--navy);padding:8px 14px;font-size:13px" title="Quitar todos los filtros">Limpiar filtros</button>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Utilizado</th><th class="right">Crédito Disponible</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
-        <tbody id="cliBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th>Cuenta</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Utilizado</th><th class="right">Crédito Disponible</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
+        <tbody id="cliBody"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -244,6 +253,15 @@
           <th class="right" title="Enganche + primer pago">Pago inicial</th><th>Creado</th><th>Esperando</th><th class="right">Acciones</th>
         </tr></thead><tbody id="crmBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
+      <div class="sec" style="margin-top:14px">
+        <div class="stitle" style="padding:14px 16px 4px">🛒 Carritos abandonados</div>
+        <p class="muted" style="margin:0 16px 10px;font-size:12.5px">Clientes con sesión iniciada que pusieron artículos en el carrito y se fueron SIN confirmar la compra (aún no hay pedido). Contáctalos por WhatsApp; al confirmar y pagar, su compra sigue el pipeline normal: CRM → Órdenes → cuenta del cliente.</p>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>Cliente</th><th>Teléfono</th><th>Artículos en el carrito</th><th class="right">Contado</th><th>Última actividad</th><th class="right">Acciones</th>
+          </tr></thead><tbody id="crmCartBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
     </section>
 
     <!-- ---------- CATÁLOGOS ---------- -->
@@ -1230,27 +1248,42 @@ async function viewContractDoc(cid){
 /* ---------------- Clients / Credits ---------------- */
 let CLIENTS=[];
 async function fetchClients(){ if(CLIENTS.length) return CLIENTS; const r=await api('GET','/api/users?role=cliente'); CLIENTS=rows(r.data); return CLIENTS; }
+// Chip del estado de la CUENTA del cliente (columna en Clientes).
+function cliStatePill(s){
+  const map={active:['p-appr','Activo'],paid_off:['p-other','Liquidado'],
+             returned:['p-pend','Devuelto'],charged_off:['p-canc','Castigado']};
+  const m=map[String(s||'')];
+  return m?`<span class="pill ${m[0]}">${m[1]}</span>`:'<span class="muted">—</span>';
+}
 async function loadClients(){
   loaded.cli=1; const list=await fetchClients();
-  const render=term=>{
-    let l=list; if(term) l=list.filter(u=>JSON.stringify(u).toLowerCase().includes(term));
+  const render=()=>{
+    const term=$('cliSearch').value.trim().toLowerCase();
+    const stF=$('cliStateF')?$('cliStateF').value:'';
+    let l=list;
+    if(term) l=l.filter(u=>JSON.stringify(u).toLowerCase().includes(term));
+    if(stF) l=l.filter(u=>{ const s=pick(u,['account_state'],null); return stF==='none' ? !s : s===stF; });
     $('cliBody').innerHTML = l.length ? l.map(u=>{
       const id=pick(u,['id'],''), name=([pick(u,['name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||'—'), email=pick(u,['email'],'—');
       const num=pick(u,['number','client_number','phone'],'—');
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null);
       const bal=(line!=null&&avail!=null)?Math.round((Number(line)-Number(avail))*100)/100:pick(u,['account_balance'],null);
       return `<tr class="cli-row" data-uid="${esc(String(u.id||''))}"><td><button class="cliexp" data-id="${esc(String(u.id||''))}" title="Ver sus contratos aquí" style="border:0;background:none;cursor:pointer;font-size:12px;color:var(--brand-d);margin-right:4px">&#9654;</button><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+        <td>${cliStatePill(pick(u,['account_state'],null))}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
         <td class="right"><button class="convcli" data-id="${esc(id)}" data-name="${esc(name)}" data-phone="${esc(pick(u,['phone'],'')||'')}" title="Conversación / WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;margin-right:8px">&#9990;</button><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
-    }).join('') : `<tr><td colspan="9" class="empty">No se encontraron clientes</td></tr>`;
+    }).join('') : `<tr><td colspan="10" class="empty">No se encontraron clientes</td></tr>`;
     $('cliBody').querySelectorAll('.cliexp').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); toggleClientContracts(b);});
     $('cliBody').querySelectorAll('.convcli').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.id, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
     $('cliBody').querySelectorAll('.recalccli').forEach(b=>b.onclick=()=>recalcClient(b.dataset.id));
     $('cliBody').querySelectorAll('.setcredit').forEach(b=>b.onclick=()=>setClientCredit(b.dataset.id));
   };
-  render(''); $('cliSearch').oninput=()=>render($('cliSearch').value.trim().toLowerCase());
+  render();
+  $('cliSearch').oninput=render;
+  if($('cliStateF')) $('cliStateF').onchange=render;
+  if($('cliClearF')) $('cliClearF').onclick=()=>{ $('cliSearch').value=''; if($('cliStateF')) $('cliStateF').value=''; render(); };
 }
 // Contratos del cliente desplegados DEBAJO de su fila en Clientes (activos e inactivos).
 async function toggleClientContracts(btn){
@@ -1259,7 +1292,7 @@ async function toggleClientContracts(btn){
   if(next && next.classList.contains('cli-sub')){ next.remove(); btn.innerHTML='&#9654;'; return; }
   btn.innerHTML='&#9660;';
   const sub=document.createElement('tr'); sub.className='cli-sub';
-  sub.innerHTML='<td colspan="9" style="background:#f7f8fb;padding:6px 14px 10px"><span class="muted">Cargando contratos…</span></td>';
+  sub.innerHTML='<td colspan="10" style="background:#f7f8fb;padding:6px 14px 10px"><span class="muted">Cargando contratos…</span></td>';
   tr.after(sub);
   const r=await api('GET','/api/contracts?user_id='+encodeURIComponent(btn.dataset.id));
   const list=r.ok?rows(r.data):[];
@@ -1269,12 +1302,14 @@ async function toggleClientContracts(btn){
   const visibles=list.filter(c=>{
     const paid=pick(c,['initial_paid'],true);
     if(!paid) return false; // CRM
+    const ps=String(pick(c,['payment_status'],'')||'');
+    if(ps==='returned'||ps==='charged_off') return true; // historial de la cuenta
     const f=String(pick(c,['fulfillment'],'')||'');
     return f==='entregado' || f===''; // en proceso (pendiente/por_entregar) -> Órdenes
   });
   sub.firstElementChild.innerHTML = visibles.length ? ('<div style="padding:4px 0 2px;font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em">Cuenta del cliente — contratos entregados</div>'+visibles.map(c=>{
     const ps=String(pick(c,['payment_status'],''));
-    const act=['current','past_due','active'].includes(ps)?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>';
+    const act=ps==='returned'?'<span class="pill p-pend">Devuelto</span>':(ps==='charged_off'?'<span class="pill p-canc">Castigado</span>':(['current','past_due','active'].includes(ps)?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>'));
     const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||('#'+c.id);
     const bal=pick(c,['balance'],null), tot=pick(c,['total_amount'],null);
     return `<div style="display:flex;align-items:center;gap:14px;padding:7px 0;border-top:1px dashed var(--line);font-size:13px">
@@ -1321,7 +1356,7 @@ async function loadCredits(){
 
 /* ---------------- Contratos ---------------- */
 function conStatusPill(s){ s=String(s||'').toLowerCase();
-  const map={current:['p-appr','Al corriente'],past_due:['p-pend','Vencido'],paid:['p-appr','Pagado'],cancelled:['p-canc','Cancelado'],active:['p-other','Activo']};
+  const map={current:['p-appr','Al corriente'],past_due:['p-pend','Vencido'],paid:['p-appr','Pagado'],cancelled:['p-canc','Cancelado'],active:['p-other','Activo'],returned:['p-pend','Devuelto'],charged_off:['p-canc','Castigado']};
   const m=map[s]||['p-other', s||'-']; return `<span class="pill ${m[0]}">${esc(m[1])}</span>`;
 }
 function istPill(st){ st=String(st||'').toLowerCase();
@@ -1410,6 +1445,37 @@ async function loadCrm(){
     if(!confirm('¿Eliminar el intento de compra de '+(b.dataset.name||'este cliente')+'?\n\nSe libera su crédito y los artículos vuelven a estar disponibles. No se puede deshacer.')) return;
     const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(b.dataset.cid));
     if(r2.ok||r2.status===204){ loadCrm(); } else { alert((r2.data&&r2.data.error)||'No se pudo eliminar.'); }
+  });
+  loadCrmCarts();
+}
+// Carritos abandonados: cliente puso artículos y se fue sin confirmar (no hay pedido todavía).
+async function loadCrmCarts(){
+  const body=$('crmCartBody'); if(!body) return;
+  const r=await api('GET','/api/carts');
+  if(!r.ok||!r.data){ body.innerHTML='<tr><td colspan="6" class="empty">No se pudieron cargar los carritos.</td></tr>'; return; }
+  const carts=r.data.carts||[];
+  const now=Date.now();
+  body.innerHTML = carts.length ? carts.map(s=>{
+    const hrs=s.updated_at?Math.max(0,Math.round((now-new Date(s.updated_at).getTime())/36e5)):null;
+    const wait=hrs==null?'—':(hrs<48?(hrs+' h'):(Math.round(hrs/24)+' días'));
+    const hot=hrs!=null&&hrs<24;
+    const arts=(s.items||[]).map(i=>esc(String(i.title||'').slice(0,60))).join(' · ');
+    return `<tr>
+      <td style="font-weight:600">${esc(s.name||'—')}</td>
+      <td class="mono">${esc(s.phone||'—')}</td>
+      <td style="max-width:420px;font-size:12.5px">${arts||'—'} <span class="muted">(${(s.items||[]).length})</span></td>
+      <td class="right mono">${money(s.total||0)}</td>
+      <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo esperando'}">${wait}</span></td>
+      <td class="right">
+        <button class="cartwa" data-uid="${esc(String(s.user_id||''))}" data-name="${esc(s.name||'')}" data-phone="${esc(s.phone||'')}" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
+        <button class="cartdel" data-uid="${esc(String(s.user_id||''))}" data-name="${esc(s.name||'')}" title="Descartar del CRM (no toca el carrito del cliente)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑️</button>
+      </td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">Sin carritos abandonados.</td></tr>';
+  body.querySelectorAll('.cartwa').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
+  body.querySelectorAll('.cartdel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Descartar el carrito de '+(b.dataset.name||'este cliente')+' del CRM?\n\nSu carrito en la tienda NO se toca; si vuelve a moverlo, reaparece aquí.')) return;
+    const r2=await api('DELETE','/api/carts/'+encodeURIComponent(b.dataset.uid));
+    if(r2.ok){ loadCrmCarts(); } else { alert('No se pudo descartar.'); }
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;
@@ -1540,6 +1606,15 @@ async function openContract(id){
         <button class="btn" id="ndSet" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:13px">Mover vencimiento</button>
         <span class="muted" id="ndMsg" style="font-size:12px">Mueve la próxima cuota (y desplaza las siguientes). Fechas pasadas simulan atrasos y moratorios para probar cobranza.</span>
       </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+        <span class="muted" style="font-size:12px;font-weight:700">Estado de la cuenta:</span>
+        ${conStatusPill(pick(c,['payment_status'],''))}
+        ${['returned','charged_off'].includes(String(pick(c,['payment_status'],'')))
+          ? `<button class="btn cstatus" data-st="active" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:13px">Reactivar cuenta</button>`
+          : `<button class="btn cstatus" data-st="returned" style="background:#eef0f6;color:#b26a00;padding:7px 12px;font-size:13px" title="Mercancía devuelta">Marcar DEVUELTO</button>
+             <button class="btn cstatus" data-st="charged_off" style="background:#eef0f6;color:#c62828;padding:7px 12px;font-size:13px" title="Cuenta incobrable">CASTIGAR cuenta</button>`}
+        <span class="muted" id="csMsg" style="font-size:12px">Devuelto = mercancía devuelta. Castigado = cuenta incobrable. Queda registrado en la Bitácora; el crédito del cliente no se ajusta solo.</span>
+      </div>
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 8px">Tabla de amortizacion</div>
@@ -1557,6 +1632,18 @@ async function openContract(id){
     else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
   };
   // PRUEBAS: mover el próximo vencimiento (desplaza toda la cola pendiente) para simular atrasos.
+  // Estado de la cuenta: devuelto / castigado / reactivar (bitácora de auditoría).
+  document.querySelectorAll('.cstatus').forEach(b=>b.onclick=async()=>{
+    const st=b.dataset.st;
+    const q= st==='returned' ? '¿Marcar esta cuenta como DEVUELTO (mercancía devuelta)?'
+           : st==='charged_off' ? '¿CASTIGAR esta cuenta (incobrable)?\n\nSaldrá de la cartera activa y quedará marcada en Clientes.'
+           : '¿REACTIVAR esta cuenta (vuelve a la cartera activa)?';
+    if(!confirm(q+'\n\nQueda registrado en la Bitácora con tu usuario.')) return;
+    $('csMsg').textContent='Guardando…';
+    const r3=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/set_status',{status:st});
+    if(r3.ok&&r3.data&&r3.data.ok){ $('csMsg').textContent='✓ Estado actualizado.'; CLIENTS=[]; loaded.cli=0; setTimeout(()=>openContract(id), 800); }
+    else { $('csMsg').textContent=(r3.data&&r3.data.error)||'No se pudo cambiar el estado.'; }
+  });
   if($('ndSet')) $('ndSet').onclick=async()=>{
     const d2=$('ndDate').value; if(!d2){ $('ndMsg').textContent='Elige una fecha.'; return; }
     if(!confirm('¿Mover el próximo vencimiento a '+d2+'?\n\nLas cuotas pendientes se desplazan la misma cantidad de días. (Herramienta de pruebas)')) return;

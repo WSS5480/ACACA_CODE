@@ -104,6 +104,7 @@ Rails.application.routes.draw do
       post 'sign', on: :member              # cliente: firma electrónica (imagen)
       post 'set_next_due', on: :member      # staff: mover el próximo vencimiento (PRUEBAS de cobranza)
       post 'confirm_datos', on: :member     # cliente que regresa: reutilizar/confirmar sus datos verificados
+      post 'set_status', on: :member        # staff: devuelto / castigado / reactivar (bitácora)
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'
@@ -149,6 +150,11 @@ Rails.application.routes.draw do
       post 'sign', on: :member
       post 'reject', on: :member
     end
+
+    # Carritos abandonados (CRM): el storefront reporta el carrito del cliente
+    post 'carts/track', to: 'api/carts#track'
+    get  'carts',       to: 'api/carts#index'
+    delete 'carts/:id', to: 'api/carts#destroy'
 
     post 'autopay/run', to: 'api/autopay#run'
   end

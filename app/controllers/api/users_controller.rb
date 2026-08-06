@@ -426,9 +426,13 @@ class Api::UsersController < ApplicationController
   end
 
   def authorize_client_own_profile
-    # Si la autenticación fue por ClientNumber, verificar que solo acceda a su propio perfil
+    # Un cliente solo accede a SU PROPIO perfil. Con login por token (JWT) se
+    # compara el id del usuario autenticado; la comparación por encabezado
+    # ClientNumber es del flujo LEGADO (ya sin usar) y bloqueaba a todos los
+    # clientes con 403 al editar su perfil.
     return unless acting_as_client?
-    return if @user.number == request.headers['ClientNumber']
+    return if @current_user && @user.id == @current_user.id
+    return if request.headers['ClientNumber'].present? && @user.number == request.headers['ClientNumber']
 
     render json: { error: 'No autorizado para ver este perfil' }, status: :forbidden
   end

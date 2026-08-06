@@ -1742,15 +1742,25 @@ if($('waNewGo')) $('waNewGo').onclick=()=>{
   const cc=$('waNewCc').value;
   let raw=$('waNewPhone').value.trim();
   if(!raw){ $('waNewMsg').textContent='Escribe el número.'; return; }
-  let full=(cc?cc:'')+raw;
-  const digits=full.replace(/\D/g,'');
-  if(digits.length<10){ $('waNewMsg').textContent='Número incompleto: incluye la lada del país.'; return; }
+  // REGLA: nunca agregar el "1" de EE.UU. (WhatsApp lo pone solo). +52 sí se
+  // agrega, salvo que el número ya la traiga. Un número escrito con + se respeta.
+  let digits=raw.replace(/\D/g,''), phone;
+  if(raw.startsWith('+')){
+    phone='+'+digits;
+  } else if(cc==='+52'){
+    if(!digits.startsWith('52')) digits='52'+digits;
+    phone='+'+digits;
+  } else { // EE.UU. u otra: sin lada; si escribieron el 1 inicial (11 díg.), se quita
+    if(digits.length===11&&digits.startsWith('1')) digits=digits.slice(1);
+    phone=digits;
+  }
+  if(digits.length<10){ $('waNewMsg').textContent='Número incompleto (mínimo 10 dígitos).'; return; }
   const tail=digits.length>10?digits.slice(-10):digits;
   $('waNewMsg').textContent='';
   const existing=WA_THREADS.find(x=>String(x.tail)===tail);
   if(existing){ $('waNewBox').style.display='none'; openWaThread(existing.tail); return; }
   const name=$('waNewName').value.trim();
-  const t={ tail:tail, phone:'+'+digits, name:(name||('+'+digits)), person_type:null, person_label:null,
+  const t={ tail:tail, phone:phone, name:(name||phone), person_type:null, person_label:null,
             unread:0, last_at:null, last_preview:'(conversación nueva)', last_dir:null, user_id:null };
   WA_THREADS.unshift(t);
   $('waNewBox').style.display='none'; $('waNewPhone').value=''; $('waNewName').value='';

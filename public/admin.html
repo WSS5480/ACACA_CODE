@@ -652,6 +652,17 @@
             <p class="muted" style="font-size:12.5px;line-height:2;margin:8px 0 0" id="ctLegend"></p>
           </details>
         </div>
+        <div class="sec" style="padding:18px;margin-top:14px">
+          <div class="stitle" style="padding:0 0 6px">Aviso de privacidad — editable</div>
+          <p class="muted" style="margin:0 0 10px">Es el texto que ve el público en <a href="https://www.acasamx.com/privacidad" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700">www.acasamx.com/privacidad</a>. Como documento legal, los cambios requieren las firmas de administradores (el rol sistema aplica directo).</p>
+          <div id="pvInfo" class="muted" style="font-size:12px;margin:0 0 10px"></div>
+          <textarea id="pvText" spellcheck="false" style="width:100%;min-height:44vh;padding:16px;border:1px solid var(--line);border-radius:12px;font-size:13.5px;line-height:1.6;font-family:Georgia,'Times New Roman',serif;resize:vertical"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <button class="btn" id="pvSave">Guardar aviso</button>
+            <button class="btn" id="pvReset" style="background:#eef0f6;color:var(--navy)" title="Descarta los cambios guardados y vuelve al aviso original">Restaurar original</button>
+            <span class="muted" id="pvMsg"></span>
+          </div>
+        </div>
       </div>
       <div id="secTabUsers">
       <div class="sec" style="padding:18px">
@@ -2698,7 +2709,7 @@ if($('secTabs')) $('secTabs').addEventListener('click',e=>{
   $('secTabContract').style.display = tab==='contract' ? '' : 'none';
   $('secTabRates').style.display = tab==='rates' ? '' : 'none';
   $('secTabAudit').style.display = tab==='audit' ? '' : 'none';
-  if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); }
+  if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); loadPrivacyTpl(); }
   if(tab==='rates') loadRates();
   if(tab==='audit') loadAudit();
 });
@@ -2870,6 +2881,32 @@ if($('ctSave')) $('ctSave').onclick=async()=>{
   if(r.ok&&r.data&&r.data.pending){ $('ctMsg').textContent='⏳ '+(r.data.message||'Cambio propuesto: requiere las firmas de los administradores. La plantilla actual sigue vigente.'); loadChangeReqs(); }
   else if(r.ok){ $('ctMsg').textContent='✓ Contrato guardado.'; $('ctInfo').textContent='Versión editada — último cambio: '+fdate(r.data&&r.data.updated_at); loadChangeReqs(); }
   else { $('ctMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
+};
+/* ------- Aviso de privacidad editable (documento legal, con firmas) ------- */
+async function loadPrivacyTpl(){
+  const r=await api('GET','/api/settings/privacy');
+  if(!r.ok||!r.data){ $('pvMsg').textContent='No se pudo cargar el aviso.'; return; }
+  $('pvText').value=r.data.content||'';
+  $('pvInfo').textContent = r.data.custom ? ('Versión editada — último cambio: '+fdate(r.data.updated_at)) : 'Versión original, sin cambios guardados.';
+  $('pvMsg').textContent='';
+}
+if($('pvSave')) $('pvSave').onclick=async()=>{
+  const txt=$('pvText').value;
+  if(!txt.trim()){ $('pvMsg').textContent='El aviso no puede quedar vacío.'; return; }
+  $('pvMsg').textContent='Guardando…'; $('pvSave').disabled=true;
+  const r=await api('PUT','/api/settings/privacy',{content:txt});
+  $('pvSave').disabled=false;
+  if(r.ok&&r.data&&r.data.pending){ $('pvMsg').textContent='⏳ '+(r.data.message||'Cambio propuesto: requiere las firmas de los administradores.'); loadChangeReqs(); }
+  else if(r.ok){ $('pvMsg').textContent='✓ Aviso guardado — ya está publicado en /privacidad.'; $('pvInfo').textContent='Versión editada — último cambio: '+fdate(r.data&&r.data.updated_at); loadChangeReqs(); }
+  else { $('pvMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.'; }
+};
+if($('pvReset')) $('pvReset').onclick=async()=>{
+  if(!confirm('¿Descartar los cambios y volver al aviso de privacidad ORIGINAL?')) return;
+  $('pvMsg').textContent='Restaurando…';
+  const r=await api('PUT','/api/settings/privacy',{reset:true});
+  if(r.ok&&r.data&&r.data.pending){ $('pvMsg').textContent='⏳ '+(r.data.message||'Restauración propuesta: requiere firmas.'); loadChangeReqs(); }
+  else if(r.ok){ $('pvText').value=(r.data&&r.data.content)||''; $('pvInfo').textContent='Versión original, sin cambios guardados.'; $('pvMsg').textContent='✓ Restaurado.'; loadChangeReqs(); }
+  else { $('pvMsg').textContent=(r.data&&r.data.error)||'No se pudo restaurar.'; }
 };
 if($('ctReset')) $('ctReset').onclick=async()=>{
   if(!confirm('¿Descartar los cambios guardados y volver al contrato ORIGINAL?\n\nEsta acción no se puede deshacer.')) return;

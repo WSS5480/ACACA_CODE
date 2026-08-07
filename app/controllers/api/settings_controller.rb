@@ -5,6 +5,10 @@ class Api::SettingsController < ApplicationController
   skip_before_action :authenticate_entity!, only: [:rates], raise: false
 
   CONTRACT_KEY = 'contract_template'
+  PRIVACY_KEY = 'privacy_policy'
+
+  # La lectura del aviso de privacidad es PÚBLICA (la página /privacidad del sitio la muestra).
+  skip_before_action :authenticate_entity!, only: [:rates, :privacy], raise: false
 
   # GET /api/settings/rates  (público)
   # Tasas configurables + factores derivados de la tasa de interés:
@@ -146,7 +150,65 @@ class Api::SettingsController < ApplicationController
            status: :accepted
   end
 
+  # GET /api/settings/privacy  (público)
+  # Aviso de privacidad vigente: el editado de la BD, o el original del repo.
+  def privacy
+    rec = AppSetting.find_by(key: PRIVACY_KEY)
+    content = rec&.value.presence || default_privacy_policy
+    render json: { content: content, custom: rec.present?, updated_at: rec&.updated_at }, status: :ok
+  end
+
+  # PUT /api/settings/privacy  { content } | { reset: true }
+  # Documento LEGAL: mismas reglas que el contrato — master/admin proponen y se
+  # requieren las firmas de administradores; el rol sistema aplica directo.
+  def update_privacy
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden editar el aviso de privacidad' }, status: :forbidden
+    end
+
+    direct = role == 'sistema' || !approvals_ready?
+
+    if ActiveModel::Type::Boolean.new.cast(params[:reset])
+      if direct
+        AppSetting.find_by(key: PRIVACY_KEY)&.destroy
+        AuditLog.record!(actor: @current_user, action: 'template_reset',
+                         label: 'Aviso de privacidad', details: 'Restauró el aviso de privacidad original')
+        return render json: { content: default_privacy_policy, custom: false, updated_at: nil }, status: :ok
+      end
+      cr = ChangeRequest.propose!(kind: 'privacy_policy', payload: { 'reset' => true },
+                                  summary: 'Restaurar el aviso de privacidad ORIGINAL', proposer: @current_user)
+      return render(json: { content: default_privacy_policy, custom: false, updated_at: nil }, status: :ok) if cr.status == 'applied'
+
+      return render json: { pending: true, change_request: cr.as_api,
+                            message: "Restauración propuesta: requiere #{cr.required_signatures} firmas de administradores." }, status: :accepted
+    end
+
+    val = params[:content].to_s
+    return render json: { error: 'El aviso no puede quedar vacío.' }, status: :unprocessable_entity if val.strip.blank?
+
+    if direct
+      rec = AppSetting.set(PRIVACY_KEY, val)
+      AuditLog.record!(actor: @current_user, action: 'template_updated',
+                       label: 'Aviso de privacidad', details: "Guardó el aviso de privacidad (#{val.length} caracteres)")
+      return render json: { ok: true, custom: true, updated_at: rec.updated_at }, status: :ok
+    end
+
+    cr = ChangeRequest.propose!(kind: 'privacy_policy', payload: { 'content' => val },
+                                summary: "Editó el aviso de privacidad (#{val.length} caracteres)", proposer: @current_user)
+    return render(json: { ok: true, custom: true, updated_at: Time.current }, status: :ok) if cr.status == 'applied'
+
+    render json: { pending: true, change_request: cr.as_api,
+                   message: "Cambio propuesto: requiere #{cr.required_signatures} firmas de administradores. El aviso actual sigue publicado mientras tanto." },
+           status: :accepted
+  end
+
   private
+
+  def default_privacy_policy
+    path = Rails.root.join('db', 'templates', 'privacy_policy.txt')
+    File.exist?(path) ? File.read(path) : ''
+  end
 
   # ¿Ya existe la tabla de aprobaciones? (si no, se aplica directo para no bloquear)
   def approvals_ready?

@@ -11,6 +11,7 @@ class ChangeRequest < ApplicationRecord
   KINDS = {
     'rates'             => 'Tasas e impuestos',
     'contract_template' => 'Control de documentos legales',
+    'privacy_policy'    => 'Aviso de privacidad',
     'staff_delete'      => 'Revocar acceso del equipo'
   }.freeze
 
@@ -87,6 +88,16 @@ class ChangeRequest < ApplicationRecord
         AppSetting.set('contract_template', data['content'].to_s)
         AuditLog.record!(actor: actor, action: 'template_updated',
                          label: 'Control de documentos legales', details: summary.to_s + sig_note)
+      end
+    when 'privacy_policy'
+      if data['reset']
+        AppSetting.find_by(key: 'privacy_policy')&.destroy
+        AuditLog.record!(actor: actor, action: 'template_reset',
+                         label: 'Aviso de privacidad', details: 'Restauró el aviso original' + sig_note)
+      else
+        AppSetting.set('privacy_policy', data['content'].to_s)
+        AuditLog.record!(actor: actor, action: 'template_updated',
+                         label: 'Aviso de privacidad', details: summary.to_s + sig_note)
       end
     when 'staff_delete'
       u = User.find_by(id: data['user_id'])

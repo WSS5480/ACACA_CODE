@@ -1,0 +1,35 @@
+AVISO DE PRIVACIDAD
+Última actualización: 7 de agosto de 2026
+
+1. RESPONSABLE DEL TRATAMIENTO DE DATOS
+OTTHON GROUP SAPI DE CV («Ácasa»), con sitio en www.acasamx.com, es responsable del tratamiento de los datos personales que nos proporcionas, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (México) y demás normatividad aplicable. Contacto: clientes@acasamx.com.
+
+2. DATOS QUE RECABAMOS
+Para prestarte nuestros servicios de venta a crédito con entrega en México, podemos recabar: (a) datos de identificación y contacto: nombre, teléfono, correo electrónico, domicilio, fecha de nacimiento, identificación oficial; (b) datos financieros y laborales: ocupación, ingreso estimado, comprobantes de domicilio e ingresos, historial de pagos con Ácasa; (c) datos de terceros que nos proporcionas con su conocimiento: beneficiario que recibe la mercancía, referencias personales y, en su caso, obligado solidario; (d) datos de uso del sitio: carrito de compras, páginas visitadas y datos técnicos del dispositivo; y (e) tu firma electrónica cuando firmas tu contrato.
+Los pagos con tarjeta son procesados por proveedores de pago (como Stripe); Ácasa no almacena los números completos de tus tarjetas.
+
+3. FINALIDADES DEL TRATAMIENTO
+Usamos tus datos para: evaluar y otorgar tu línea de crédito; celebrar y gestionar tu contrato de venta a crédito; procesar pagos y emitir comprobantes; comprar y entregar la mercancía a tu beneficiario en México; verificar identidad y referencias; darte servicio y cobranza por WhatsApp, teléfono y correo; cumplir obligaciones legales; y, de forma secundaria, enviarte promociones y novedades de Ácasa (puedes oponerte en cualquier momento).
+
+4. COMUNICACIONES POR WHATSAPP Y REDES SOCIALES
+Si nos proporcionas tu número, podremos contactarte por WhatsApp (operado por Meta Platforms) para atención, notificaciones de tu contrato, recordatorios de pago y, con tu consentimiento, mensajes promocionales. Puedes pedirnos dejar de recibirlos respondiendo «BAJA» o escribiendo a clientes@acasamx.com. Las interacciones en nuestras páginas de Facebook e Instagram se rigen también por las políticas de Meta.
+
+5. TRANSFERENCIAS Y ENCARGADOS
+Compartimos datos únicamente con proveedores necesarios para operar: procesadores de pago (Stripe), mensajería y redes (Meta/WhatsApp), comercios y paqueterías para surtir y entregar tu pedido (por ejemplo, Amazon México), servicios de infraestructura y almacenamiento en la nube, y autoridades cuando la ley lo requiera. No vendemos tus datos personales.
+
+6. DERECHOS ARCO Y REVOCACIÓN
+Tienes derecho a Acceder, Rectificar, Cancelar u Oponerte al tratamiento de tus datos (derechos ARCO), así como a revocar tu consentimiento y limitar su uso o divulgación. Envía tu solicitud a clientes@acasamx.com con tu nombre, medio de contacto y el derecho que deseas ejercer; responderemos en los plazos que marca la ley. También puedes corregir tus datos de contacto directamente en tu cuenta (Perfil).
+
+7. COOKIES Y TECNOLOGÍAS SIMILARES
+El sitio usa almacenamiento local y cookies técnicas para mantener tu sesión y tu carrito, y herramientas de medición básicas. Puedes borrarlas desde la configuración de tu navegador; algunas funciones (como el carrito) podrían dejar de operar.
+
+8. SEGURIDAD Y CONSERVACIÓN
+Protegemos tus datos con medidas administrativas, técnicas y físicas razonables: conexiones cifradas (HTTPS), controles de acceso por roles para nuestro personal y registro de auditoría de las operaciones sensibles. Conservamos la información mientras tu cuenta o contrato estén vigentes y por los plazos legales aplicables.
+
+9. MENORES DE EDAD
+Nuestros servicios están dirigidos a personas mayores de 18 años. No recabamos intencionalmente datos de menores.
+
+10. CAMBIOS A ESTE AVISO
+Podremos actualizar este aviso; la versión vigente estará siempre publicada en www.acasamx.com/privacidad con su fecha de actualización. El uso continuado de nuestros servicios tras un cambio implica que conoces el aviso actualizado.
+
+¿Dudas sobre privacidad? Escríbenos a clientes@acasamx.com o por WhatsApp al +52 81 1824 7975.

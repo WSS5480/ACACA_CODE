@@ -47,6 +47,10 @@ Rails.application.routes.draw do
     get 'settings/contract', to: 'api/settings#contract_template'
     put 'settings/contract', to: 'api/settings#update_contract_template'
 
+    # Aviso de privacidad editable (GET público: lo muestra www.acasamx.com/privacidad)
+    get 'settings/privacy', to: 'api/settings#privacy'
+    put 'settings/privacy', to: 'api/settings#update_privacy'
+
     # Tasas e impuestos (Seguridad): IVA, tasa de interés (define los factores) y seguro/waiver
     get 'settings/rates', to: 'api/settings#rates'
     put 'settings/rates', to: 'api/settings#update_rates'

@@ -1434,11 +1434,23 @@ async function openOrderVerify(id){
       <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/3)'):'')}</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="${semBtn(stApr)}">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${docCell}
+      ${o.contract_number?(allDelivered
+        ? `<span class="btn" style="${semBtn('green')};cursor:default">🛒 Compra completada ✓</span>`
+        : (canBuy
+          ? `<button class="btn" id="ovBuy" style="${semBtn('yellow')}">🛒 Comprar en Amazon</button>`
+          : `<button class="btn" disabled style="${semBtn('red')};opacity:.8;cursor:not-allowed" title="Se habilita hasta que la orden esté APROBADA y el contrato FIRMADO">🛒 Comprar en Amazon</button>`)):''}
       ${allDelivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
       <span class="muted" id="ovMsg"></span>
     </div>
     ${!canBuy?'<p class="muted" style="font-size:12.5px">🛒 La compra en Amazon se habilita cuando las tres secciones están verificadas, la orden APROBADA y el contrato FIRMADO. Al entregarse todo, la orden sale de aquí y el cliente pasa a Gestión de cuenta.</p>':''}`;
   $('ovBack').onclick=(e)=>{e.preventDefault(); d.style.display='none'; d.innerHTML=''; if(wrap) wrap.style.display=''; loadOrders('all');};
+  // Compra en Amazon: SOLO con contrato firmado. Abre la página de cada artículo pendiente.
+  const buyBtn=$('ovBuy'); if(buyBtn) buyBtn.onclick=()=>{
+    const pend=grp.filter(it=>pick(it,['product_asin'],null)&&pick(it,['admin_approved'],false)&&!pick(it,['delivered_at'],null));
+    if(!pend.length){ $('ovMsg').textContent='No hay artículos pendientes de compra con ASIN.'; return; }
+    pend.forEach((it,i)=>setTimeout(()=>window.open('https://www.amazon.com.mx/dp/'+encodeURIComponent(pick(it,['product_asin'],'')),'_blank'),i*350));
+    $('ovMsg').textContent='Abriendo '+pend.length+' artículo(s) en Amazon… (si el navegador bloquea ventanas, permite los pop-ups o usa los botones por artículo).';
+  };
   if($('ovWa')) $('ovWa').onclick=()=>waChatOpen(pick(o,['user_id'],null), [o.user_name,o.user_last_name].filter(Boolean).join(' '));
   bindConvBtns(d); // botones de conversación junto a cada nombre (beneficiario, comprador, referencias)
   // Editar / agregar / eliminar referencias durante la verificación (copia de ESTA orden).

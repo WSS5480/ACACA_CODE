@@ -146,9 +146,10 @@
       <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
       <a data-view="crm"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg> CRM</a>
       <a data-view="whatsapp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> WhatsApp <span id="waBadge" style="display:none;margin-left:6px;background:#25D366;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px">0</span></a>
-      <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Marketing</a>
       <div id="navAdmin" style="display:none">
       <div class="sep"></div>
+      <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Marketing</a>
+      <a data-view="gestion"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg> Gestión de cuenta</a>
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
       <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
@@ -223,6 +224,30 @@
     </section>
 
     <!-- ---------- CRÉDITOS ---------- -->
+    <!-- ---------- GESTIÓN DE CUENTA (solo administración) ---------- -->
+    <section class="view hide" data-v="gestion">
+      <div class="head"><h1>Gestión de cuenta</h1></div>
+      <div class="sec" style="padding:16px;margin-bottom:14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="gesQ" placeholder="Buscar por cliente, contrato o teléfono…" style="flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px">
+          <select class="sel" id="gesF">
+            <option value="">Todos los estados</option>
+            <option value="current">Al corriente</option>
+            <option value="past_due">Vencido</option>
+            <option value="paid">Pagado / liquidado</option>
+            <option value="returned">Devuelto</option>
+            <option value="charged_off">Castigado</option>
+          </select>
+          <button class="btn" id="gesClear" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">Limpiar</button>
+        </div>
+        <p class="muted" style="margin:10px 0 0;font-size:12.5px"><b>Devuelto</b> = la mercancía fue devuelta. <b>Castigado</b> = cuenta incobrable (sale de la cartera activa). <b>Reactivar</b> la regresa a la cartera. Cada cambio queda en la Bitácora con tu usuario y se refleja en la columna Cuenta de Clientes.</p>
+      </div>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr><th>Contrato</th><th>Cliente</th><th>Teléfono</th><th class="right">Total</th><th>Estado</th><th class="right">Acciones</th></tr></thead>
+        <tbody id="gesBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
+    </section>
+
     <section class="view hide" data-v="creditos">
       <div class="head"><h1>Créditos</h1></div>
       <div class="sec"><div style="overflow-x:auto">
@@ -311,7 +336,7 @@
 
     <!-- ---------- MARKETING (Facebook + Instagram) ---------- -->
     <section class="view hide" data-v="marketing">
-      <div class="head"><h1>Marketing — Facebook & Instagram</h1><div class="sp"></div>
+      <div class="head"><h1>Marketing — Armando's Playground 🎢</h1><div class="sp"></div>
         <button class="btn" id="mktRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
       </div>
       <div id="mktSetup" style="display:none" class="sec">
@@ -796,9 +821,14 @@ async function applyRoleNav(){
     MYROLE=String((d.role&&(d.role.name||d.role))||d.role_name||'').toLowerCase();
   }catch(e){ MYROLE=''; }
   const el=$('navAdmin');
-  if(el) el.style.display=['master','admin','sistema'].includes(MYROLE)?'':'none';
-  // Marketing: admins + Administrador de Redes sociales
-  if($('navMkt')) $('navMkt').style.display=['master','admin','sistema','admin_redes'].includes(MYROLE)?'':'none';
+  const adminOnly=['master','admin','sistema'].includes(MYROLE);
+  const canMkt=adminOnly||MYROLE==='admin_redes'; // Marketing: admins + Administrador de Redes sociales
+  if(el){
+    el.style.display=canMkt?'':'none';
+    // admin_redes sólo ve Marketing bajo la línea; el resto queda oculto para él
+    el.querySelectorAll('a').forEach(a=>{ if(a.id!=='navMkt') a.style.display=adminOnly?'':'none'; });
+  }
+  if($('navMkt')) $('navMkt').style.display=canMkt?'':'none';
 }
 $('lg-btn').onclick=doLogin;
 $('lg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -824,7 +854,57 @@ function show(view){
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
   if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
   if(view==='security') loadChangeReqs();
+  if(view==='gestion') loadGestion();
 }
+
+/* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */
+let GES=[];
+async function loadGestion(){
+  const body=$('gesBody'); if(!body) return;
+  body.innerHTML='<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+  const r=await api('GET','/api/contracts');
+  if(!r.ok){ body.innerHTML='<tr><td colspan="6" class="empty">No se pudo cargar (¿tu rol tiene acceso?).</td></tr>'; return; }
+  GES=rows(r.data).filter(c=>pick(c,['contract_number'],null)); // solo contratos reales (con pago inicial)
+  GES.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
+  renderGestion();
+}
+function renderGestion(){
+  const body=$('gesBody'); if(!body) return;
+  const q=($('gesQ').value||'').trim().toLowerCase(), f=$('gesF').value;
+  let list=GES;
+  if(f) list=list.filter(c=>String(pick(c,['payment_status'],''))===f);
+  if(q) list=list.filter(c=>[pick(c,['client_name'],''),pick(c,['contract_number'],''),pick(c,['client_phone'],'')].join(' ').toLowerCase().includes(q));
+  body.innerHTML = list.length ? list.map(c=>{
+    const ps=String(pick(c,['payment_status'],'')), off=['returned','charged_off'].includes(ps);
+    const acts = off
+      ? `<button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="active" style="background:#eef0f6;color:var(--navy);padding:6px 11px;font-size:12.5px">Reactivar</button>`
+      : `<button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="returned" style="background:#eef0f6;color:#b26a00;padding:6px 11px;font-size:12.5px" title="Mercancía devuelta">DEVUELTO</button>
+         <button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="charged_off" style="background:#eef0f6;color:#c62828;padding:6px 11px;font-size:12.5px" title="Cuenta incobrable">CASTIGAR</button>`;
+    return `<tr class="ges-row" data-cid="${esc(String(c.id))}" style="cursor:pointer">
+      <td class="mono">${esc(pick(c,['contract_number'],'—'))}</td>
+      <td style="font-weight:600">${esc(pick(c,['client_name'],'—')||'—')}</td>
+      <td class="mono">${esc(pick(c,['client_phone'],'')||'—')}</td>
+      <td class="right mono">${money(pick(c,['total_amount'],0))}</td>
+      <td>${conStatusPill(ps)}</td>
+      <td class="right" onclick="event.stopPropagation()">${acts}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">Sin contratos con ese filtro.</td></tr>';
+  body.querySelectorAll('.ges-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
+  body.querySelectorAll('.gstat').forEach(b=>b.onclick=async()=>{
+    const st=b.dataset.st;
+    const q2= st==='returned' ? '¿Marcar esta cuenta como DEVUELTO (mercancía devuelta)?'
+            : st==='charged_off' ? '¿CASTIGAR esta cuenta (incobrable)?\n\nSaldrá de la cartera activa y quedará marcada en Clientes.'
+            : '¿REACTIVAR esta cuenta (vuelve a la cartera activa)?';
+    if(!confirm(q2+'\n\nQueda registrado en la Bitácora con tu usuario.')) return;
+    b.disabled=true;
+    const r3=await api('POST','/api/contracts/'+encodeURIComponent(b.dataset.cid)+'/set_status',{status:st});
+    b.disabled=false;
+    if(r3.ok&&r3.data&&r3.data.ok){ CLIENTS=[]; loaded.cli=0; loadGestion(); }
+    else alert((r3.data&&r3.data.error)||'No se pudo cambiar el estado.');
+  });
+}
+if($('gesQ')) $('gesQ').addEventListener('input',renderGestion);
+if($('gesF')) $('gesF').addEventListener('change',renderGestion);
+if($('gesClear')) $('gesClear').onclick=()=>{ $('gesQ').value=''; $('gesF').value=''; renderGestion(); };
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
 /* ---------------- Helpers ---------------- */
@@ -2166,11 +2246,7 @@ async function openContract(id){
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
         <span class="muted" style="font-size:12px;font-weight:700">Estado de la cuenta:</span>
         ${conStatusPill(pick(c,['payment_status'],''))}
-        ${['returned','charged_off'].includes(String(pick(c,['payment_status'],'')))
-          ? `<button class="btn cstatus" data-st="active" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:13px">Reactivar cuenta</button>`
-          : `<button class="btn cstatus" data-st="returned" style="background:#eef0f6;color:#b26a00;padding:7px 12px;font-size:13px" title="Mercancía devuelta">Marcar DEVUELTO</button>
-             <button class="btn cstatus" data-st="charged_off" style="background:#eef0f6;color:#c62828;padding:7px 12px;font-size:13px" title="Cuenta incobrable">CASTIGAR cuenta</button>`}
-        <span class="muted" id="csMsg" style="font-size:12px">Devuelto = mercancía devuelta. Castigado = cuenta incobrable. Queda registrado en la Bitácora; el crédito del cliente no se ajusta solo.</span>
+        <span class="muted" style="font-size:12px">Devuelto / Castigado / Reactivar se administran en <a data-view="gestion" style="color:var(--brand-d);font-weight:700;cursor:pointer">Gestión de cuenta</a> (solo administración).</span>
       </div>
     </div>
     <div class="sec">
@@ -2189,18 +2265,6 @@ async function openContract(id){
     else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
   };
   // PRUEBAS: mover el próximo vencimiento (desplaza toda la cola pendiente) para simular atrasos.
-  // Estado de la cuenta: devuelto / castigado / reactivar (bitácora de auditoría).
-  document.querySelectorAll('.cstatus').forEach(b=>b.onclick=async()=>{
-    const st=b.dataset.st;
-    const q= st==='returned' ? '¿Marcar esta cuenta como DEVUELTO (mercancía devuelta)?'
-           : st==='charged_off' ? '¿CASTIGAR esta cuenta (incobrable)?\n\nSaldrá de la cartera activa y quedará marcada en Clientes.'
-           : '¿REACTIVAR esta cuenta (vuelve a la cartera activa)?';
-    if(!confirm(q+'\n\nQueda registrado en la Bitácora con tu usuario.')) return;
-    $('csMsg').textContent='Guardando…';
-    const r3=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/set_status',{status:st});
-    if(r3.ok&&r3.data&&r3.data.ok){ $('csMsg').textContent='✓ Estado actualizado.'; CLIENTS=[]; loaded.cli=0; setTimeout(()=>openContract(id), 800); }
-    else { $('csMsg').textContent=(r3.data&&r3.data.error)||'No se pudo cambiar el estado.'; }
-  });
   if($('ndSet')) $('ndSet').onclick=async()=>{
     const d2=$('ndDate').value; if(!d2){ $('ndMsg').textContent='Elige una fecha.'; return; }
     if(!confirm('¿Mover el próximo vencimiento a '+d2+'?\n\nLas cuotas pendientes se desplazan la misma cantidad de días. (Herramienta de pruebas)')) return;

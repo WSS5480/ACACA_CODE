@@ -337,6 +337,8 @@
     <!-- ---------- MARKETING (Facebook + Instagram) ---------- -->
     <section class="view hide" data-v="marketing">
       <div class="head"><h1>Marketing — Armando's Playground 🎢</h1><div class="sp"></div>
+        <a id="mktFbLink" target="_blank" rel="noopener" style="display:none;text-decoration:none;background:#1877F2;color:#fff;font-weight:700;font-size:13px;border-radius:9px;padding:9px 14px;margin-right:8px">ⓕ Ver página</a>
+        <a id="mktIgLink" target="_blank" rel="noopener" style="display:none;text-decoration:none;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:13px;border-radius:9px;padding:9px 14px;margin-right:8px">📸 Ver Instagram</a>
         <button class="btn" id="mktRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
       </div>
       <div id="mktSetup" style="display:none" class="sec">
@@ -1941,6 +1943,11 @@ async function loadMarketing(){
   $('mktSetup').style.display='none'; $('mktMain').style.display='';
   mktInitCreator();
   const fb=ov.data.fb||{}, ig=ov.data.ig||null, reach=ov.data.reach_daily||[];
+  // Accesos rápidos a la página real de Facebook y al perfil de Instagram
+  const fl=$('mktFbLink');
+  if(fl){ const u=fb.link||(fb.id?('https://www.facebook.com/'+fb.id):null); if(u){ fl.href=u; fl.style.display=''; } }
+  const il=$('mktIgLink');
+  if(il&&ig&&ig.username){ il.href='https://www.instagram.com/'+ig.username+'/'; il.style.display=''; }
   const tot=reach.reduce((s,d)=>s+(Number(d.value)||0),0);
   $('mktCards').innerHTML =
     mktCard('ⓕ Facebook · '+esc(fb.name||'página'), Number(fb.followers_count!=null?fb.followers_count:(fb.fan_count||0)).toLocaleString(), 'seguidores', '#1877F2')

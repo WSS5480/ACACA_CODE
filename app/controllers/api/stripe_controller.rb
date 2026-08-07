@@ -17,7 +17,9 @@ module Api
 
       tax = (((base + fee) * Product.tax_rate) / 100.0).round(2)
       total_cents = ((base + fee + tax) * 100).round
-      customer_id = ensure_stripe_customer!(@current_user)
+      # La tarjeta se cobra al DUEÑO del contrato (cliente), aunque quien inicie
+      # el cobro sea el staff desde Gestión de cuenta.
+      customer_id = ensure_stripe_customer!(contract.user || @current_user)
 
       pi = StripeClient.request(:post, '/v1/payment_intents', {
         amount: total_cents,
@@ -56,7 +58,7 @@ module Api
       fee = params[:waiver_fee].to_f.round(2)
       return render(json: { error: 'Monto invalido' }, status: :unprocessable_entity) if base <= 0
 
-      cid = @current_user.stripe_customer_id
+      cid = (contract.user || @current_user).stripe_customer_id
       return render(json: { error: 'No hay tarjeta guardada' }, status: :unprocessable_entity) if cid.blank?
 
       pm = params[:payment_method_id].presence
@@ -85,6 +87,13 @@ module Api
       end
     rescue StripeClient::Error => e
       render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    # GET /api/stripe/config -> llave publicable para montar el formulario de tarjeta
+    # (la usa Gestión de cuenta para cobrar con tarjeta NUEVA tecleada por el staff)
+    def config
+      render json: { publishable_key: ENV['STRIPE_PUBLISHABLE_KEY'].to_s.presence ||
+                                      ENV['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'].to_s }, status: :ok
     end
 
     # POST /api/stripe/finalize { payment_intent_id }
@@ -125,7 +134,7 @@ module Api
         return nil
       end
       role = @current_user&.role&.name
-      unless %w[master admin].include?(role) || contract.user_id == @current_user.id
+      unless %w[master admin sistema].include?(role) || contract.user_id == @current_user.id
         render json: { error: 'No autorizado' }, status: :forbidden
         return nil
       end

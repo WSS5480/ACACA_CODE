@@ -136,6 +136,7 @@ Rails.application.routes.draw do
     post 'stripe/charge_saved',    to: 'api/stripe#charge_saved'
     post 'stripe/finalize',        to: 'api/stripe#finalize'
     get  'stripe/payment_methods', to: 'api/stripe#payment_methods'
+    get  'stripe/config',          to: 'api/stripe#config'
     post 'stripe/webhook',         to: 'api/stripe#webhook'
 
     get  'whatsapp/messages', to: 'api/whatsapp_messages#index'

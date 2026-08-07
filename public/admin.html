@@ -245,9 +245,20 @@
         <p class="muted" style="margin:10px 0 0;font-size:12.5px"><b>Devuelto</b> = la mercancía fue devuelta. <b>Castigado</b> = cuenta incobrable (sale de la cartera activa). <b>Reactivar</b> la regresa a la cartera. Cada cambio queda en la Bitácora con tu usuario y se refleja en la columna Cuenta de Clientes.</p>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Contrato</th><th>Cliente</th><th>Teléfono</th><th class="right">Total</th><th class="right">Vencido</th><th class="right">Días</th><th>Estado</th><th class="right">Acciones</th></tr></thead>
-        <tbody id="gesBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Teléfono</th><th class="right">Contratos</th><th class="right">Total</th><th class="right">Vencido</th><th class="right">Días</th><th>Estado</th></tr></thead>
+        <tbody id="gesBody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
+    </section>
+
+    <!-- ---------- BANCO DE TRABAJO de gestión (un cliente) ---------- -->
+    <section class="view hide" data-v="geswb">
+      <div class="head">
+        <a id="gwBack" style="cursor:pointer;color:var(--brand-d);font-weight:700;font-size:13.5px;margin-right:12px">← Gestión de cuenta</a>
+        <h1 id="gwTitle" style="font-size:20px">Cliente</h1>
+        <div class="sp"></div>
+        <div id="gwContact" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <div id="gwBody"><p class="empty">Cargando…</p></div>
     </section>
 
     <section class="view hide" data-v="creditos">
@@ -862,7 +873,8 @@ function show(view){
 }
 
 /* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */
-let GES=[], GESBUCKET='';
+let GES=[], GESBUCKET='', GESCUST=[];
+const GBORDER={current:0,b30:1,b60:2,b90:3,b90p:4};
 // Antigüedad de la cartera vencida (aging): a qué "cubeta" pertenece cada contrato
 function gesBucketOf(c){
   const ps=String(pick(c,['payment_status'],''));
@@ -871,13 +883,38 @@ function gesBucketOf(c){
   const d=Number(pick(c,['days_past_due'],0))||0;
   if(d<=30) return 'b30'; if(d<=60) return 'b60'; if(d<=90) return 'b90'; return 'b90p';
 }
+// Un CLIENTE aparece UNA sola vez: su cubeta es la PEOR de sus contratos activos.
+function gesGroupCustomers(){
+  const m={};
+  GES.forEach(c=>{
+    const uid=String(pick(c,['user_id'],'')||''); if(!uid) return;
+    if(!m[uid]) m[uid]={uid:uid,name:pick(c,['client_name'],'—')||'—',phone:pick(c,['client_phone'],'')||'',n:0,total:0,pd:0,days:0,bucket:null,sts:{},nums:''};
+    const t=m[uid]; t.n++;
+    t.total+=Number(pick(c,['total_amount'],0))||0;
+    t.pd+=Number(pick(c,['past_due_amount'],0))||0;
+    t.days=Math.max(t.days,Number(pick(c,['days_past_due'],0))||0);
+    t.sts[String(pick(c,['payment_status'],''))]=1;
+    t.nums+=' '+String(pick(c,['contract_number'],'')||'');
+    const b=gesBucketOf(c);
+    if(b&&(t.bucket==null||GBORDER[b]>GBORDER[t.bucket])) t.bucket=b;
+  });
+  GESCUST=Object.values(m).sort((a,b)=> b.pd-a.pd || b.days-a.days || String(a.name).localeCompare(String(b.name)));
+}
+function gesCustPill(t){
+  if(t.sts['charged_off']) return conStatusPill('charged_off');
+  if(t.sts['returned']&&!t.sts['past_due']&&!t.sts['current']) return conStatusPill('returned');
+  if(t.sts['past_due']) return conStatusPill('past_due');
+  if(t.sts['current']) return conStatusPill('current');
+  if(t.sts['paid']) return conStatusPill('paid');
+  return conStatusPill(Object.keys(t.sts)[0]||'');
+}
 function renderGesBuckets(){
   const box=$('gesBuckets'); if(!box) return;
   const B={current:{n:0,amt:0},b30:{n:0,amt:0},b60:{n:0,amt:0},b90:{n:0,amt:0},b90p:{n:0,amt:0}};
-  GES.forEach(c=>{ const k=gesBucketOf(c); if(k&&B[k]){ B[k].n++; B[k].amt+=Number(pick(c,['past_due_amount'],0))||0; } });
+  GESCUST.forEach(t=>{ if(t.bucket&&B[t.bucket]){ B[t.bucket].n++; B[t.bucket].amt+=t.pd; } });
   const totPD=B.b30.amt+B.b60.amt+B.b90.amt+B.b90p.amt;
   const defs=[
-    ['current','Al corriente','#2e7d32','cuentas sin atraso'],
+    ['current','Al corriente','#2e7d32','clientes sin atraso'],
     ['b30','1–30 días','#b26a00','vencido'],
     ['b60','31–60 días','#e65100','vencido'],
     ['b90','61–90 días','#c62828','vencido'],
@@ -886,9 +923,9 @@ function renderGesBuckets(){
   box.innerHTML=defs.map(([k,lbl,col,sub])=>{
     const b=B[k], on=GESBUCKET===k;
     const pct=(k!=='current'&&totPD>0)?Math.round(b.amt/totPD*100):null;
-    return `<div class="gbk" data-b="${k}" style="flex:1;min-width:150px;background:${on?'#fffdf6':'#fff'};border:${on?'2px solid '+col:'1px solid var(--line)'};border-radius:12px;padding:12px 14px;cursor:pointer" title="Clic para filtrar la tabla">
+    return `<div class="gbk" data-b="${k}" style="flex:1;min-width:150px;background:${on?'#fffdf6':'#fff'};border:${on?'2px solid '+col:'1px solid var(--line)'};border-radius:12px;padding:12px 14px;cursor:pointer" title="Clic para filtrar los clientes de esta cubeta">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:${col};font-weight:800">${lbl}</div>
-      <div style="font-size:21px;font-weight:800;color:var(--navy)">${b.n} <span style="font-size:12px;color:var(--mut);font-weight:600">cuenta${b.n===1?'':'s'}</span></div>
+      <div style="font-size:21px;font-weight:800;color:var(--navy)">${b.n} <span style="font-size:12px;color:var(--mut);font-weight:600">cliente${b.n===1?'':'s'}</span></div>
       <div class="muted" style="font-size:11.5px">${k==='current'?sub:(money(b.amt)+' '+sub)}</div>
       ${pct!=null?`<div style="height:5px;background:#f0ede8;border-radius:99px;margin-top:7px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:99px"></div></div><div class="muted" style="font-size:10.5px;margin-top:3px">${pct}% del total vencido</div>`:''}
     </div>`;
@@ -897,54 +934,256 @@ function renderGesBuckets(){
 }
 async function loadGestion(){
   const body=$('gesBody'); if(!body) return;
-  body.innerHTML='<tr><td colspan="8" class="empty">Cargando…</td></tr>';
+  body.innerHTML='<tr><td colspan="7" class="empty">Cargando…</td></tr>';
   const r=await api('GET','/api/contracts');
-  if(!r.ok){ body.innerHTML='<tr><td colspan="8" class="empty">No se pudo cargar (¿tu rol tiene acceso?).</td></tr>'; return; }
+  if(!r.ok){ body.innerHTML='<tr><td colspan="7" class="empty">No se pudo cargar (¿tu rol tiene acceso?).</td></tr>'; return; }
   GES=rows(r.data).filter(c=>pick(c,['contract_number'],null)); // solo contratos reales (con pago inicial)
-  GES.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
+  gesGroupCustomers();
   renderGesBuckets();
   renderGestion();
 }
 function renderGestion(){
   const body=$('gesBody'); if(!body) return;
   const q=($('gesQ').value||'').trim().toLowerCase(), f=$('gesF').value;
-  let list=GES;
-  if(GESBUCKET) list=list.filter(c=>gesBucketOf(c)===GESBUCKET);
-  if(f) list=list.filter(c=>String(pick(c,['payment_status'],''))===f);
-  if(q) list=list.filter(c=>[pick(c,['client_name'],''),pick(c,['contract_number'],''),pick(c,['client_phone'],'')].join(' ').toLowerCase().includes(q));
-  body.innerHTML = list.length ? list.map(c=>{
-    const ps=String(pick(c,['payment_status'],'')), off=['returned','charged_off'].includes(ps);
-    const acts = off
-      ? `<button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="active" style="background:#eef0f6;color:var(--navy);padding:6px 11px;font-size:12.5px">Reactivar</button>`
-      : `<button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="returned" style="background:#eef0f6;color:#b26a00;padding:6px 11px;font-size:12.5px" title="Mercancía devuelta">DEVUELTO</button>
-         <button class="btn gstat" data-cid="${esc(String(c.id))}" data-st="charged_off" style="background:#eef0f6;color:#c62828;padding:6px 11px;font-size:12.5px" title="Cuenta incobrable">CASTIGAR</button>`;
-    return `<tr class="ges-row" data-cid="${esc(String(c.id))}" style="cursor:pointer">
-      <td class="mono">${esc(pick(c,['contract_number'],'—'))}</td>
-      <td style="font-weight:600">${esc(pick(c,['client_name'],'—')||'—')}</td>
-      <td class="mono">${esc(pick(c,['client_phone'],'')||'—')}</td>
-      <td class="right mono">${money(pick(c,['total_amount'],0))}</td>
-      <td class="right mono" style="${Number(pick(c,['past_due_amount'],0))>0?'color:#c62828;font-weight:700':''}">${Number(pick(c,['past_due_amount'],0))>0?money(pick(c,['past_due_amount'],0)):'—'}</td>
-      <td class="right mono">${Number(pick(c,['days_past_due'],0))>0?esc(String(pick(c,['days_past_due'],0))):'—'}</td>
-      <td>${conStatusPill(ps)}</td>
-      <td class="right" onclick="event.stopPropagation()">${acts}</td></tr>`;
-  }).join('') : '<tr><td colspan="8" class="empty">Sin contratos con ese filtro.</td></tr>';
-  body.querySelectorAll('.ges-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
-  body.querySelectorAll('.gstat').forEach(b=>b.onclick=async()=>{
-    const st=b.dataset.st;
-    const q2= st==='returned' ? '¿Marcar esta cuenta como DEVUELTO (mercancía devuelta)?'
-            : st==='charged_off' ? '¿CASTIGAR esta cuenta (incobrable)?\n\nSaldrá de la cartera activa y quedará marcada en Clientes.'
-            : '¿REACTIVAR esta cuenta (vuelve a la cartera activa)?';
-    if(!confirm(q2+'\n\nQueda registrado en la Bitácora con tu usuario.')) return;
-    b.disabled=true;
-    const r3=await api('POST','/api/contracts/'+encodeURIComponent(b.dataset.cid)+'/set_status',{status:st});
-    b.disabled=false;
-    if(r3.ok&&r3.data&&r3.data.ok){ CLIENTS=[]; loaded.cli=0; loadGestion(); }
-    else alert((r3.data&&r3.data.error)||'No se pudo cambiar el estado.');
-  });
+  let list=GESCUST;
+  if(GESBUCKET) list=list.filter(t=>t.bucket===GESBUCKET);
+  if(f) list=list.filter(t=>t.sts[f]);
+  if(q) list=list.filter(t=>(t.name+' '+t.phone+' '+t.nums).toLowerCase().includes(q));
+  body.innerHTML = list.length ? list.map(t=>`<tr class="ges-row" data-uid="${esc(t.uid)}" data-name="${esc(t.name)}" data-phone="${esc(t.phone)}" style="cursor:pointer">
+      <td style="font-weight:700;color:var(--brand-d)">${esc(t.name)}</td>
+      <td class="mono">${esc(t.phone||'—')}</td>
+      <td class="right"><span class="pill p-other">${t.n}</span></td>
+      <td class="right mono">${money(t.total)}</td>
+      <td class="right mono" style="${t.pd>0?'color:#c62828;font-weight:700':''}">${t.pd>0?money(t.pd):'—'}</td>
+      <td class="right mono">${t.days>0?esc(String(t.days)):'—'}</td>
+      <td>${gesCustPill(t)}</td></tr>`).join('') : '<tr><td colspan="7" class="empty">Sin clientes con ese filtro.</td></tr>';
+  body.querySelectorAll('.ges-row').forEach(tr=>tr.onclick=()=>openGesWb(tr.dataset.uid, tr.dataset.name, tr.dataset.phone));
 }
 if($('gesQ')) $('gesQ').addEventListener('input',renderGestion);
 if($('gesF')) $('gesF').addEventListener('change',renderGestion);
 if($('gesClear')) $('gesClear').onclick=()=>{ $('gesQ').value=''; $('gesF').value=''; GESBUCKET=''; renderGesBuckets(); renderGestion(); };
+
+/* ------- BANCO DE TRABAJO: contactar, documentar, cobrar y ajustar fechas ------- */
+let GW={uid:null,name:'',phone:'',list:[]};
+async function openGesWb(uid,name,phone){
+  show('geswb');
+  GW={uid:uid,name:name||'',phone:phone||'',list:[]};
+  $('gwTitle').textContent=GW.name||'Cliente';
+  $('gwContact').innerHTML=''; $('gwBody').innerHTML='<p class="empty">Cargando…</p>';
+  const r=await api('GET','/api/contracts?user_id='+encodeURIComponent(uid));
+  if(!r.ok){ $('gwBody').innerHTML='<p class="empty">No se pudo cargar.</p>'; return; }
+  GW.list=rows(r.data);
+  GW.list.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
+  if(!GW.name&&GW.list.length){ GW.name=pick(GW.list[0],['client_name'],'')||''; GW.phone=pick(GW.list[0],['client_phone'],'')||''; }
+  renderGesWb(); loadGwNotes();
+}
+function renderGesWb(){
+  $('gwTitle').textContent=GW.name||'Cliente';
+  $('gwContact').innerHTML=`
+    <button class="btn" id="gwWa" style="background:#25D366;font-size:13px;padding:8px 13px">💬 WhatsApp</button>
+    ${GW.phone?`<button class="btn" id="gwTel" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📞 ${esc(GW.phone)}</button>`:''}
+    <button class="btn" id="gwFicha" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📋 Ficha</button>`;
+  $('gwWa').onclick=()=>convOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null, person_type:'customer'});
+  if($('gwTel')) $('gwTel').onclick=()=>{ try{navigator.clipboard.writeText(GW.phone);}catch(e){} location.href='tel:+'+String(GW.phone).replace(/\D/g,''); };
+  $('gwFicha').onclick=()=>{ loaded.con=1; show('contratos'); openClientSheet(GW.uid); };
+  const list=GW.list;
+  const pd=list.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0);
+  const days=list.reduce((mx,c)=>Math.max(mx,Number(pick(c,['days_past_due'],0))||0),0);
+  const opts=list.map(c=>{
+    const num=pick(c,['contract_number'],null)||('Pedido '+(pick(c,['order_ref'],null)||('PED-'+c.id)));
+    return `<option value="${esc(String(c.id))}">${esc(num)} · saldo ${money(pick(c,['balance'],pick(c,['total_amount'],0)))}</option>`;
+  }).join('');
+  const cards=list.map(c=>{
+    const ps=String(pick(c,['payment_status'],'')), off=['returned','charged_off'].includes(ps);
+    const num=pick(c,['contract_number'],null)||('Pedido '+(pick(c,['order_ref'],null)||('PED-'+c.id)));
+    const cpd=Number(pick(c,['past_due_amount'],0))||0, cdays=Number(pick(c,['days_past_due'],0))||0;
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <b class="mono" style="color:var(--navy)">${esc(num)}</b> ${conStatusPill(ps)}
+        <span class="muted" style="font-size:12.5px">Total ${money(pick(c,['total_amount'],0))}</span>
+        ${cpd>0?`<span style="color:#c62828;font-weight:700;font-size:12.5px">Vencido ${money(cpd)} · ${cdays} día${cdays===1?'':'s'}</span>`:''}
+        <div class="sp"></div>
+        <a style="cursor:pointer;color:var(--brand-d);font-weight:700;font-size:12.5px" class="gw-open" data-cid="${esc(String(c.id))}">Ver contrato →</a>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="muted" style="font-size:12px;font-weight:700">Próximo vencimiento:</span>
+        <input type="date" class="gwnd" data-cid="${esc(String(c.id))}" value="${esc(String(pick(c,['next_due_date'],'')||''))}" style="padding:7px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
+        <button class="btn gwndset" data-cid="${esc(String(c.id))}" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:12.5px">Guardar fecha</button>
+        <span class="muted" style="font-size:11.5px">Adelantar la fecha = <b>tiempo libre</b> (crédito de tiempo, las cuotas se recorren). Regresarla = la cuenta <b>vuelve a deber</b> (vencido y moratorios se recalculan).</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">
+        <span class="muted" style="font-size:12px;font-weight:700">Estado:</span>
+        ${off
+          ? `<button class="btn gwstat" data-cid="${esc(String(c.id))}" data-st="active" style="background:#eef0f6;color:var(--navy);padding:6px 11px;font-size:12.5px">Reactivar</button>`
+          : `<button class="btn gwstat" data-cid="${esc(String(c.id))}" data-st="returned" style="background:#eef0f6;color:#b26a00;padding:6px 11px;font-size:12.5px">DEVUELTO</button>
+             <button class="btn gwstat" data-cid="${esc(String(c.id))}" data-st="charged_off" style="background:#eef0f6;color:#c62828;padding:6px 11px;font-size:12.5px">CASTIGAR</button>`}
+      </div>
+    </div>`;
+  }).join('');
+  $('gwBody').innerHTML=`
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:150px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;text-transform:uppercase;color:var(--mut);font-weight:800">Contratos</div><div style="font-size:21px;font-weight:800;color:var(--navy)">${list.length}</div></div>
+      <div style="flex:1;min-width:150px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;text-transform:uppercase;color:${pd>0?'#c62828':'#2e7d32'};font-weight:800">Vencido</div><div style="font-size:21px;font-weight:800;color:${pd>0?'#c62828':'var(--navy)'}">${money(pd)}</div></div>
+      <div style="flex:1;min-width:150px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;text-transform:uppercase;color:var(--mut);font-weight:800">Días de atraso</div><div style="font-size:21px;font-weight:800;color:var(--navy)">${days||'—'}</div></div>
+    </div>
+    <div class="sec" style="padding:16px;margin-bottom:14px">
+      <div class="stitle" style="padding:0 0 8px">💰 Aplicar transacción (pago del cliente)</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select class="sel" id="gwPayC" style="min-width:210px">${opts}</select>
+        <input id="gwPayAmt" type="number" min="0" step="0.01" placeholder="Monto" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+        <select class="sel" id="gwPayApply"><option value="plazo">Excedente → Plazo</option><option value="saldo">Excedente → Saldo</option></select>
+        <select class="sel" id="gwPayM">
+          <option value="cash">Efectivo</option>
+          <option value="transfer">Transferencia</option>
+          <option value="saved">💳 Tarjeta guardada</option>
+          <option value="newcard">💳 Tarjeta nueva (teclear)</option>
+        </select>
+        <input id="gwPayNote" placeholder="Nota (opcional)" style="flex:1;min-width:140px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+        <button class="btn" id="gwPayGo">Aplicar</button>
+      </div>
+      <p class="muted" id="gwPayMsg" style="margin:8px 0 0;font-size:12.5px">Los cobros con tarjeta pasan por Stripe y agregan IVA igual que los pagos en línea del cliente. Con «Tarjeta nueva» capturas los datos en un formulario seguro de Stripe (aquí nunca se guardan).</p>
+    </div>
+    <div class="sec" style="padding:16px;margin-bottom:14px">
+      <div class="stitle" style="padding:0 0 8px">📄 Contratos del cliente</div>
+      ${cards||'<p class="empty">Sin contratos.</p>'}
+    </div>
+    <div class="sec" style="padding:16px">
+      <div class="stitle" style="padding:0 0 8px">📒 Comentarios y compromisos de pago</div>
+      <div id="gwNotes"><p class="empty">Cargando…</p></div>
+      <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:12px">
+        <textarea id="gwNoteTxt" placeholder="Documenta la llamada / acuerdo con el cliente…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:64px;font-family:inherit;resize:vertical"></textarea>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer"><input type="checkbox" id="gwProm"> 🤝 Compromiso de pago</label>
+          <input id="gwPromAmt" type="number" min="0" step="0.01" placeholder="$ monto" style="display:none;width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;text-align:right">
+          <input id="gwPromDate" type="date" style="display:none;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
+          <div class="sp"></div>
+          <button class="btn" id="gwNoteAdd">Guardar nota</button>
+        </div>
+        <p class="muted" id="gwNoteMsg" style="margin:6px 0 0;font-size:12px"></p>
+      </div>
+    </div>`;
+  $('gwBody').querySelectorAll('.gw-open').forEach(a=>a.onclick=()=>{ loaded.con=1; show('contratos'); openContract(a.dataset.cid); });
+  $('gwBody').querySelectorAll('.gwndset').forEach(b=>b.onclick=async()=>{
+    const inp=$('gwBody').querySelector('.gwnd[data-cid="'+b.dataset.cid+'"]');
+    const d=inp&&inp.value; if(!d){ alert('Elige la fecha.'); return; }
+    if(!confirm('¿Mover el próximo vencimiento a '+d+'?\n\nAdelantar = tiempo libre para el cliente. Regresar = la cuenta vuelve a deber (vencido y moratorios se recalculan).\n\nQueda en la Bitácora con tu usuario.')) return;
+    b.disabled=true;
+    const r=await api('POST','/api/contracts/'+encodeURIComponent(b.dataset.cid)+'/set_next_due',{date:d});
+    b.disabled=false;
+    if(r.ok&&r.data&&r.data.ok){ openGesWb(GW.uid,GW.name,GW.phone); }
+    else alert((r.data&&r.data.error)||'No se pudo mover la fecha.');
+  });
+  $('gwBody').querySelectorAll('.gwstat').forEach(b=>b.onclick=async()=>{
+    const st=b.dataset.st;
+    const q= st==='returned' ? '¿Marcar esta cuenta como DEVUELTO (mercancía devuelta)?'
+           : st==='charged_off' ? '¿CASTIGAR esta cuenta (incobrable)?\n\nSaldrá de la cartera activa y quedará marcada en Clientes.'
+           : '¿REACTIVAR esta cuenta (vuelve a la cartera activa)?';
+    if(!confirm(q+'\n\nQueda registrado en la Bitácora con tu usuario.')) return;
+    b.disabled=true;
+    const r=await api('POST','/api/contracts/'+encodeURIComponent(b.dataset.cid)+'/set_status',{status:st});
+    b.disabled=false;
+    if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; openGesWb(GW.uid,GW.name,GW.phone); }
+    else alert((r.data&&r.data.error)||'No se pudo cambiar el estado.');
+  });
+  $('gwPayGo').onclick=gwPay;
+  $('gwProm').onchange=()=>{ const on=$('gwProm').checked; $('gwPromAmt').style.display=on?'':'none'; $('gwPromDate').style.display=on?'':'none'; };
+  $('gwNoteAdd').onclick=gwAddNote;
+}
+async function loadGwNotes(){
+  const box=$('gwNotes'); if(!box) return;
+  const r=await api('GET','/api/contact_logs?user_id='+encodeURIComponent(GW.uid));
+  const logs=(r.data&&r.data.logs)||[];
+  const canDel=['master','admin'].includes(MYROLE);
+  box.innerHTML=logs.length?logs.slice().reverse().map(l=>{
+    const prom=String(l.body||'').includes('COMPROMISO DE PAGO');
+    return `<div style="border-left:3px solid ${prom?'#b26a00':'var(--line)'};padding:7px 12px;margin-bottom:8px;${prom?'background:#fffaf2;border-radius:0 9px 9px 0;':''}">
+      <span class="muted" style="font-size:11.5px">${esc(fdatetime(l.created_at))} · ${esc(l.author_name||'—')}</span>
+      ${canDel?`<button class="gwnotedel" data-id="${esc(String(l.id))}" title="Eliminar nota" style="border:0;background:none;cursor:pointer;color:#c62828;font-size:12px;float:right">✕</button>`:''}
+      <p style="font-size:13px;margin:3px 0 0;white-space:pre-wrap">${esc(l.body||'')}</p>
+    </div>`;
+  }).join(''):'<p class="empty">Sin notas todavía. Documenta aquí cada llamada y compromiso.</p>';
+  box.querySelectorAll('.gwnotedel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar esta nota? Queda registrado en la Bitácora.')) return;
+    const r2=await api('DELETE','/api/contact_logs/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok){ loadGwNotes(); } else alert('No se pudo eliminar.');
+  });
+}
+async function gwAddNote(){
+  let txt=($('gwNoteTxt').value||'').trim();
+  if($('gwProm').checked){
+    const amt=parseFloat($('gwPromAmt').value)||0, d=$('gwPromDate').value;
+    if(!(amt>0)||!d){ $('gwNoteMsg').textContent='Para un compromiso indica monto y fecha.'; return; }
+    txt='🤝 COMPROMISO DE PAGO: '+money(amt)+' para el '+d+(txt?(' — '+txt):'');
+  }
+  if(!txt){ $('gwNoteMsg').textContent='Escribe la nota.'; return; }
+  $('gwNoteMsg').textContent='Guardando…';
+  const r=await api('POST','/api/contact_logs',{user_id:GW.uid, person_type:'customer', person_name:GW.name, phone:GW.phone||null, body:txt});
+  if(r.ok&&r.data&&r.data.ok){ $('gwNoteTxt').value=''; $('gwPromAmt').value=''; $('gwPromDate').value=''; $('gwProm').checked=false; $('gwProm').onchange(); $('gwNoteMsg').textContent='✓ Guardado.'; loadGwNotes(); }
+  else $('gwNoteMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
+}
+async function gwPay(){
+  const cid=$('gwPayC').value, amt=parseFloat($('gwPayAmt').value), m=$('gwPayM').value, ap=$('gwPayApply').value;
+  if(!cid){ $('gwPayMsg').textContent='Elige el contrato.'; return; }
+  if(!(amt>0)){ $('gwPayMsg').textContent='Ingresa un monto válido.'; return; }
+  if(m==='cash'||m==='transfer'){
+    if(!confirm('¿Registrar pago de '+money(amt)+' ('+(m==='cash'?'efectivo':'transferencia')+') en este contrato?')) return;
+    $('gwPayMsg').textContent='Registrando…';
+    const r=await api('POST','/api/contracts/'+encodeURIComponent(cid)+'/record_payment',{amount:amt,method:m,note:$('gwPayNote').value,apply_to:ap});
+    if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; $('gwPayMsg').textContent='✓ Pago registrado.'; openGesWb(GW.uid,GW.name,GW.phone); }
+    else $('gwPayMsg').textContent=(r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo registrar.';
+  } else if(m==='saved'){
+    if(!confirm('¿COBRAR '+money(amt)+' + IVA a la TARJETA GUARDADA del cliente?\n\nEl cargo es inmediato.')) return;
+    $('gwPayMsg').textContent='Cobrando…';
+    const r=await api('POST','/api/stripe/charge_saved',{contract_id:cid,base_amount:amt,apply_to:ap});
+    if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; $('gwPayMsg').textContent='✓ Cobro realizado.'; openGesWb(GW.uid,GW.name,GW.phone); }
+    else $('gwPayMsg').textContent=(r.data&&r.data.error)||'No se pudo cobrar (¿tiene tarjeta guardada?).';
+  } else if(m==='newcard'){
+    gwCardStart(cid,amt,ap);
+  }
+}
+/* Tarjeta NUEVA tecleada por el staff: formulario seguro de Stripe (Elements).
+   Los datos de la tarjeta van directo a Stripe; nuestra plataforma nunca los ve. */
+async function gwCardStart(cid,amt,ap){
+  $('gwPayMsg').textContent='Preparando formulario de tarjeta…';
+  const cfg=await api('GET','/api/stripe/config');
+  const pk=cfg.data&&cfg.data.publishable_key;
+  if(!pk){ $('gwPayMsg').textContent='Falta STRIPE_PUBLISHABLE_KEY en Render (Environment) para poder capturar tarjetas aquí.'; return; }
+  if(!window.Stripe){
+    try{ await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://js.stripe.com/v3/'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+    catch(e){ $('gwPayMsg').textContent='No se pudo cargar Stripe.js.'; return; }
+  }
+  const r=await api('POST','/api/stripe/payment_intent',{contract_id:cid,base_amount:amt,apply_to:ap,kind:'staff'});
+  if(!r.ok||!r.data||!r.data.client_secret){ $('gwPayMsg').textContent=(r.data&&r.data.error)||'No se pudo iniciar el cobro.'; return; }
+  const cs=r.data.client_secret;
+  const ov=document.createElement('div');
+  ov.id='gwCardOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:1000;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;padding:22px 24px;width:min(430px,92vw)">
+    <div style="font-weight:800;color:var(--navy);font-size:16px;margin-bottom:4px">💳 Cobro con tarjeta — ${money(amt)} + IVA</div>
+    <p class="muted" style="font-size:12px;margin:0 0 12px">Captura los datos de la tarjeta del cliente. Van directo a Stripe (formulario seguro); no se guardan en la plataforma.</p>
+    <div id="gwCardEl" style="border:1px solid var(--line);border-radius:10px;padding:12px"></div>
+    <p id="gwCardErr" style="color:#c62828;font-size:12.5px;margin:8px 0 0;min-height:16px"></p>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn" id="gwCardGo" style="flex:1">Cobrar ahora</button>
+      <button class="btn" id="gwCardCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const stripe=Stripe(pk);
+  const card=stripe.elements().create('card',{hidePostalCode:true});
+  card.mount('#gwCardEl');
+  $('gwCardCancel').onclick=()=>{ ov.remove(); $('gwPayMsg').textContent='Cobro cancelado.'; };
+  $('gwCardGo').onclick=async()=>{
+    $('gwCardGo').disabled=true; $('gwCardErr').textContent='';
+    const res=await stripe.confirmCardPayment(cs,{payment_method:{card:card,billing_details:{name:GW.name||undefined}}});
+    if(res.error){ $('gwCardErr').textContent=res.error.message||'La tarjeta fue rechazada.'; $('gwCardGo').disabled=false; return; }
+    const fin=await api('POST','/api/stripe/finalize',{payment_intent_id:res.paymentIntent.id});
+    ov.remove();
+    if(fin.ok&&fin.data&&fin.data.ok){ CLIENTS=[]; loaded.cli=0; $('gwPayMsg').textContent='✓ Cobro con tarjeta realizado.'; openGesWb(GW.uid,GW.name,GW.phone); }
+    else $('gwPayMsg').textContent=(fin.data&&fin.data.error)||'El cargo pasó en Stripe; refresca para confirmar el registro.';
+  };
+}
+if($('gwBack')) $('gwBack').onclick=()=>{ show('gestion'); };
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
 /* ---------------- Helpers ---------------- */
@@ -2269,29 +2508,10 @@ async function openContract(id){
       <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th><th>Estado</th><th class="right">Compra</th></tr></thead><tbody>${itemRows}</tbody></table>
     </div>
     <div class="sec">
-      <div class="stitle" style="padding:0 0 10px">Registrar pago</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input id="payAmt" type="number" min="0" step="0.01" placeholder="Monto" style="width:130px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
-        <select class="sel" id="payMethod"><option value="cash">Efectivo</option><option value="card">Tarjeta</option><option value="transfer">Transferencia</option></select>
-        <select class="sel" id="payApply" title="Si el pago EXCEDE la cuota próxima: PLAZO adelanta cuotas futuras (mismo plazo); SALDO abona el excedente a capital, ACORTA el plazo y perdona el interés (${esc(String(pick(c,['interest_rate'],25)))}%) sobre ese excedente.">
-          <option value="plazo">Excedente → Plazo (adelanta cuotas)</option>
-          <option value="saldo">Excedente → Saldo (acorta plazo, ahorra interés)</option>
-        </select>
-        <input id="payNote" placeholder="Nota (opcional)" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px">
-        <button class="btn" id="payBtn">Registrar</button>
-        <span class="muted" id="payMsg"></span>
-      </div>
-      <p class="muted" style="margin:8px 0 0;font-size:12px">La elección sólo aplica cuando el monto excede la cuota próxima pendiente. <b>Saldo</b> = el excedente paga capital: menos cuotas y se perdona el cargo financiero sobre ese monto.</p>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-        <span class="muted" style="font-size:12px;font-weight:700">🧪 PRUEBAS · Próximo vencimiento:</span>
-        <input id="ndDate" type="date" value="${esc(String(pick(c,['next_due_date'],'')||''))}" style="padding:7px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
-        <button class="btn" id="ndSet" style="background:#eef0f6;color:var(--navy);padding:7px 12px;font-size:13px">Mover vencimiento</button>
-        <span class="muted" id="ndMsg" style="font-size:12px">Mueve la próxima cuota (y desplaza las siguientes). Fechas pasadas simulan atrasos y moratorios para probar cobranza.</span>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-        <span class="muted" style="font-size:12px;font-weight:700">Estado de la cuenta:</span>
-        ${conStatusPill(pick(c,['payment_status'],''))}
-        <span class="muted" style="font-size:12px">Devuelto / Castigado / Reactivar se administran en <a data-view="gestion" style="color:var(--brand-d);font-weight:700;cursor:pointer">Gestión de cuenta</a> (solo administración).</span>
+        <span class="muted" style="font-size:12.5px">💼 Pagos, próximo vencimiento, compromisos y estado de la cuenta (Devuelto / Castigado) se administran en el <b>banco de trabajo</b> del cliente.</span>
+        <div class="sp"></div>
+        ${pick(c,['user_id'],null)?`<button class="btn" id="conGwBtn" style="font-size:13px;padding:8px 14px">🧰 Abrir Gestión de cuenta</button>`:''}
       </div>
     </div>
     <div class="sec">
@@ -2300,26 +2520,7 @@ async function openContract(id){
     </div>`;
   $('conBack').onclick=(e)=>{e.preventDefault(); openContractsList();};
   if($('conDelBtn')) $('conDelBtn').onclick=()=>deleteContract(id);
-  $('payBtn').onclick=async()=>{
-    const amt=parseFloat($('payAmt').value);
-    if(!(amt>0)){ $('payMsg').textContent='Ingresa un monto valido.'; return; }
-    $('payBtn').disabled=true; $('payMsg').textContent='Registrando...';
-    const pr=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/record_payment',{amount:amt,method:$('payMethod').value,note:$('payNote').value,apply_to:$('payApply')?$('payApply').value:'plazo'});
-    $('payBtn').disabled=false;
-    if(pr.ok&&pr.data&&pr.data.ok){ $('payMsg').textContent='OK - pago registrado'; CLIENTS=[]; loaded.cli=0; loaded.cre=0; openContract(id); }
-    else { $('payMsg').textContent=(pr.data&&(pr.data.error||(pr.data.errors&&pr.data.errors.join(', '))))||'No se pudo registrar el pago.'; }
-  };
-  // PRUEBAS: mover el próximo vencimiento (desplaza toda la cola pendiente) para simular atrasos.
-  if($('ndSet')) $('ndSet').onclick=async()=>{
-    const d2=$('ndDate').value; if(!d2){ $('ndMsg').textContent='Elige una fecha.'; return; }
-    if(!confirm('¿Mover el próximo vencimiento a '+d2+'?\n\nLas cuotas pendientes se desplazan la misma cantidad de días. (Herramienta de pruebas)')) return;
-    $('ndMsg').textContent='Moviendo…';
-    const r3=await api('POST','/api/contracts/'+encodeURIComponent(id)+'/set_next_due',{date:d2});
-    if(r3.ok&&r3.data&&r3.data.ok){
-      $('ndMsg').textContent='✓ Movido '+r3.data.moved_days+' día(s). Vencido: $'+(r3.data.past_due_amount||0)+(Number(r3.data.late_fee_amount)>0?(' · moratorios $'+r3.data.late_fee_amount):'');
-      setTimeout(()=>openContract(id), 1200);
-    } else { $('ndMsg').textContent=(r3.data&&r3.data.error)||'No se pudo mover.'; }
-  };
+  if($('conGwBtn')) $('conGwBtn').onclick=()=>openGesWb(String(pick(c,['user_id'],'')), pick(c,['client_name'],'')||'', pick(c,['client_phone'],'')||'');
 }
 async function deleteContract(id){
   if(!confirm('Eliminar este contrato? Se restaura el credito pendiente del cliente. (Herramienta de pruebas)')) return;

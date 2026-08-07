@@ -1341,16 +1341,37 @@ async function openOrderVerify(id){
   const headNum=o.contract_number?('Contrato '+o.contract_number):(pick(o,['contract_order_ref'],null)||('Orden #'+o.id));
   // Contrato para firma: generar (rellena la plantilla legal) + WhatsApp; estado de la firma.
   const docGen=!!pick(o,['contract_document_generated'],false), docSigned=!!pick(o,['contract_signed'],false);
+  // SEMÁFORO del pipeline: ROJO = sin empezar · AMARILLO = en proceso · VERDE = completado.
+  const nVer=[o.beneficiary_verified,o.buyer_verified,o.references_verified].filter(Boolean).length;
+  const anyDelivered=grp.some(x=>pick(x,['delivered_at'],null));
+  const SEM={red:'#c62828',yellow:'#f2b010',green:'#2e7d32'};
+  const stVer = nVer===0?'red':(nVer<3?'yellow':'green');
+  const stApr = approved?'green':(nVer===3?'yellow':'red');
+  const stDoc = docSigned?'green':(docGen?'yellow':'red');
+  const canBuy = approved&&docSigned;
+  const stBuy = allDelivered?'green':(canBuy?'yellow':'red');
+  const stDel = allDelivered?'green':(anyDelivered?'yellow':'red');
+  const semBtn=(st)=>`background:${SEM[st]};color:${st==='yellow'?'#1b1b1b':'#fff'}`;
+  const semStep=(st,n,lbl)=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid ${SEM[st]};color:${SEM[st]};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800">${st==='green'?'✓':n} ${lbl}</span>`;
+  const stepper=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+    ${semStep(stVer,'1','Verificación'+(stVer==='yellow'?(' '+nVer+'/3'):''))}
+    ${semStep(stApr,'2','Aprobación')}
+    ${semStep(stDoc,'3','Contrato y firma')}
+    ${semStep(stBuy,'4','Compra en Amazon')}
+    ${semStep(stDel,'5','Entrega')}
+  </div>`;
   const docCell = o.contract_number ? (docSigned
-    ? '<span class="pill p-appr">&#9997;&#65039; Contrato firmado</span>'
-    : `<button class="btn" id="ovDoc" style="background:var(--navy)">&#128196; ${docGen?'Reenviar firma por WhatsApp':'Generar contrato y enviar a firma'}</button>${docGen?'<span class="pill p-pend">Esperando firma del cliente</span>':''}`) : '';
+    ? `<span class="btn" style="${semBtn('green')};cursor:default">✍️ Contrato firmado ✓</span>`
+    : `<button class="btn" id="ovDoc" style="${semBtn(stDoc)}">📄 ${docGen?'Reenviar firma por WhatsApp':'Generar contrato y enviar a firma'}</button>${docGen?'<span class="pill p-pend">Esperando firma del cliente</span>':''}`) : '';
   const itemsHtml=grp.map(it=>{
     const ia=pick(it,['product_asin'],null), iap=!!pick(it,['admin_approved'],false), idel=pick(it,['delivered_at'],null);
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)">
       <div style="flex:1;font-weight:600;font-size:13.5px">${esc(pick(it,['product_title'],'—'))} <span class="mono muted" style="font-size:11.5px">${esc(ia||'')}</span></div>
       ${fulfillPill(it)}
-      ${iap&&ia?`<a href="https://www.amazon.com.mx/dp/${esc(ia)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 10px;font-size:12px;font-weight:700;background:#ff9900;color:#111;border-radius:8px;text-decoration:none">Comprar</a>`:''}
-      ${iap&&!idel?`<button class="ovdeliver1" data-oid="${esc(String(pick(it,['id'],'')))}" style="border:0;background:var(--brand-d);color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer" title="Confirmar que este artículo fue entregado">Entregado ✓</button>`:''}
+      ${idel?`<span class="btn" style="${semBtn('green')};padding:5px 10px;font-size:12px;cursor:default">Entregado ✓</span>`:''}
+      ${!idel&&canBuy&&iap&&ia?`<a href="https://www.amazon.com.mx/dp/${esc(ia)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 10px;font-size:12px;font-weight:800;${semBtn('yellow')};border-radius:8px;text-decoration:none" title="Comprar en Amazon (habilitado: orden aprobada y contrato firmado)">🛒 Comprar</a>`:''}
+      ${!idel&&!canBuy&&iap&&ia?`<span style="display:inline-block;padding:5px 10px;font-size:12px;font-weight:800;${semBtn('red')};border-radius:8px;opacity:.75" title="Se habilita al aprobar la orden Y firmar el contrato">🛒 Comprar</span>`:''}
+      ${iap&&!idel?`<button class="ovdeliver1" data-oid="${esc(String(pick(it,['id'],'')))}" style="border:0;${canBuy?semBtn('yellow'):semBtn('red')+';opacity:.75'};padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer" title="Confirmar que este artículo fue entregado">Entregado ✓</button>`:''}
     </div>`;
   }).join('');
   // Nombre con botón de conversación (bitácora + WhatsApp) por persona.
@@ -1398,6 +1419,7 @@ async function openOrderVerify(id){
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="ovBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a órdenes</a></div>
     <div class="head"><h1 style="font-size:20px">${esc(headNum)} — ${esc([o.user_name,o.user_last_name].filter(Boolean).join(' '))}</h1><div class="sp"></div>${fulfillPill({fulfillment_status:(allDelivered?'entregado':(approved?'por_entregar':'pendiente'))})}</div>
+    ${stepper}
     <div class="sec" style="padding:16px">
       <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:8px">
         ${vField('Pedido',pick(o,['contract_order_ref'],null))}${vField('Contrato',o.contract_number)}${vField('Pago x periodo',pick(o,['contract_weekly_payment'],null)!=null?money(pick(o,['contract_weekly_payment'],null)):(o.weekly_payment!=null?money(o.weekly_payment):null))}${vField('Artículos',grp.length)}
@@ -1409,13 +1431,13 @@ async function openOrderVerify(id){
     ${vSection('references','Referencias ('+refs.length+')',refInner,o.references_verified,o.references_comment)}
     <div class="sec" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button class="btn" id="ovWa" style="background:#25D366">WhatsApp al cliente</button>
-      <button class="btn" id="ovSave" style="background:#eef0f6;color:var(--navy)">Guardar verificación</button>
-      <button class="btn" id="ovApprove" ${approved?'disabled':''} style="background:var(--good)">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
+      <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/3)'):'')}</button>
+      <button class="btn" id="ovApprove" ${approved?'disabled':''} style="${semBtn(stApr)}">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${docCell}
       ${allDelivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
       <span class="muted" id="ovMsg"></span>
     </div>
-    ${!approved?'<p class="muted" style="font-size:12.5px">La compra en Amazon se habilita hasta que las tres secciones estén verificadas y la orden aprobada.</p>':''}`;
+    ${!canBuy?'<p class="muted" style="font-size:12.5px">🛒 La compra en Amazon se habilita cuando las tres secciones están verificadas, la orden APROBADA y el contrato FIRMADO. Al entregarse todo, la orden sale de aquí y el cliente pasa a Gestión de cuenta.</p>':''}`;
   $('ovBack').onclick=(e)=>{e.preventDefault(); d.style.display='none'; d.innerHTML=''; if(wrap) wrap.style.display=''; loadOrders('all');};
   if($('ovWa')) $('ovWa').onclick=()=>waChatOpen(pick(o,['user_id'],null), [o.user_name,o.user_last_name].filter(Boolean).join(' '));
   bindConvBtns(d); // botones de conversación junto a cada nombre (beneficiario, comprador, referencias)
@@ -2474,15 +2496,17 @@ async function openContract(id){
   const r=await api('GET','/api/contracts/'+encodeURIComponent(id));
   if(!r.ok||!r.data||!r.data.data){ d.innerHTML='<p class="empty">No se pudo cargar el contrato.</p>'; return; }
   const c=r.data.data, items=c.items||[], ist=c.installments||[];
+  // El contrato es SOLO informativo: la operación (verificar, contrato/firma,
+  // compra en Amazon, entrega) vive en ÓRDENES; la cobranza en Gestión de cuenta.
   const itemRows=items.map(o=>{const asin=pick(o,['product_asin','asin'],null);
-    const approved=!!pick(o,['admin_approved'],false);
-    const buyCell = !approved ? `<a href="#" onclick="event.preventDefault();show('ordenes');openOrderVerify('${esc(String(o.id))}')" class="pill p-pend" style="text-decoration:none">Pendiente — verificar</a>`
-      : (asin?`<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" class="btn" style="display:inline-block;padding:6px 12px;font-size:12.5px;background:#ff9900;color:#111;text-decoration:none">Comprar en Amazon</a>`:'-');
+    const delivered=!!pick(o,['delivered_at'],null);
+    const opCell = delivered ? '—'
+      : `<a href="#" onclick="event.preventDefault();show('ordenes');openOrderVerify('${esc(String(o.id))}')" style="color:var(--brand-d);font-weight:700;font-size:12.5px;text-decoration:none">Ver en Órdenes →</a>`;
     return `<tr><td>${esc(pick(o,['product_title','product_name','title'],'-'))}</td>
       <td class="mono">${esc(asin||'-')}</td>
       <td class="right mono">${money(pick(o,['product_price','price'],0))}</td>
       <td>${fulfillPill(o)}</td>
-      <td class="right">${buyCell}</td></tr>`;}).join('')||'<tr><td colspan="5" class="empty">Sin articulos</td></tr>';
+      <td class="right">${opCell}</td></tr>`;}).join('')||'<tr><td colspan="5" class="empty">Sin articulos</td></tr>';
   const istRows=ist.map(i=>`<tr><td class="mono">${esc(pick(i,['number'],'-'))}</td>
       <td>${fdate(pick(i,['due_date'],null))}</td>
       <td class="right mono">${money(pick(i,['amount'],0))}</td>
@@ -2505,7 +2529,7 @@ async function openContract(id){
     </div>
     <div class="sec">
       <div class="stitle" style="padding:0 0 8px">Articulos (${items.length})</div>
-      <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th><th>Estado</th><th class="right">Compra</th></tr></thead><tbody>${itemRows}</tbody></table>
+      <table><thead><tr><th>Producto</th><th>ASIN</th><th class="right">Precio</th><th>Estado</th><th class="right">Operación</th></tr></thead><tbody>${itemRows}</tbody></table>
     </div>
     <div class="sec">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">

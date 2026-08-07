@@ -227,6 +227,7 @@
     <!-- ---------- GESTIÓN DE CUENTA (solo administración) ---------- -->
     <section class="view hide" data-v="gestion">
       <div class="head"><h1>Gestión de cuenta</h1></div>
+      <div id="gesBuckets" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
       <div class="sec" style="padding:16px;margin-bottom:14px">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <input id="gesQ" placeholder="Buscar por cliente, contrato o teléfono…" style="flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px">
@@ -243,8 +244,8 @@
         <p class="muted" style="margin:10px 0 0;font-size:12.5px"><b>Devuelto</b> = la mercancía fue devuelta. <b>Castigado</b> = cuenta incobrable (sale de la cartera activa). <b>Reactivar</b> la regresa a la cartera. Cada cambio queda en la Bitácora con tu usuario y se refleja en la columna Cuenta de Clientes.</p>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Contrato</th><th>Cliente</th><th>Teléfono</th><th class="right">Total</th><th>Estado</th><th class="right">Acciones</th></tr></thead>
-        <tbody id="gesBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Contrato</th><th>Cliente</th><th>Teléfono</th><th class="right">Total</th><th class="right">Vencido</th><th class="right">Días</th><th>Estado</th><th class="right">Acciones</th></tr></thead>
+        <tbody id="gesBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -860,20 +861,54 @@ function show(view){
 }
 
 /* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */
-let GES=[];
+let GES=[], GESBUCKET='';
+// Antigüedad de la cartera vencida (aging): a qué "cubeta" pertenece cada contrato
+function gesBucketOf(c){
+  const ps=String(pick(c,['payment_status'],''));
+  if(ps==='returned'||ps==='charged_off'||ps==='paid'||ps==='cancelled') return null; // fuera de la cartera activa
+  if(ps!=='past_due') return 'current';
+  const d=Number(pick(c,['days_past_due'],0))||0;
+  if(d<=30) return 'b30'; if(d<=60) return 'b60'; if(d<=90) return 'b90'; return 'b90p';
+}
+function renderGesBuckets(){
+  const box=$('gesBuckets'); if(!box) return;
+  const B={current:{n:0,amt:0},b30:{n:0,amt:0},b60:{n:0,amt:0},b90:{n:0,amt:0},b90p:{n:0,amt:0}};
+  GES.forEach(c=>{ const k=gesBucketOf(c); if(k&&B[k]){ B[k].n++; B[k].amt+=Number(pick(c,['past_due_amount'],0))||0; } });
+  const totPD=B.b30.amt+B.b60.amt+B.b90.amt+B.b90p.amt;
+  const defs=[
+    ['current','Al corriente','#2e7d32','cuentas sin atraso'],
+    ['b30','1–30 días','#b26a00','vencido'],
+    ['b60','31–60 días','#e65100','vencido'],
+    ['b90','61–90 días','#c62828','vencido'],
+    ['b90p','+90 días','#7b1414','vencido']
+  ];
+  box.innerHTML=defs.map(([k,lbl,col,sub])=>{
+    const b=B[k], on=GESBUCKET===k;
+    const pct=(k!=='current'&&totPD>0)?Math.round(b.amt/totPD*100):null;
+    return `<div class="gbk" data-b="${k}" style="flex:1;min-width:150px;background:${on?'#fffdf6':'#fff'};border:${on?'2px solid '+col:'1px solid var(--line)'};border-radius:12px;padding:12px 14px;cursor:pointer" title="Clic para filtrar la tabla">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:${col};font-weight:800">${lbl}</div>
+      <div style="font-size:21px;font-weight:800;color:var(--navy)">${b.n} <span style="font-size:12px;color:var(--mut);font-weight:600">cuenta${b.n===1?'':'s'}</span></div>
+      <div class="muted" style="font-size:11.5px">${k==='current'?sub:(money(b.amt)+' '+sub)}</div>
+      ${pct!=null?`<div style="height:5px;background:#f0ede8;border-radius:99px;margin-top:7px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:99px"></div></div><div class="muted" style="font-size:10.5px;margin-top:3px">${pct}% del total vencido</div>`:''}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.gbk').forEach(d=>d.onclick=()=>{ GESBUCKET=(GESBUCKET===d.dataset.b)?'':d.dataset.b; renderGesBuckets(); renderGestion(); });
+}
 async function loadGestion(){
   const body=$('gesBody'); if(!body) return;
-  body.innerHTML='<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+  body.innerHTML='<tr><td colspan="8" class="empty">Cargando…</td></tr>';
   const r=await api('GET','/api/contracts');
-  if(!r.ok){ body.innerHTML='<tr><td colspan="6" class="empty">No se pudo cargar (¿tu rol tiene acceso?).</td></tr>'; return; }
+  if(!r.ok){ body.innerHTML='<tr><td colspan="8" class="empty">No se pudo cargar (¿tu rol tiene acceso?).</td></tr>'; return; }
   GES=rows(r.data).filter(c=>pick(c,['contract_number'],null)); // solo contratos reales (con pago inicial)
   GES.sort((a,b)=> new Date(pick(b,['created_at'],0)) - new Date(pick(a,['created_at'],0)));
+  renderGesBuckets();
   renderGestion();
 }
 function renderGestion(){
   const body=$('gesBody'); if(!body) return;
   const q=($('gesQ').value||'').trim().toLowerCase(), f=$('gesF').value;
   let list=GES;
+  if(GESBUCKET) list=list.filter(c=>gesBucketOf(c)===GESBUCKET);
   if(f) list=list.filter(c=>String(pick(c,['payment_status'],''))===f);
   if(q) list=list.filter(c=>[pick(c,['client_name'],''),pick(c,['contract_number'],''),pick(c,['client_phone'],'')].join(' ').toLowerCase().includes(q));
   body.innerHTML = list.length ? list.map(c=>{
@@ -887,9 +922,11 @@ function renderGestion(){
       <td style="font-weight:600">${esc(pick(c,['client_name'],'—')||'—')}</td>
       <td class="mono">${esc(pick(c,['client_phone'],'')||'—')}</td>
       <td class="right mono">${money(pick(c,['total_amount'],0))}</td>
+      <td class="right mono" style="${Number(pick(c,['past_due_amount'],0))>0?'color:#c62828;font-weight:700':''}">${Number(pick(c,['past_due_amount'],0))>0?money(pick(c,['past_due_amount'],0)):'—'}</td>
+      <td class="right mono">${Number(pick(c,['days_past_due'],0))>0?esc(String(pick(c,['days_past_due'],0))):'—'}</td>
       <td>${conStatusPill(ps)}</td>
       <td class="right" onclick="event.stopPropagation()">${acts}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" class="empty">Sin contratos con ese filtro.</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">Sin contratos con ese filtro.</td></tr>';
   body.querySelectorAll('.ges-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
   body.querySelectorAll('.gstat').forEach(b=>b.onclick=async()=>{
     const st=b.dataset.st;
@@ -906,7 +943,7 @@ function renderGestion(){
 }
 if($('gesQ')) $('gesQ').addEventListener('input',renderGestion);
 if($('gesF')) $('gesF').addEventListener('change',renderGestion);
-if($('gesClear')) $('gesClear').onclick=()=>{ $('gesQ').value=''; $('gesF').value=''; renderGestion(); };
+if($('gesClear')) $('gesClear').onclick=()=>{ $('gesQ').value=''; $('gesF').value=''; GESBUCKET=''; renderGesBuckets(); renderGestion(); };
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
 /* ---------------- Helpers ---------------- */

@@ -8,6 +8,7 @@ module Api
     include TokenAuthenticatable
 
     ROLES = %w[master admin sistema admin_redes].freeze
+    LIBRARY_KEY = 'marketing_library'
 
     before_action :authorize_mkt!
 
@@ -61,6 +62,38 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    # GET /api/marketing/library
+    # Biblioteca de publicaciones: textos guardados para revisar/editar ANTES de
+    # publicarlos en grupos o en la página. Se guarda en AppSetting (sin migración).
+    def library
+      render json: { items: library_items }, status: :ok
+    end
+
+    # PUT /api/marketing/library { items: [{ id, title, body }] }
+    def save_library
+      items = Array(params[:items]).map do |it|
+        {
+          'id'    => it[:id].to_i,
+          'title' => it[:title].to_s.strip[0, 120],
+          'body'  => it[:body].to_s[0, 8000]
+        }
+      end
+      items = items.reject { |it| it['title'].blank? && it['body'].blank? }
+      return render(json: { error: 'Máximo 50 textos en la biblioteca.' }, status: :unprocessable_entity) if items.size > 50
+
+      # Ids estables para ediciones futuras
+      next_id = (items.map { |i| i['id'] }.max || 0) + 1
+      items.each { |i| (i['id'] = next_id; next_id += 1) if i['id'] <= 0 }
+
+      AppSetting.set(LIBRARY_KEY, items.to_json)
+      AuditLog.record!(actor: @current_user, action: 'marketing_library',
+                       label: 'Biblioteca de publicaciones',
+                       details: "Guardó #{items.size} texto(s)")
+      render json: { items: items }, status: :ok
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     # POST /api/marketing/reply { comment_id, network, message }
     def reply
       msg = params[:message].to_s.strip
@@ -77,6 +110,19 @@ module Api
     end
 
     private
+
+    # Textos guardados (BD) o los 3 de arranque del repo.
+    def library_items
+      raw = AppSetting.get(LIBRARY_KEY)
+      if raw.present?
+        parsed = JSON.parse(raw) rescue nil
+        return parsed if parsed.is_a?(Array)
+      end
+      path = Rails.root.join('db', 'templates', 'marketing_library.json')
+      return [] unless File.exist?(path)
+
+      JSON.parse(File.read(path)) rescue []
+    end
 
     def authorize_mkt!
       return if ROLES.include?(@current_user&.role&.name)

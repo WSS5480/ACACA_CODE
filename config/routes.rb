@@ -154,6 +154,9 @@ Rails.application.routes.draw do
     get  'marketing/comments', to: 'api/marketing#comments'
     post 'marketing/publish',  to: 'api/marketing#publish'
     post 'marketing/reply',    to: 'api/marketing#reply'
+    # Biblioteca de publicaciones (textos guardados para revisar/editar antes de postear)
+    get  'marketing/library',  to: 'api/marketing#library'
+    put  'marketing/library',  to: 'api/marketing#save_library'
 
     # Bitácora de conversaciones (notas de llamadas) por persona
     resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create, :destroy]

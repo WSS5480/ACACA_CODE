@@ -24,6 +24,7 @@ class AuditLog < ApplicationRecord
     'staff_deleted'        => 'Revocó acceso de usuario del equipo',
     'contract_status_changed' => 'Cambió estado de cuenta (devuelto/castigado)',
     'marketing_post'       => 'Publicó en redes sociales',
+    'marketing_library'    => 'Editó biblioteca de publicaciones',
     'wa_message_deleted'   => 'Eliminó mensaje de WhatsApp',
     'note_deleted'         => 'Eliminó nota de llamada',
     'thread_deleted'       => 'Eliminó conversación completa'

@@ -329,6 +329,10 @@
         <div id="mktCards" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
         <div class="sec" style="padding:16px;margin-bottom:14px">
           <div class="stitle" style="padding:0 0 8px">✏️ Nueva publicación</div>
+          <div id="mktEmojiBar" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <button type="button" id="mktBoldBtn" title="Selecciona texto y conviértelo en negrita (se ve en Facebook y WhatsApp)" style="border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:8px;padding:4px 10px;font-weight:800;font-size:13px;cursor:pointer">𝗕 Negrita</button>
+            <span class="muted" style="font-size:11px;margin-right:4px">·</span>
+          </div>
           <textarea id="mktText" placeholder="¿Qué quieres publicar?" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;min-height:84px;font-family:inherit;resize:vertical"></textarea>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
             <input id="mktImg" placeholder="URL de la imagen (obligatoria para Instagram)" style="flex:1;min-width:240px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px">
@@ -345,6 +349,15 @@
           </div>
           <p class="muted" id="mktMsg" style="margin:8px 0 0;font-size:12.5px"></p>
           <p class="muted" style="margin:6px 0 0;font-size:11.5px">Instagram requiere imagen y NO permite programar por API (limitación de Meta) — en IG se publica al momento. La programación sí funciona en Facebook.</p>
+        </div>
+        <div class="sec" style="padding:16px;margin-bottom:14px">
+          <div class="stitle" style="padding:0 0 8px;display:flex;align-items:center;gap:10px">📚 Biblioteca de publicaciones
+            <span class="muted" style="font-weight:400;font-size:12px">textos guardados para revisar y editar antes de postear</span>
+            <div class="sp"></div>
+            <button class="btn" id="mklAdd" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">➕ Nuevo texto</button>
+          </div>
+          <div id="mklList"><p class="empty">Cargando…</p></div>
+          <p class="muted" id="mklMsg" style="margin:8px 0 0;font-size:12.5px"></p>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="sec" style="padding:16px"><div class="stitle" style="padding:0 0 8px">📰 Publicaciones recientes</div><div id="mktPosts"><p class="empty">Cargando…</p></div></div>
@@ -1846,6 +1859,7 @@ async function loadMarketing(){
     return;
   }
   $('mktSetup').style.display='none'; $('mktMain').style.display='';
+  mktInitCreator();
   const fb=ov.data.fb||{}, ig=ov.data.ig||null, reach=ov.data.reach_daily||[];
   const tot=reach.reduce((s,d)=>s+(Number(d.value)||0),0);
   $('mktCards').innerHTML =
@@ -1853,7 +1867,120 @@ async function loadMarketing(){
     +(ig?mktCard('📸 Instagram · @'+esc(ig.username||''), Number(ig.followers_count||0).toLocaleString(), 'seguidores', '#E1306C'):'')
     +(reach.length?mktCard('👁 Alcance 7 días', tot.toLocaleString(), 'personas (Facebook)', '#1b2a4a'):'');
   if(ov.data.error) $('mktMsg').textContent=ov.data.error;
-  loadMktPosts(); loadMktComments();
+  loadMktPosts(); loadMktComments(); loadMktLib();
+}
+
+/* ---- Creador de publicaciones: emojis + negrita que sí se ve en Facebook ---- */
+const MKT_EMOJIS=['🇺🇸','🇲🇽','➡️','🛒','📦','🚚','🏠','📱','📺','🧊','💳','💰','✅','🔥','🎉','🎁','⭐','😍','🙌','👨‍👩‍👧‍👦','❤️','👉','📲','💬'];
+let mktLastTa=null; // último textarea enfocado (composer o editor de la biblioteca)
+function mktInsert(txt){
+  const ta=(mktLastTa&&document.body.contains(mktLastTa))?mktLastTa:$('mktText'); if(!ta) return;
+  const s=ta.selectionStart||0, e=ta.selectionEnd||0;
+  ta.value=ta.value.slice(0,s)+txt+ta.value.slice(e);
+  ta.focus(); ta.selectionStart=ta.selectionEnd=s+txt.length;
+}
+// Negrita Unicode: se conserva al pegar en Facebook/WhatsApp (que no permiten formato)
+function uBold(str){
+  let out='';
+  for(const ch of str.normalize('NFD')){
+    const c=ch.codePointAt(0);
+    if(c>=65&&c<=90) out+=String.fromCodePoint(0x1D5D4+c-65);
+    else if(c>=97&&c<=122) out+=String.fromCodePoint(0x1D5EE+c-97);
+    else if(c>=48&&c<=57) out+=String.fromCodePoint(0x1D7EC+c-48);
+    else out+=ch;
+  }
+  return out.normalize('NFC');
+}
+function mktBoldSel(){
+  const ta=(mktLastTa&&document.body.contains(mktLastTa))?mktLastTa:$('mktText'); if(!ta) return;
+  const s=ta.selectionStart||0, e=ta.selectionEnd||0;
+  if(s===e){ $('mklMsg').textContent='Selecciona primero el texto que quieres en negrita.'; return; }
+  const b=uBold(ta.value.slice(s,e));
+  ta.value=ta.value.slice(0,s)+b+ta.value.slice(e);
+  ta.focus(); ta.selectionStart=s; ta.selectionEnd=s+b.length;
+}
+function mktInitCreator(){
+  const bar=$('mktEmojiBar'); if(!bar||bar.dataset.ready) return; bar.dataset.ready='1';
+  MKT_EMOJIS.forEach(em=>{
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=em;
+    b.style.cssText='border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 7px;font-size:17px;cursor:pointer;line-height:1.2';
+    b.onmousedown=ev=>ev.preventDefault(); // no robar el foco del textarea
+    b.onclick=()=>mktInsert(em);
+    bar.appendChild(b);
+  });
+  $('mktBoldBtn').onmousedown=ev=>ev.preventDefault();
+  $('mktBoldBtn').onclick=mktBoldSel;
+  document.addEventListener('focusin',e=>{ if(e.target&&(e.target.id==='mktText'||e.target.id==='mklBody')) mktLastTa=e.target; });
+}
+
+/* ---- Biblioteca de publicaciones: ver/editar los textos ANTES de postear ---- */
+let mklItems=[], mklEditing=null; // id del texto en edición ('new' = nuevo)
+async function loadMktLib(){
+  const r=await api('GET','/api/marketing/library');
+  mklItems=(r.data&&r.data.items)||[]; mklEditing=null; renderMktLib();
+}
+async function saveMktLib(list,okMsg){
+  $('mklMsg').textContent='Guardando…';
+  const r=await api('PUT','/api/marketing/library',{items:list});
+  if(r.ok&&r.data&&r.data.items){ mklItems=r.data.items; mklEditing=null; renderMktLib(); $('mklMsg').textContent=okMsg||'✓ Guardado.'; }
+  else $('mklMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
+}
+function mklEditor(it){
+  const isNew=!it.id;
+  return `<div style="border:1.5px solid var(--brand-d);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fffdf9">
+    <input id="mklTitle" value="${esc(it.title||'')}" placeholder="Título del texto (p. ej. Grupos de compra y venta)" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:700;margin-bottom:8px">
+    <textarea id="mklBody" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;min-height:180px;font-family:inherit;resize:vertical;line-height:1.55">${esc(it.body||'')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn" id="mklSaveB" style="font-size:12.5px;padding:7px 14px">💾 Guardar</button>
+      <button class="btn" id="mklCancelB" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 14px">Cancelar</button>
+      ${!isNew?'<div class="sp"></div><button class="btn" id="mklDelB" style="background:#fdecec;color:#b71c1c;font-size:12.5px;padding:7px 14px">🗑 Eliminar texto</button>':''}
+    </div>
+  </div>`;
+}
+function renderMktLib(){
+  const b=$('mklList'); if(!b) return;
+  let html='';
+  if(mklEditing==='new') html+=mklEditor({});
+  html+=mklItems.map(it=> mklEditing===it.id ? mklEditor(it) : `<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <b style="color:var(--navy);font-size:13.5px">${esc(it.title||'Sin título')}</b>
+      <div class="sp"></div>
+      <button class="btn mkl-post" data-id="${it.id}" style="background:#1877F2;font-size:12px;padding:6px 11px">🚀 Publicar en Facebook</button>
+      <button class="btn mkl-use" data-id="${it.id}" style="font-size:12px;padding:6px 11px">⬆ Usar en publicación</button>
+      <button class="btn mkl-copy" data-id="${it.id}" style="background:#eef0f6;color:var(--navy);font-size:12px;padding:6px 11px">📋 Copiar</button>
+      <button class="btn mkl-edit" data-id="${it.id}" style="background:#eef0f6;color:var(--navy);font-size:12px;padding:6px 11px">✏️ Editar</button>
+    </div>
+    <div style="font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:110px;overflow:hidden;position:relative;color:#3c4043">${esc(it.body||'')}</div>
+    <button class="mkl-more" data-id="${it.id}" style="border:0;background:none;color:var(--brand-d);font-weight:700;font-size:12px;cursor:pointer;padding:4px 0">ver completo ▾</button>
+  </div>`).join('');
+  b.innerHTML=html||'<p class="empty">Sin textos guardados. Usa ➕ Nuevo texto para agregar el primero.</p>';
+  const find=id=>mklItems.find(x=>x.id===Number(id));
+  b.querySelectorAll('.mkl-post').forEach(x=>x.onclick=async()=>{
+    const it=find(x.dataset.id); if(!it||!String(it.body||'').trim()) return;
+    if(!confirm('¿PUBLICAR AHORA este texto en la página de FACEBOOK?\n\n«'+String(it.title||'')+'»\n\nSerá visible al público.')) return;
+    x.disabled=true; x.textContent='Publicando…'; $('mklMsg').textContent='';
+    const r=await api('POST','/api/marketing/publish',{message:it.body,networks:['fb']});
+    x.disabled=false; x.textContent='🚀 Publicar en Facebook';
+    if(r.ok&&r.data&&r.data.ok){ $('mklMsg').textContent='✓ Publicado en Facebook.'; setTimeout(loadMktPosts,1200); }
+    else{ const res=r.data&&r.data.results; let m=(r.data&&r.data.error)||'No se pudo publicar.'; if(res&&res.fb&&res.fb.error&&res.fb.error.message) m=res.fb.error.message; $('mklMsg').textContent=m; }
+  });
+  b.querySelectorAll('.mkl-use').forEach(x=>x.onclick=()=>{ const it=find(x.dataset.id); if(!it) return; $('mktText').value=it.body||''; $('mktText').scrollIntoView({behavior:'smooth',block:'center'}); $('mklMsg').textContent='✓ Texto cargado en “Nueva publicación” — revísalo y publica.'; });
+  b.querySelectorAll('.mkl-copy').forEach(x=>x.onclick=async()=>{ const it=find(x.dataset.id); if(!it) return; try{ await navigator.clipboard.writeText(it.body||''); x.textContent='✅ Copiado'; setTimeout(()=>x.textContent='📋 Copiar',1500); }catch(e){ $('mklMsg').textContent='No se pudo copiar al portapapeles.'; } });
+  b.querySelectorAll('.mkl-edit').forEach(x=>x.onclick=()=>{ mklEditing=Number(x.dataset.id); renderMktLib(); });
+  b.querySelectorAll('.mkl-more').forEach(x=>x.onclick=()=>{ const box=x.previousElementSibling; if(box.style.maxHeight){ box.style.maxHeight=''; x.textContent='ver menos ▴'; } else { box.style.maxHeight='110px'; x.textContent='ver completo ▾'; } });
+  const sv=$('mklSaveB');
+  if(sv) sv.onclick=()=>{
+    const title=$('mklTitle').value.trim(), body=$('mklBody').value;
+    if(!title&&!body.trim()){ $('mklMsg').textContent='Escribe un título o el texto.'; return; }
+    let list;
+    if(mklEditing==='new') list=mklItems.concat([{id:0,title:title,body:body}]);
+    else list=mklItems.map(x=>x.id===mklEditing?{id:x.id,title:title,body:body}:x);
+    saveMktLib(list);
+  };
+  const cb=$('mklCancelB'); if(cb) cb.onclick=()=>{ mklEditing=null; renderMktLib(); $('mklMsg').textContent=''; };
+  const db=$('mklDelB');
+  if(db) db.onclick=()=>{ if(!confirm('¿Eliminar este texto de la biblioteca?')) return; saveMktLib(mklItems.filter(x=>x.id!==mklEditing),'✓ Texto eliminado.'); };
 }
 async function loadMktPosts(){
   const r=await api('GET','/api/marketing/posts'); const b=$('mktPosts');
@@ -1907,6 +2034,7 @@ async function mktPublish(sched){
 }
 if($('mktPub')) $('mktPub').onclick=()=>mktPublish(false);
 if($('mktSched')) $('mktSched').onclick=()=>mktPublish(true);
+if($('mklAdd')) $('mklAdd').onclick=()=>{ mklEditing='new'; renderMktLib(); $('mklList').scrollIntoView({behavior:'smooth',block:'start'}); };
 if($('mktRefresh')) $('mktRefresh').onclick=loadMarketing;
 
 function conStatCard(label,val,color){ return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px"><div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.03em">${label}</div><div style="font-size:20px;font-weight:800;${color?('color:'+color):''}">${val}</div></div>`; }

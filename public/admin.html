@@ -998,7 +998,7 @@ function renderGesWb(){
     const num=pick(c,['contract_number'],null)||('Pedido '+(pick(c,['order_ref'],null)||('PED-'+c.id)));
     const cpd=Number(pick(c,['past_due_amount'],0))||0, cdays=Number(pick(c,['days_past_due'],0))||0;
     const th=pick(c,['item_thumbs'],[])||[];
-    const thumbs=th.length?`<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">${th.map(x=>`<div title="${esc(x.title||'')}" style="display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:4px 8px;background:#fff;max-width:230px">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'" style="width:36px;height:36px;object-fit:contain;flex-shrink:0">`:'📦'}<span style="font-size:11.5px;color:#3c4043;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title||'')}</span></div>`).join('')}</div>`:'';
+    const thumbs=th.length?`<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">${th.map(x=>`<div title="${esc(x.title||'')}" style="display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:4px 8px;background:#fff;max-width:230px">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'" onclick="event.stopPropagation();zoomImg(this.src,'${esc(String(x.title||'').replace(/'/g,''))}')" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;cursor:zoom-in">`:'📦'}<span style="font-size:11.5px;color:#3c4043;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title||'')}</span></div>`).join('')}</div>`:'';
     return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px">
       ${thumbs}
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
@@ -1190,6 +1190,19 @@ if($('gwBack')) $('gwBack').onclick=()=>{ show('gestion'); };
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
 /* ---------------- Helpers ---------------- */
+// Clic en una miniatura de producto -> foto GRANDE (clic afuera o Esc para cerrar)
+function zoomImg(src,title){
+  if(!src) return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(10,14,25,.82);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out;padding:24px';
+  ov.innerHTML=`<img src="${src.replace(/"/g,'&quot;')}" style="max-width:88vw;max-height:80vh;object-fit:contain;border-radius:12px;background:#fff;padding:10px">`+
+    (title?`<div style="color:#fff;font-size:14px;margin-top:12px;max-width:80vw;text-align:center">${String(title).replace(/</g,'&lt;')}</div>`:'')+
+    `<div style="color:#c7cddc;font-size:11.5px;margin-top:6px">clic o Esc para cerrar</div>`;
+  const close=()=>{ ov.remove(); document.removeEventListener('keydown',onk); };
+  const onk=(e)=>{ if(e.key==='Escape') close(); };
+  ov.onclick=close; document.addEventListener('keydown',onk);
+  document.body.appendChild(ov);
+}
 const money=v=>{const n=Number(v); return isFinite(n)&&n!==0?('$'+n.toLocaleString('en-US',{maximumFractionDigits:2})):(n===0?'$0':'—');};
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // jsonapi-serializer or plain array -> array of attribute objects (with id)
@@ -1252,7 +1265,7 @@ function orderRow(g,withStatus){
   const approved = !!pick(o,['admin_approved'],false);
   // La compra en Amazon SOLO se habilita cuando la orden fue aprobada por el admin (enlaces por artículo en la verificación).
   const img0=pick(o,['product_image_url'],null);
-  const thumb=img0?`<img src="${esc(img0)}" onerror="this.style.display='none'" style="width:34px;height:34px;object-fit:contain;border-radius:6px;border:1px solid #eee;background:#fff;flex-shrink:0" title="${esc(titles[0]||'')}">`:'';
+  const thumb=img0?`<img src="${esc(img0)}" onerror="this.style.display='none'" onclick="event.stopPropagation();zoomImg(this.src,this.title)" style="width:34px;height:34px;object-fit:contain;border-radius:6px;border:1px solid #eee;background:#fff;flex-shrink:0;cursor:zoom-in" title="${esc(titles[0]||'')}">`:'';
   const prodTxt = (grp.length===1 && asin && approved && withStatus) ? `<a href="https://www.amazon.com.mx/dp/${esc(asin)}" target="_blank" rel="noopener" title="Abrir en Amazon para comprar" style="color:var(--brand-d)" onclick="event.stopPropagation()">${esc(prod)}</a>` : `<span title="${esc(titles.join(' | '))}">${esc(prod.length>90?prod.slice(0,90)+'…':prod)}</span>`;
   const prodCell = `<span style="display:inline-flex;align-items:center;gap:8px">${thumb}${prodTxt}</span>`;
   const precio = grp.reduce((s,x)=>{const v=pick(x,['product_cost_usd','price','product_price','total'],null); return v!=null?(s??0)+Number(v):s;},null);
@@ -1373,7 +1386,7 @@ async function openOrderVerify(id){
     const ia=pick(it,['product_asin'],null), iap=!!pick(it,['admin_approved'],false), idel=pick(it,['delivered_at'],null);
     const iimg=pick(it,['product_image_url'],null);
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)">
-      ${iimg?`<img src="${esc(iimg)}" onerror="this.style.display='none'" style="width:46px;height:46px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;flex-shrink:0">`:''}
+      ${iimg?`<img src="${esc(iimg)}" onerror="this.style.display='none'" onclick="event.stopPropagation();zoomImg(this.src,this.title)" title="${esc(pick(it,['product_title'],'')||'')}" style="width:46px;height:46px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;flex-shrink:0;cursor:zoom-in">`:''}
       <div style="flex:1;font-weight:600;font-size:13.5px">${esc(pick(it,['product_title'],'—'))} <span class="mono muted" style="font-size:11.5px">${esc(ia||'')}</span></div>
       ${fulfillPill(it)}
       ${idel?`<span class="btn" style="${semBtn('green')};padding:5px 10px;font-size:12px;cursor:default">Entregado ✓</span>`:''}
@@ -2581,7 +2594,7 @@ async function openContract(id){
     const opCell = delivered ? '—'
       : `<a href="#" onclick="event.preventDefault();show('ordenes');openOrderVerify('${esc(String(o.id))}')" style="color:var(--brand-d);font-weight:700;font-size:12.5px;text-decoration:none">Ver en Órdenes →</a>`;
     const cim=pick(o,['product_image_url'],null);
-    return `<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${cim?`<img src="${esc(cim)}" onerror="this.style.display='none'" style="width:38px;height:38px;object-fit:contain;border-radius:6px;border:1px solid #eee;background:#fff;flex-shrink:0">`:''}<span>${esc(pick(o,['product_title','product_name','title'],'-'))}</span></span></td>
+    return `<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${cim?`<img src="${esc(cim)}" onerror="this.style.display='none'" onclick="event.stopPropagation();zoomImg(this.src,this.title)" title="${esc(pick(o,['product_title','product_name','title'],'')||'')}" style="width:38px;height:38px;object-fit:contain;border-radius:6px;border:1px solid #eee;background:#fff;flex-shrink:0;cursor:zoom-in">`:''}<span>${esc(pick(o,['product_title','product_name','title'],'-'))}</span></span></td>
       <td class="mono">${esc(asin||'-')}</td>
       <td class="right mono">${money(pick(o,['product_price','price'],0))}</td>
       <td>${fulfillPill(o)}</td>

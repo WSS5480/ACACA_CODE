@@ -11,11 +11,10 @@ class Contract < ApplicationRecord
 
   STATUSES = %w[active paid cancelled].freeze
   validates :status, inclusion: { in: STATUSES }
-  # El número de CONTRATO se asigna hasta recibir el pago inicial; antes de pagar,
-  # la compra sólo tiene número de PEDIDO (order_ref). Contado ('paid') lo recibe al crearse.
+  # El número de CONTRATO se asigna hasta que el equipo pulsa "Generar contrato
+  # y enviar a firma" (assign_contract_number! en generate_document). Antes de
+  # eso — incluso ya pagado el inicial — la compra sólo tiene número de PEDIDO.
   validates :contract_number, uniqueness: true, allow_nil: true
-
-  before_validation :ensure_number, on: :create
 
   # Número de pedido: identifica la compra desde el checkout (antes del pago).
   def order_ref
@@ -79,13 +78,14 @@ class Contract < ApplicationRecord
   def account_status
     return 'returned' if status == 'returned'
     return 'charged_off' if status == 'charged_off'
-    return 'pending_initial' unless status == 'paid' || initial_paid?
-    return 'missing_info' unless status == 'paid' || datos_complete?
+    return 'pending_initial' unless initial_paid?
+    return 'missing_info' unless datos_complete?
 
-    # El pipeline SIEMPRE se recorre completo (también en compras de contado):
-    # aprobación -> firma -> entrega. Nada se marca "liquidado" antes de entregarse.
+    # El pipeline SIEMPRE se recorre completo (también en compras de contado y
+    # aunque el estatus interno ya diga "pagado"): aprobación -> firma -> entrega.
+    # Nada se marca "liquidado" antes de entregarse.
     os = orders.to_a
-    if os.any? && status != 'paid'
+    if os.any?
       return 'pending_approval' unless os.all? { |o| o.respond_to?(:admin_approved) && o.admin_approved }
       return 'pending_signature' if respond_to?(:signed_at) && signed_at.blank?
       return 'pending_delivery' unless os.all? { |o| o.respond_to?(:delivered_at) && o.delivered_at.present? }
@@ -372,19 +372,4 @@ class Contract < ApplicationRecord
     remaining.round(2)
   end
 
-  private
-
-  def ensure_number
-    return if contract_number.present?
-    # Sólo las ventas de CONTADO nacen con número de contrato (nacen pagadas);
-    # a crédito, el número se asigna al recibir el pago inicial (assign_contract_number!).
-    return unless status == 'paid'
-    loop do
-      candidate = "C#{Time.current.strftime('%y%m')}#{SecureRandom.random_number(100000).to_s.rjust(5, '0')}"
-      unless Contract.exists?(contract_number: candidate)
-        self.contract_number = candidate
-        break
-      end
-    end
-  end
 end

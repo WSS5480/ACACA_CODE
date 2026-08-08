@@ -90,8 +90,10 @@ module Api
     end
 
     # GET /api/stripe/config -> llave publicable para montar el formulario de tarjeta
-    # (la usa Gestión de cuenta para cobrar con tarjeta NUEVA tecleada por el staff)
-    def config
+    # (la usa Gestión de cuenta para cobrar con tarjeta NUEVA tecleada por el staff).
+    # OJO: el método NO puede llamarse `config` — chocaría con el `config` interno
+    # de Rails en los controladores y rompe TODOS los cobros (recursión infinita).
+    def publishable_config
       render json: { publishable_key: ENV['STRIPE_PUBLISHABLE_KEY'].to_s.presence ||
                                       ENV['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'].to_s }, status: :ok
     end

@@ -1360,7 +1360,7 @@ async function openOrderVerify(id){
     ${semStep(stBuy,'4','Compra en Amazon')}
     ${semStep(stDel,'5','Entrega')}
   </div>`;
-  const docCell = o.contract_number ? (docSigned
+  const docCell = pick(o,['contract_id'],null) ? (docSigned
     ? `<span class="btn" style="${semBtn('green')};cursor:default">✍️ Contrato firmado ✓</span>`
     : `<button class="btn" id="ovDoc" style="${semBtn(stDoc)}">📄 ${docGen?'Reenviar firma por WhatsApp':'Generar contrato y enviar a firma'}</button>${docGen?'<span class="pill p-pend">Esperando firma del cliente</span>':''}`) : '';
   const itemsHtml=grp.map(it=>{
@@ -1434,7 +1434,7 @@ async function openOrderVerify(id){
       <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/3)'):'')}</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="${semBtn(stApr)}">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${docCell}
-      ${o.contract_number?(allDelivered
+      ${pick(o,['contract_id'],null)?(allDelivered
         ? `<span class="btn" style="${semBtn('green')};cursor:default">🛒 Compra completada ✓</span>`
         : (canBuy
           ? `<button class="btn" id="ovBuy" style="${semBtn('yellow')}">🛒 Comprar en Amazon</button>`

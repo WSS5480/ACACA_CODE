@@ -22,8 +22,8 @@ class Payment < ApplicationRecord
   end
 
   def apply_to_contract
-    # El PRIMER pago convierte el pedido en contrato: se asigna el número de contrato.
-    contract.assign_contract_number! if contract.respond_to?(:assign_contract_number!)
+    # OJO: el pago YA NO asigna número de contrato. El pedido se convierte en
+    # CONTRATO hasta que el equipo pulsa "Generar contrato y enviar a firma".
     if apply_mode.to_s == 'saldo' && contract.respond_to?(:apply_payment_saldo!)
       contract.apply_payment_saldo!(amount)
     else

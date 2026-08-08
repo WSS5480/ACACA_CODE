@@ -1069,19 +1069,39 @@ function renderGesWb(){
       ${cards||'<p class="empty">Sin contratos.</p>'}
     </div>
     <div class="sec" style="padding:16px">
-      <div class="stitle" style="padding:0 0 8px">📒 Comentarios y compromisos de pago</div>
-      <div id="gwNotes"><p class="empty">Cargando…</p></div>
-      <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:12px">
-        <textarea id="gwNoteTxt" placeholder="Documenta la llamada / acuerdo con el cliente…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:64px;font-family:inherit;resize:vertical"></textarea>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
-          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer"><input type="checkbox" id="gwProm"> 🤝 Compromiso de pago</label>
-          <input id="gwPromAmt" type="number" min="0" step="0.01" placeholder="$ monto" style="display:none;width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;text-align:right">
-          <input id="gwPromDate" type="date" style="display:none;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
-          <div class="sp"></div>
-          <button class="btn" id="gwNoteAdd">Guardar nota</button>
-        </div>
-        <p class="muted" id="gwNoteMsg" style="margin:6px 0 0;font-size:12px"></p>
+      <div class="stitle" style="padding:0 0 8px">✍️ Documentar contacto</div>
+      <textarea id="gwNoteTxt" placeholder="Documenta la llamada / acuerdo con el cliente…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:64px;font-family:inherit;resize:vertical"></textarea>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer"><input type="checkbox" id="gwProm"> 🤝 Compromiso de pago</label>
+        <input id="gwPromAmt" type="number" min="0" step="0.01" placeholder="$ monto" style="display:none;width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;text-align:right">
+        <input id="gwPromDate" type="date" style="display:none;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px">
+        <label id="gwPromNotifyL" style="display:none;align-items:center;gap:6px;font-size:12.5px;color:var(--navy);cursor:pointer"><input type="checkbox" id="gwPromNotify" checked> Avisar por WhatsApp</label>
+        <div class="sp"></div>
+        <button class="btn" id="gwNoteAdd">Guardar</button>
       </div>
+      <p class="muted" id="gwNoteMsg" style="margin:6px 0 0;font-size:12px"></p>
+      <p class="muted" id="gwPromHint" style="display:none;margin:4px 0 0;font-size:11.5px">Al guardarlo se le manda un WhatsApp de confirmación y, <b>el día anterior a la fecha</b>, la plataforma le manda sola el recordatorio.</p>
+    </div>
+    <div class="sec" style="padding:16px;margin-top:14px">
+      <div class="stitle" style="padding:0 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">📒 Historial de la cuenta
+        <span class="muted" style="font-weight:400;font-size:12px">WhatsApp, correos, llamadas y compromisos</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input id="gwLogQ" placeholder="Buscar en el historial…" style="flex:1;min-width:180px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px">
+        <select class="sel" id="gwLogT" style="font-size:13px">
+          <option value="">Todo</option>
+          <option value="wa">WhatsApp</option>
+          <option value="nota">Notas y llamadas</option>
+          <option value="prom">Compromisos</option>
+          <option value="mail">Correos</option>
+        </select>
+        <span class="muted" style="font-size:12px">Del</span>
+        <input type="date" id="gwLogFrom" style="border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:12.5px">
+        <span class="muted" style="font-size:12px">al</span>
+        <input type="date" id="gwLogTo" style="border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:12.5px">
+        <button class="btn" id="gwLogClear" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">Limpiar</button>
+      </div>
+      <div id="gwNotes"><p class="empty">Cargando…</p></div>
     </div>`;
   $('gwBody').querySelectorAll('.gw-open').forEach(a=>a.onclick=()=>{ loaded.con=1; show('contratos'); openContract(a.dataset.cid); });
   $('gwBody').querySelectorAll('.gwndset').forEach(b=>b.onclick=async()=>{
@@ -1107,39 +1127,87 @@ function renderGesWb(){
     else alert((r.data&&r.data.error)||'No se pudo cambiar el estado.');
   });
   $('gwPayGo').onclick=gwPay;
-  $('gwProm').onchange=()=>{ const on=$('gwProm').checked; $('gwPromAmt').style.display=on?'':'none'; $('gwPromDate').style.display=on?'':'none'; };
+  $('gwProm').onchange=()=>{ const on=$('gwProm').checked;
+    $('gwPromAmt').style.display=on?'':'none'; $('gwPromDate').style.display=on?'':'none';
+    $('gwPromNotifyL').style.display=on?'inline-flex':'none'; $('gwPromHint').style.display=on?'':'none'; };
+  ['gwLogQ','gwLogT','gwLogFrom','gwLogTo'].forEach(id=>{ const el=$(id); if(el) el.addEventListener(id==='gwLogQ'?'input':'change',renderGwLog); });
+  if($('gwLogClear')) $('gwLogClear').onclick=()=>{ ['gwLogQ','gwLogT','gwLogFrom','gwLogTo'].forEach(id=>{ if($(id)) $(id).value=''; }); renderGwLog(); };
   $('gwNoteAdd').onclick=gwAddNote;
 }
+let GWLOG=[];
+// HISTORIAL de la cuenta: WhatsApp + correos + llamadas + compromisos, en una
+// sola línea de tiempo con búsqueda y filtros de fecha.
 async function loadGwNotes(){
   const box=$('gwNotes'); if(!box) return;
-  const r=await api('GET','/api/contact_logs?user_id='+encodeURIComponent(GW.uid));
-  const logs=(r.data&&r.data.logs)||[];
+  const [rl,rm]=await Promise.all([
+    api('GET','/api/contact_logs?user_id='+encodeURIComponent(GW.uid)),
+    GW.phone?api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(GW.phone)):Promise.resolve({ok:true,data:{messages:[]}})
+  ]);
+  const notes=((rl.data&&rl.data.logs)||[]).map(l=>{
+    const b=String(l.body||'');
+    const tipo = b.includes('COMPROMISO')?'prom' : (b.startsWith('📧')?'mail':'nota');
+    return {tipo:tipo, id:l.id, at:l.created_at, who:l.author_name||'—', body:b, del:'log'};
+  });
+  const msgs=((rm.data&&rm.data.messages)||[]).map(m=>({
+    tipo:'wa', id:m.id, at:m.created_at, who:(m.direction==='out'?'Nosotros':(GW.name||'Cliente')),
+    body:String(m.body||''), dir:m.direction, st:m.status, del:'wa'}));
+  GWLOG=[...notes,...msgs].sort((a,b)=>new Date(b.at)-new Date(a.at));
+  renderGwLog();
+}
+function renderGwLog(){
+  const box=$('gwNotes'); if(!box) return;
+  const q=(($('gwLogQ')||{}).value||'').trim().toLowerCase();
+  const t=(($('gwLogT')||{}).value||'');
+  const f=(($('gwLogFrom')||{}).value||''), to=(($('gwLogTo')||{}).value||'');
+  const fD=f?new Date(f+'T00:00:00'):null, tD=to?new Date(to+'T23:59:59'):null;
+  let l=GWLOG;
+  if(t) l=l.filter(x=>x.tipo===t);
+  if(q) l=l.filter(x=>(x.body+' '+x.who).toLowerCase().includes(q));
+  if(fD) l=l.filter(x=>new Date(x.at)>=fD);
+  if(tD) l=l.filter(x=>new Date(x.at)<=tD);
   const canDel=['master','admin'].includes(MYROLE);
-  box.innerHTML=logs.length?logs.slice().reverse().map(l=>{
-    const prom=String(l.body||'').includes('COMPROMISO DE PAGO');
-    return `<div style="border-left:3px solid ${prom?'#b26a00':'var(--line)'};padding:7px 12px;margin-bottom:8px;${prom?'background:#fffaf2;border-radius:0 9px 9px 0;':''}">
-      <span class="muted" style="font-size:11.5px">${esc(fdatetime(l.created_at))} · ${esc(l.author_name||'—')}</span>
-      ${canDel?`<button class="gwnotedel" data-id="${esc(String(l.id))}" title="Eliminar nota" style="border:0;background:none;cursor:pointer;color:#c62828;font-size:12px;float:right">✕</button>`:''}
-      <p style="font-size:13px;margin:3px 0 0;white-space:pre-wrap">${esc(l.body||'')}</p>
+  const CH={wa:['#25D366','💬','WhatsApp'],nota:['#5b6270','📝','Nota'],prom:['#b26a00','🤝','Compromiso'],mail:['#1b2a4a','📧','Correo']};
+  box.innerHTML = l.length ? `<div style="max-height:420px;overflow:auto">`+l.map(x=>{
+    const c=CH[x.tipo]||CH.nota;
+    return `<div style="border-left:3px solid ${c[0]};padding:7px 12px;margin-bottom:8px;${x.tipo==='prom'?'background:#fffaf2;':''}border-radius:0 9px 9px 0">
+      <span class="muted" style="font-size:11.5px">${c[1]} <b style="color:${c[0]}">${c[2]}</b> · ${esc(fdatetime(x.at))} · ${esc(x.who)}${x.tipo==='wa'&&x.st?(' · '+esc(x.st==='read'?'leído':x.st==='delivered'?'entregado':x.st==='failed'?'NO ENTREGADO':'enviado')):''}</span>
+      ${canDel?`<button class="gwlogdel" data-k="${x.del}" data-id="${esc(String(x.id))}" title="Eliminar" style="border:0;background:none;cursor:pointer;color:#c62828;font-size:12px;float:right">✕</button>`:''}
+      <p style="font-size:13px;margin:3px 0 0;white-space:pre-wrap;word-break:break-word">${esc(x.body)}</p>
     </div>`;
-  }).join(''):'<p class="empty">Sin notas todavía. Documenta aquí cada llamada y compromiso.</p>';
-  box.querySelectorAll('.gwnotedel').forEach(b=>b.onclick=async()=>{
-    if(!confirm('¿Eliminar esta nota? Queda registrado en la Bitácora.')) return;
-    const r2=await api('DELETE','/api/contact_logs/'+encodeURIComponent(b.dataset.id));
-    if(r2.ok){ loadGwNotes(); } else alert('No se pudo eliminar.');
+  }).join('')+`</div><p class="muted" style="font-size:11.5px;margin:8px 0 0">${l.length} de ${GWLOG.length} registros</p>`
+   : '<p class="empty">Sin registros con esos filtros.</p>';
+  box.querySelectorAll('.gwlogdel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este registro? Queda asentado en la Bitácora.')) return;
+    const url = b.dataset.k==='wa' ? '/api/whatsapp/messages/'+encodeURIComponent(b.dataset.id)
+                                   : '/api/contact_logs/'+encodeURIComponent(b.dataset.id);
+    const r2=await api('DELETE',url);
+    if(r2.ok){ loadGwNotes(); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
   });
 }
 async function gwAddNote(){
-  let txt=($('gwNoteTxt').value||'').trim();
+  const txt=($('gwNoteTxt').value||'').trim();
+  // COMPROMISO DE PAGO: se registra, se avisa al cliente y queda programado el
+  // recordatorio del día ANTERIOR a la fecha prometida.
   if($('gwProm').checked){
     const amt=parseFloat($('gwPromAmt').value)||0, d=$('gwPromDate').value;
     if(!(amt>0)||!d){ $('gwNoteMsg').textContent='Para un compromiso indica monto y fecha.'; return; }
-    txt='🤝 COMPROMISO DE PAGO: '+money(amt)+' para el '+d+(txt?(' — '+txt):'');
+    const cid=($('gwPayC')&&$('gwPayC').value)||null;
+    $('gwNoteMsg').textContent='Registrando compromiso…';
+    const r=await api('POST','/api/commitments',{user_id:GW.uid, contract_id:cid, amount:amt, due_on:d,
+      phone:GW.phone||null, person_name:GW.name||null, note:txt||null,
+      notify:$('gwPromNotify')?$('gwPromNotify').checked:true});
+    if(r.ok&&r.data&&r.data.ok){
+      const av=r.data.aviso||{};
+      $('gwNoteMsg').textContent='✓ Compromiso registrado'+(av.ok?(' y avisado por '+(av.via==='plantilla'?'plantilla':'WhatsApp')+'. Recordatorio programado para el día anterior.'):(av.skipped?'.':' · aviso NO enviado: '+(av.error||'')));
+      $('gwNoteTxt').value=''; $('gwPromAmt').value=''; $('gwPromDate').value=''; $('gwProm').checked=false; $('gwProm').onchange();
+      loadGwNotes();
+    } else $('gwNoteMsg').textContent=(r.data&&r.data.error)||'No se pudo registrar el compromiso.';
+    return;
   }
   if(!txt){ $('gwNoteMsg').textContent='Escribe la nota.'; return; }
   $('gwNoteMsg').textContent='Guardando…';
   const r=await api('POST','/api/contact_logs',{user_id:GW.uid, person_type:'customer', person_name:GW.name, phone:GW.phone||null, body:txt});
-  if(r.ok&&r.data&&r.data.ok){ $('gwNoteTxt').value=''; $('gwPromAmt').value=''; $('gwPromDate').value=''; $('gwProm').checked=false; $('gwProm').onchange(); $('gwNoteMsg').textContent='✓ Guardado.'; loadGwNotes(); }
+  if(r.ok&&r.data&&r.data.ok){ $('gwNoteTxt').value=''; $('gwNoteMsg').textContent='✓ Guardado.'; loadGwNotes(); }
   else $('gwNoteMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
 }
 async function gwPay(){
@@ -2363,10 +2431,9 @@ async function openWaThread(tail){
   box.innerHTML='<p class="muted" style="padding:16px">Cargando conversación…</p>';
   const ph=t.phone||tail;
   const rm=await api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(ph));
-  const rl=await api('GET','/api/contact_logs?phone='+encodeURIComponent(ph));
-  const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status,err:m.status_error}));
-  const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
-  const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
+  // Sólo mensajes de WhatsApp: las notas y compromisos viven en Gestión de cuenta.
+  const all=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status,err:m.status_error}))
+    .sort((a,b)=>new Date(a.at)-new Date(b.at));
   box.innerHTML=`
     <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;background:#25D366;color:#fff;flex-shrink:0" title="📞 ${esc(ph)}">
       <div style="min-width:0" title="📞 ${esc(ph)}">
@@ -2496,10 +2563,8 @@ async function waLivePoll(){
       if(t){
         const ph=t.phone||WA_CUR;
         const rm=await api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(ph));
-        const rl=await api('GET','/api/contact_logs?phone='+encodeURIComponent(ph));
-        const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status,err:m.status_error}));
-        const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
-        const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
+        const all=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status,err:m.status_error}))
+          .sort((a,b)=>new Date(a.at)-new Date(b.at));
         const fp=waFp(all);
         const mb=$('waMsgs');
         if(mb&&fp!==WA_FP){

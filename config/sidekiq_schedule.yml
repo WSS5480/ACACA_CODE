@@ -7,3 +7,9 @@ fetch_exchange_rate:
   class: 'ExchangeRates::FetchRateJob'
   queue: default
   description: 'Obtiene el tipo de cambio USD->MXN y guarda un ExchangeRate si cambió'
+
+commitment_reminders:
+  cron: '0 15 * * *'            # todos los días a las 15:00 (9:00 a.m. en Monterrey)
+  class: 'CommitmentRemindersJob'
+  queue: notifications
+  description: 'Avisa por WhatsApp el DÍA ANTERIOR a cada compromiso de pago acordado'

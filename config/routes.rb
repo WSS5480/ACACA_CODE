@@ -185,6 +185,11 @@ Rails.application.routes.draw do
     get  'carts',       to: 'api/carts#index'
     delete 'carts/:id', to: 'api/carts#destroy'
 
+    # Compromisos de pago (cobranza): aviso al registrarlo + recordatorio del día anterior
+    resources :commitments, controller: 'api/commitments', only: [:index, :create, :update] do
+      post 'run_reminders', on: :collection
+    end
+
     post 'autopay/run', to: 'api/autopay#run'
   end
 end

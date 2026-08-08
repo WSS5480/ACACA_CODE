@@ -29,7 +29,9 @@ class AuditLog < ApplicationRecord
     'note_deleted'         => 'Eliminó nota de llamada',
     'thread_deleted'       => 'Eliminó conversación completa',
     'wa_template_created'  => 'Creó plantilla de WhatsApp',
-    'wa_template_deleted'  => 'Eliminó plantilla de WhatsApp'
+    'wa_template_deleted'  => 'Eliminó plantilla de WhatsApp',
+    'commitment_created'   => 'Registró compromiso de pago',
+    'commitment_updated'   => 'Actualizó compromiso de pago'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

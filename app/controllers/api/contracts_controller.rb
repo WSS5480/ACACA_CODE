@@ -562,16 +562,14 @@ module Api
       body = "Hola #{user.name}! 🎉 Tu contrato #{contract.contract_number} de acasa está listo. " \
              "Inicia sesión y fírmalo aquí: #{link}\n\n" \
              "Hello! Your acasa contract #{contract.contract_number} is ready. Please log in and sign it here: #{link}"
-      begin
-        WhatsappCloud.new.send_text(user.phone, body)
-        WhatsappMessage.create!(user: user, direction: 'out', wa_phone: WhatsappCloud.normalize_phone(user.phone),
-                                body: body, sent_by_id: @current_user.id)
-        { ok: true, sent_to: user.phone }
-      rescue WhatsappCloud::NotConfigured
-        { ok: false, error: 'WhatsApp no está configurado en el servidor (el contrato SÍ se generó; el cliente lo verá al entrar a su cuenta).' }
-      rescue StandardError => e
-        { ok: false, error: "No se pudo enviar el WhatsApp: #{e.message} (el contrato SÍ se generó)." }
-      end
+      # Fuera de la ventana de 24 h el texto libre NO se entrega: se reenvía como
+      # PLANTILLA aprobada (firma_contrato) para que al cliente SÍ le llegue.
+      r = WhatsappOutbound.deliver(phone: user.phone, text: body, event: 'firma',
+                                   params: [user.name.to_s, contract.contract_number.to_s, link],
+                                   user: user, actor: @current_user)
+      return { ok: true, sent_to: user.phone, via: r[:via] } if r[:ok]
+
+      { ok: false, error: "No se pudo enviar el WhatsApp: #{r[:error]} (el contrato SÍ se generó)." }
     end
 
     def authorize_staff!

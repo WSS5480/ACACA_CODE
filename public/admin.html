@@ -323,6 +323,7 @@
         </select>
         <div class="search" style="max-width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="waSearch" placeholder="Nombre o teléfono…"></div>
         <button class="btn" id="waRefresh" style="background:#eef0f6;color:var(--navy)">Actualizar</button>
+        <button class="btn" id="waTplMgr" style="background:#1b2a4a">📋 Plantillas</button>
         <button class="btn" id="waNew" style="background:#25D366">＋ Nuevo chat</button>
       </div>
       <div id="waNewBox" style="display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:12px">
@@ -1856,7 +1857,7 @@ async function loadClients(){
       const num=pick(u,['number','client_number','phone'],'—');
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null);
       const bal=(line!=null&&avail!=null)?Math.round((Number(line)-Number(avail))*100)/100:pick(u,['account_balance'],null);
-      return `<tr class="cli-row" data-uid="${esc(String(u.id||''))}"><td><button class="cliexp" data-id="${esc(String(u.id||''))}" title="Ver sus contratos aquí" style="border:0;background:none;cursor:pointer;font-size:12px;color:var(--brand-d);margin-right:4px">&#9654;</button><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a></td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+      return `<tr class="cli-row" data-uid="${esc(String(u.id||''))}"><td><button class="cliexp" data-id="${esc(String(u.id||''))}" title="Ver sus contratos aquí" style="border:0;background:none;cursor:pointer;font-size:12px;color:var(--brand-d);margin-right:4px">&#9654;</button><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a>${pick(u,['phone_problem'],null)?`<span title="Teléfono mal capturado: ${esc(pick(u,['phone_problem'],''))} — WhatsApp nunca entregará ahí. Corrígelo en su perfil." style="margin-left:6px;cursor:help">⚠️</span>`:''}</td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
         <td>${cliStatePill(pick(u,['account_state'],null))}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
@@ -2076,6 +2077,108 @@ async function loadCrmCarts(){
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;
+
+/* ---- CONSTRUCTOR de plantillas: crear, revisar estado y elegir cuál usa
+   cada aviso automático de la plataforma (firma, cobranza, carrito, contacto). */
+const TPL_EVENTS={firma:'Contrato listo para firma',pago:'Recordatorio de pago',carrito:'Carrito abandonado',contacto:'Primer contacto'};
+function tplStatusPill(s){
+  const m={APPROVED:['p-appr','Aprobada'],PENDING:['p-pend','En revisión'],IN_APPEAL:['p-pend','En apelación'],
+           REJECTED:['p-canc','Rechazada'],PAUSED:['p-canc','Pausada'],DISABLED:['p-canc','Deshabilitada']}[String(s||'').toUpperCase()];
+  return `<span class="pill ${m?m[0]:'p-other'}">${m?m[1]:esc(s||'—')}</span>`;
+}
+async function waTplMgrOpen(){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:1400;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto';
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;width:min(760px,96vw);padding:22px 24px" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-weight:800;color:var(--navy);font-size:17px">📋 Plantillas de WhatsApp</div>
+      <div class="sp"></div><button id="tmX" style="border:0;background:none;font-size:20px;cursor:pointer;color:var(--mut)">✕</button>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin:0 0 14px">Las plantillas son la única forma de escribirle a alguien que no nos ha contestado en 24 horas. Meta las revisa (suele tardar de minutos a unas horas).</p>
+    <div id="tmList"><p class="muted">Cargando…</p></div>
+    <div class="sec" style="padding:16px;margin-top:14px">
+      <div class="stitle" style="padding:0 0 8px">✏️ Nueva plantilla</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="tmName" placeholder="nombre_de_la_plantilla" style="flex:1;min-width:190px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+        <select class="sel" id="tmCat" title="Utility = avisos de la cuenta (más baratos y se aprueban rápido). Marketing = promoción.">
+          <option value="UTILITY">Utility · avisos de la cuenta</option>
+          <option value="MARKETING">Marketing · promoción</option>
+        </select>
+        <select class="sel" id="tmLang"><option value="es_MX">Español (MX)</option><option value="es">Español</option><option value="en_US">English (US)</option></select>
+      </div>
+      <textarea id="tmBody" placeholder="Hola {{1}}, te escribimos de Ácasa sobre tu contrato {{2}}…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:110px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <button class="btn" id="tmVar" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">＋ Variable {{n}}</button>
+        <span class="muted" style="font-size:11.5px">Usa {{1}}, {{2}}… para los datos que cambian (nombre, monto, enlace).</span>
+      </div>
+      <div id="tmEx" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+      <input id="tmFoot" placeholder="Pie de página (opcional)" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;margin-top:8px">
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn" id="tmSave" style="flex:1">Enviar a revisión de Meta</button>
+      </div>
+      <p class="muted" id="tmMsg" style="font-size:12.5px;margin:8px 0 0"></p>
+    </div>
+    <div class="sec" style="padding:16px;margin-top:14px">
+      <div class="stitle" style="padding:0 0 8px">⚙️ Plantilla para cada aviso automático</div>
+      <div id="tmAuto"><p class="muted">…</p></div>
+      <p class="muted" style="font-size:11.5px;margin:8px 0 0">Cuando la plataforma avisa sola (contrato listo, recordatorio de pago, carrito) y la persona está fuera de la ventana de 24 h, se envía con esta plantilla.</p>
+    </div>
+  </div>`;
+  ov.onclick=()=>ov.remove(); document.body.appendChild(ov);
+  $('tmX').onclick=()=>ov.remove();
+  const exBoxes=()=>{
+    const n=Math.max(0,...(($('tmBody').value||'').match(/\{\{(\d+)\}\}/g)||[]).map(s=>parseInt(s.replace(/\D/g,''),10)));
+    const cur=Array.from($('tmEx').querySelectorAll('.tmexv')).map(e=>e.value);
+    $('tmEx').innerHTML=n?Array.from({length:n},(_,i)=>`<input class="tmexv" placeholder="Ejemplo para {{${i+1}}} (obligatorio para Meta)" value="${esc(cur[i]||'')}" style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px">`).join(''):'';
+  };
+  $('tmBody').addEventListener('input',exBoxes);
+  $('tmVar').onclick=()=>{ const ta=$('tmBody');
+    const n=Math.max(0,...((ta.value||'').match(/\{\{(\d+)\}\}/g)||[]).map(s=>parseInt(s.replace(/\D/g,''),10)))+1;
+    const s=ta.selectionStart||ta.value.length; ta.value=ta.value.slice(0,s)+'{{'+n+'}}'+ta.value.slice(s); ta.focus(); exBoxes(); };
+  const load=async()=>{
+    const r=await api('GET','/api/whatsapp/templates?all=1');
+    const list=(r.data&&r.data.templates)||[], auto=(r.data&&r.data.auto)||{};
+    $('tmList').innerHTML=list.length?`<div style="max-height:230px;overflow:auto">${list.map(t=>`
+      <div style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:7px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;color:var(--navy)">${esc(t.name)} <span class="muted" style="font-weight:400;font-size:11px">· ${esc(t.language||'')} · ${esc(t.category||'')}</span></div>
+          <div class="muted" style="font-size:12px;white-space:pre-wrap;margin-top:2px">${esc(String(t.body||'').slice(0,160))}</div>
+          ${t.rejected_reason&&String(t.rejected_reason).toUpperCase()!=='NONE'?`<div style="color:#c62828;font-size:11.5px;margin-top:3px">Motivo: ${esc(t.rejected_reason)}</div>`:''}
+        </div>
+        ${tplStatusPill(t.status)}
+        <button class="tmdel" data-n="${esc(t.name)}" title="Eliminar plantilla" style="border:0;background:none;color:#c62828;cursor:pointer;font-size:14px">🗑</button>
+      </div>`).join('')}</div>`:'<p class="empty">Aún no hay plantillas.</p>';
+    const opts=list.filter(t=>String(t.status).toUpperCase()==='APPROVED');
+    $('tmAuto').innerHTML=Object.keys(TPL_EVENTS).map(k=>`<div style="display:flex;gap:10px;align-items:center;margin-bottom:7px">
+      <div style="min-width:190px;font-size:13px;font-weight:600;color:var(--navy)">${esc(TPL_EVENTS[k])}</div>
+      <select class="sel tmauto" data-k="${k}" style="flex:1">${opts.length?opts.map(t=>`<option value="${esc(t.name)}" ${auto[k]===t.name?'selected':''}>${esc(t.name)}</option>`).join(''):'<option value="">(sin plantillas aprobadas)</option>'}</select>
+    </div>`).join('')+'<button class="btn" id="tmAutoSave" style="margin-top:6px;font-size:12.5px;padding:7px 13px">Guardar asignación</button> <span class="muted" id="tmAutoMsg" style="font-size:12px"></span>';
+    $('tmList').querySelectorAll('.tmdel').forEach(b=>b.onclick=async()=>{
+      if(!confirm('¿Eliminar la plantilla "'+b.dataset.n+'"?\n\nSi algún aviso automático la usa, deja de enviarse hasta que asignes otra.')) return;
+      const r2=await api('DELETE','/api/whatsapp/templates?name='+encodeURIComponent(b.dataset.n));
+      if(r2.ok){ WA_TPLS=null; load(); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
+    });
+    $('tmAutoSave').onclick=async()=>{
+      const map={}; document.querySelectorAll('.tmauto').forEach(s=>{ if(s.value) map[s.dataset.k]=s.value; });
+      const r2=await api('PUT','/api/whatsapp/auto_templates',{map:map});
+      $('tmAutoMsg').textContent=(r2.ok&&r2.data&&r2.data.ok)?'✓ Guardado.':((r2.data&&r2.data.error)||'No se pudo guardar.');
+    };
+  };
+  await load();
+  $('tmSave').onclick=async()=>{
+    const name=$('tmName').value.trim(), body=$('tmBody').value.trim();
+    if(!name){ $('tmMsg').textContent='Ponle un nombre (minúsculas y guiones bajos).'; return; }
+    if(!body){ $('tmMsg').textContent='Escribe el texto de la plantilla.'; return; }
+    const examples=Array.from($('tmEx').querySelectorAll('.tmexv')).map(e=>e.value.trim());
+    if(examples.some(v=>!v)){ $('tmMsg').textContent='Meta exige un valor de EJEMPLO por cada variable.'; return; }
+    $('tmSave').disabled=true; $('tmMsg').textContent='Enviando a revisión…';
+    const r=await api('POST','/api/whatsapp/templates',{name:name,category:$('tmCat').value,language:$('tmLang').value,body:body,examples:examples,footer:$('tmFoot').value.trim()});
+    $('tmSave').disabled=false;
+    if(r.ok&&r.data&&r.data.ok){ $('tmMsg').textContent='✓ Enviada a revisión de Meta. Aparecerá como Aprobada en cuanto la acepten.'; $('tmName').value=''; $('tmBody').value=''; $('tmFoot').value=''; $('tmEx').innerHTML=''; WA_TPLS=null; load(); }
+    else $('tmMsg').textContent=(r.data&&r.data.error)||'No se pudo crear.';
+  };
+}
+if($('waTplMgr')) $('waTplMgr').onclick=waTplMgrOpen;
 
 /* ---- PLANTILLAS de WhatsApp: única forma de INICIAR conversación ----
    Fuera de la ventana de 24 h Meta descarta el texto libre sin avisar; con una

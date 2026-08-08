@@ -97,6 +97,57 @@ class WhatsappCloud
     []
   end
 
+  # TODAS las plantillas con su estado (aprobada / en revisión / rechazada).
+  def all_templates
+    id = waba_id
+    return [] if id.blank?
+
+    r = get_json("https://#{GRAPH_HOST}/#{@version}/#{id}/message_templates?limit=100&fields=name,status,language,category,components,rejected_reason")
+    (r['data'] || []).map do |t|
+      body = (t['components'] || []).find { |c| c['type'].to_s.upcase == 'BODY' }
+      text = body && body['text'].to_s
+      { 'name' => t['name'], 'status' => t['status'], 'language' => t['language'],
+        'category' => t['category'], 'body' => text, 'rejected_reason' => t['rejected_reason'],
+        'params' => text.to_s.scan(/\{\{(\d+)\}\}/).flatten.map(&:to_i).max.to_i }
+    end
+  rescue StandardError => e
+    Rails.logger.error "[WhatsappCloud] all_templates: #{e.message}"
+    []
+  end
+
+  # CREA una plantilla y la manda a revisión de Meta.
+  # category: UTILITY (avisos de la cuenta) | MARKETING (promoción) | AUTHENTICATION
+  # examples: valores de ejemplo para {{1}}, {{2}}... (Meta los exige)
+  def create_template(name:, category:, language:, body:, examples: [], footer: nil)
+    id = waba_id
+    raise DeliveryError, 'Falta el identificador de la cuenta de WhatsApp (WHATSAPP_WABA_ID)' if id.blank?
+
+    comp = [{ type: 'BODY', text: body.to_s }]
+    ex = Array(examples).map(&:to_s).reject(&:blank?)
+    comp[0][:example] = { body_text: [ex] } if ex.any?
+    comp << { type: 'FOOTER', text: footer.to_s } if footer.to_s.strip.present?
+
+    payload = { name: name.to_s.strip.downcase.gsub(/[^a-z0-9_]/, '_'),
+                category: category.to_s.upcase, language: language.presence || 'es_MX',
+                components: comp }
+    post_json("https://#{GRAPH_HOST}/#{@version}/#{id}/message_templates", payload)
+  end
+
+  # Elimina una plantilla por nombre.
+  def delete_template(name)
+    id = waba_id
+    raise DeliveryError, 'Falta el identificador de la cuenta de WhatsApp' if id.blank?
+
+    uri = URI("https://#{GRAPH_HOST}/#{@version}/#{id}/message_templates?name=#{URI.encode_www_form_component(name)}")
+    req = Net::HTTP::Delete.new(uri)
+    req['Authorization'] = "Bearer #{@token}"
+    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 30) { |h| h.request(req) }
+    body = safe_json(res.body)
+    raise DeliveryError, (body.dig('error', 'message') || res.message) unless res.is_a?(Net::HTTPSuccess)
+
+    body
+  end
+
   # Descarga un medio (imagen/documento) recibido: devuelve [binario, mime_type, filename] o nil.
   def download_media(media_id)
     return nil if media_id.blank?
@@ -126,6 +177,20 @@ class WhatsappCloud
     req['Authorization'] = "Bearer #{@token}"
     res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 30) { |http| http.request(req) }
     safe_json(res.body)
+  end
+
+  # POST genérico a Graph con JSON (crear plantillas, etc.)
+  def post_json(url, payload)
+    uri = URI(url)
+    req = Net::HTTP::Post.new(uri)
+    req['Authorization'] = "Bearer #{@token}"
+    req['Content-Type'] = 'application/json'
+    req.body = payload.to_json
+    res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 30) { |h| h.request(req) }
+    body = safe_json(res.body)
+    raise DeliveryError, (body.dig('error', 'error_user_msg') || body.dig('error', 'message') || res.message) unless res.is_a?(Net::HTTPSuccess)
+
+    body
   end
 
   def post_message(payload)

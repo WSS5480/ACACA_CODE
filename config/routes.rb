@@ -145,7 +145,11 @@ Rails.application.routes.draw do
     get  'whatsapp/threads',      to: 'api/whatsapp_messages#threads'
     post 'whatsapp/read',         to: 'api/whatsapp_messages#mark_read'
     get  'whatsapp/unread_count', to: 'api/whatsapp_messages#unread_count'
-    get  'whatsapp/templates',    to: 'api/whatsapp_messages#templates' # plantillas aprobadas
+    # Plantillas: listar, CREAR (constructor del admin), eliminar y mapear avisos automáticos
+    get    'whatsapp/templates',      to: 'api/whatsapp_messages#templates'
+    post   'whatsapp/templates',      to: 'api/whatsapp_messages#create_template'
+    delete 'whatsapp/templates',      to: 'api/whatsapp_messages#destroy_template'
+    put    'whatsapp/auto_templates', to: 'api/whatsapp_messages#auto_templates'
     delete 'whatsapp/messages/:id', to: 'api/whatsapp_messages#destroy' # solo master/admin
     delete 'whatsapp/threads',      to: 'api/whatsapp_messages#destroy_thread' # conversación completa (solo master/admin)
     get  'whatsapp/contacts',       to: 'api/whatsapp_messages#contacts' # directorio completo para Nuevo chat

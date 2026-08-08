@@ -125,6 +125,11 @@ class Api::UsersController < ApplicationController
 
   # PATCH/PUT /api/users/:id
   def update
+    # Un teléfono mal capturado se acepta en WhatsApp y nunca se entrega: se revisa aquí.
+    if params.dig(:user, :phone).present? && (bad = PhoneCheck.problem(params[:user][:phone]))
+      return render json: { error: "Teléfono: #{bad}" }, status: :unprocessable_entity
+    end
+
     if params[:user] && params[:user][:role_id].present?
       unless %w[master admin].include?(@current_user&.role&.name)
         return render json: { error: 'Solo un administrador puede cambiar roles' }, status: :forbidden
@@ -242,6 +247,10 @@ class Api::UsersController < ApplicationController
 
     unless client_role
       return render json: { error: 'El rol de cliente no está configurado' }, status: :unprocessable_entity
+    end
+
+    if params.dig(:user, :phone).present? && (bad = PhoneCheck.problem(params[:user][:phone]))
+      return render json: { error: "Teléfono: #{bad}" }, status: :unprocessable_entity
     end
 
     @user = User.new(user_params)

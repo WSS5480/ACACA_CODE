@@ -1,6 +1,18 @@
 class UserSerializer
+  # Aviso de teléfono mal capturado (WhatsApp nunca entregaría ahí)
+  def self.phone_problem(u)
+    defined?(PhoneCheck) ? PhoneCheck.problem(u.phone) : nil
+  rescue StandardError
+    nil
+  end
+
   include JSONAPI::Serializer
   attributes :id, :email, :name, :last_name, :number, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :role_id, :credit_amount
+
+  # Si el teléfono está mal capturado, aquí viene el motivo (nil = correcto)
+  attribute :phone_problem do |user|
+    UserSerializer.phone_problem(user)
+  end
 
   attribute :credit_limit do |user|
     user.credit_limit

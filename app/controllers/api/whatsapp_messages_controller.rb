@@ -41,6 +41,16 @@ module Api
 
       tpl = params[:template].to_s.strip.presence
       tpl_params = Array(params[:template_params]).map(&:to_s)
+      # Aviso automático (cobranza, carrito, primer contacto): si la ventana de
+      # 24 h está cerrada se reenvía solo como plantilla.
+      if !tpl && params[:auto_event].present?
+        r = WhatsappOutbound.deliver(phone: phone, text: body, event: params[:auto_event].to_s,
+                                     params: Array(params[:auto_params]).map(&:to_s),
+                                     user: user, actor: @current_user)
+        return render(json: { ok: true, via: r[:via] }, status: :created) if r[:ok]
+
+        return render(json: { error: r[:error] }, status: :unprocessable_entity)
+      end
       begin
         wa = WhatsappCloud.new
         resp = if tpl
@@ -203,13 +213,71 @@ module Api
       render json: { ok: true, messages: mc, notes: nc }, status: :ok
     end
 
-    # GET /api/whatsapp/templates -> plantillas APROBADAS para iniciar conversación
+    # GET /api/whatsapp/templates        -> aprobadas (para enviar)
+    # GET /api/whatsapp/templates?all=1  -> todas + estado (para el constructor)
     def templates
-      render json: { templates: WhatsappCloud.new.templates }, status: :ok
-    rescue WhatsappCloud::NotConfigured => e
-      render json: { templates: [], error: e.message }, status: :ok
+      wa = WhatsappCloud.new
+      if ActiveModel::Type::Boolean.new.cast(params[:all])
+        render json: { templates: wa.all_templates, auto: WhatsappOutbound.template_map,
+                       events: WhatsappOutbound::DEFAULTS.keys }, status: :ok
+      else
+        render json: { templates: wa.templates }, status: :ok
+      end
     rescue StandardError => e
       render json: { templates: [], error: e.message }, status: :ok
+    end
+
+    # POST /api/whatsapp/templates { name, category, language, body, examples[], footer }
+    # Crea la plantilla y la manda a revisión de Meta (solo master/admin/sistema).
+    def create_template
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless tpl_admin?
+
+      body = params[:body].to_s.strip
+      name = params[:name].to_s.strip
+      return render(json: { error: 'Ponle nombre a la plantilla' }, status: :unprocessable_entity) if name.blank?
+      return render(json: { error: 'Escribe el texto de la plantilla' }, status: :unprocessable_entity) if body.blank?
+
+      needed = body.scan(/\{\{(\d+)\}\}/).flatten.map(&:to_i).max.to_i
+      examples = Array(params[:examples]).map(&:to_s).reject(&:blank?)
+      if needed.positive? && examples.size < needed
+        return render(json: { error: "Meta exige un valor de EJEMPLO por cada variable (faltan #{needed - examples.size})" }, status: :unprocessable_entity)
+      end
+
+      r = WhatsappCloud.new.create_template(name: name, category: params[:category].presence || 'UTILITY',
+                                            language: params[:language].presence || 'es_MX',
+                                            body: body, examples: examples, footer: params[:footer])
+      Rails.cache.delete('wa_approved_templates')
+      AuditLog.record!(actor: @current_user, action: 'wa_template_created',
+                       label: name, details: body[0, 150])
+      render json: { ok: true, result: r }, status: :created
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    # DELETE /api/whatsapp/templates?name=...
+    def destroy_template
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless tpl_admin?
+
+      name = params[:name].to_s.strip
+      return render(json: { error: 'Falta el nombre' }, status: :unprocessable_entity) if name.blank?
+
+      WhatsappCloud.new.delete_template(name)
+      Rails.cache.delete('wa_approved_templates')
+      AuditLog.record!(actor: @current_user, action: 'wa_template_deleted', label: name)
+      render json: { ok: true }, status: :ok
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    # PUT /api/whatsapp/auto_templates { map: { firma:, pago:, carrito:, contacto: } }
+    # Qué plantilla usa cada aviso automático de la plataforma.
+    def auto_templates
+      return render(json: { error: 'No autorizado' }, status: :forbidden) unless tpl_admin?
+
+      WhatsappOutbound.template_map = (params[:map] || {}).to_unsafe_h.transform_values(&:to_s)
+      render json: { ok: true, auto: WhatsappOutbound.template_map }, status: :ok
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
     end
 
     # GET /api/whatsapp/unread_count -> hilos con mensajes nuevos (globo del menú)
@@ -305,6 +373,10 @@ module Api
 
       Array(values).each_with_index { |v, i| txt.gsub!("{{#{i + 1}}}", v.to_s) }
       txt
+    end
+
+    def tpl_admin?
+      %w[master admin sistema].include?(@current_user&.role&.name)
     end
 
     def phone_tail(raw)

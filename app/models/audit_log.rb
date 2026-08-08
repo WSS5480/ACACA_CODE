@@ -27,7 +27,9 @@ class AuditLog < ApplicationRecord
     'marketing_library'    => 'Editó biblioteca de publicaciones',
     'wa_message_deleted'   => 'Eliminó mensaje de WhatsApp',
     'note_deleted'         => 'Eliminó nota de llamada',
-    'thread_deleted'       => 'Eliminó conversación completa'
+    'thread_deleted'       => 'Eliminó conversación completa',
+    'wa_template_created'  => 'Creó plantilla de WhatsApp',
+    'wa_template_deleted'  => 'Eliminó plantilla de WhatsApp'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

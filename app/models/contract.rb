@@ -61,10 +61,12 @@ class Contract < ApplicationRecord
 
   # ¿El expediente de la compra está COMPLETO? Comprador capturado y las 4
   # referencias (2 MX + 2 US). Con 3 guardadas "para después", sigue incompleto.
-  # Los datos viven en una de las órdenes del grupo (normalmente la primera).
+  # Aplica a TODAS las compras (también de contado): pago inicial -> comprador y
+  # referencias -> verificación -> contrato. Los datos viven en una de las
+  # órdenes del grupo (normalmente la primera).
   def datos_complete?
     os = orders.to_a
-    return true if os.empty? || financed_amount.to_f <= 0 # contado: no aplica
+    return true if os.empty?
 
     has_buyer = os.any? { |o| o.respond_to?(:buyer) && o.buyer.present? }
     refs = os.map { |o| o.referrals.size }.max.to_i
@@ -77,16 +79,19 @@ class Contract < ApplicationRecord
   def account_status
     return 'returned' if status == 'returned'
     return 'charged_off' if status == 'charged_off'
-    return 'paid_off' if status == 'paid' || (initial_paid? && paid_off?)
-    return 'pending_initial' unless initial_paid?
-    return 'missing_info' unless datos_complete?
+    return 'pending_initial' unless status == 'paid' || initial_paid?
+    return 'missing_info' unless status == 'paid' || datos_complete?
 
+    # El pipeline SIEMPRE se recorre completo (también en compras de contado):
+    # aprobación -> firma -> entrega. Nada se marca "liquidado" antes de entregarse.
     os = orders.to_a
-    if os.any?
+    if os.any? && status != 'paid'
       return 'pending_approval' unless os.all? { |o| o.respond_to?(:admin_approved) && o.admin_approved }
       return 'pending_signature' if respond_to?(:signed_at) && signed_at.blank?
       return 'pending_delivery' unless os.all? { |o| o.respond_to?(:delivered_at) && o.delivered_at.present? }
     end
+    return 'paid_off' if status == 'paid' || paid_off?
+
     'active'
   end
 

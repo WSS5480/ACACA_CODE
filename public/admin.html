@@ -1430,7 +1430,6 @@ async function openOrderVerify(id){
     ${vSection('buyer','Comprador',buyInner,o.buyer_verified,o.buyer_comment)}
     ${vSection('references','Referencias ('+refs.length+')',refInner,o.references_verified,o.references_comment)}
     <div class="sec" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn" id="ovWa" style="background:#25D366">WhatsApp al cliente</button>
       <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/3)'):'')}</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="${semBtn(stApr)}">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${docCell}
@@ -1451,7 +1450,6 @@ async function openOrderVerify(id){
     pend.forEach((it,i)=>setTimeout(()=>window.open('https://www.amazon.com.mx/dp/'+encodeURIComponent(pick(it,['product_asin'],'')),'_blank'),i*350));
     $('ovMsg').textContent='Abriendo '+pend.length+' artículo(s) en Amazon… (si el navegador bloquea ventanas, permite los pop-ups o usa los botones por artículo).';
   };
-  if($('ovWa')) $('ovWa').onclick=()=>waChatOpen(pick(o,['user_id'],null), [o.user_name,o.user_last_name].filter(Boolean).join(' '));
   bindConvBtns(d); // botones de conversación junto a cada nombre (beneficiario, comprador, referencias)
   // Editar / agregar / eliminar referencias durante la verificación (copia de ESTA orden).
   d.querySelectorAll('.refedit').forEach(b=>b.onclick=()=>{ const f=$('refform-'+b.dataset.rid); if(f) f.style.display=f.style.display==='none'?'':'none'; });

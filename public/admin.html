@@ -2110,15 +2110,32 @@ async function waTplOpen(t, ph, tail, preloaded){
       <button class="btn" id="tpCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button>
     </div>
     <p class="muted" id="tpMsg" style="font-size:12.5px;margin:8px 0 0"></p>`;
+  // Cada variable se rellena sola según lo que dice el texto ANTES de ella:
+  // nombre, contrato, monto o ENLACE (los enlaces se arman con la cuenta del cliente).
+  const SITE='https://www.acasamx.com';
+  const tplGuess=(body,i,tpl)=>{
+    const before=String(body||'').split('{{'+(i+1)+'}}')[0].slice(-42).toLowerCase();
+    const first=(t.name||'').trim().split(' ')[0]||'';
+    const link = tpl==='firma_contrato' ? (t.contract_id?`${SITE}/contratos/${t.contract_id}/firmar`:`${SITE}/ordenes`)
+               : tpl==='recordatorio_pago' ? `${SITE}/cuenta`
+               : tpl==='carrito_pendiente' ? `${SITE}/carrito` : SITE;
+    if(i===0&&/hola\s*$/.test(before)) return {v:first,lbl:'Nombre'};
+    if(/aquí:?\s*$|aqui:?\s*$|celular:?\s*$|cuenta:?\s*$|link:?\s*$|enlace:?\s*$|http\S*$/.test(before)) return {v:link,lbl:'Enlace'};
+    if(/contrato\s*$/.test(before)) return {v:t.contract_number||'',lbl:'Contrato'};
+    if(/de\s*$/.test(before)&&/pago/.test(before)) return {v:'',lbl:'Monto del pago'};
+    if(/dejaste\s*$/.test(before)) return {v:'',lbl:'Artículos del carrito'};
+    if(i===0) return {v:first,lbl:'Nombre'};
+    return {v:'',lbl:'Valor {{'+(i+1)+'}}'};
+  };
   const paint=()=>{
     const x=list[Number($('tpSel').value)||0]; if(!x) return;
     const n=Number(x.params)||0;
-    $('tpVars').innerHTML=Array.from({length:n},(_,i)=>`<input class="tpv" data-i="${i}" placeholder="Valor de {{${i+1}}}" style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">`).join('');
-    // Sugerencias: {{1}} suele ser el nombre; {{2}} el pedido/contrato.
-    const vs=$('tpVars').querySelectorAll('.tpv');
-    if(vs[0]) vs[0].value=(t.name||'').split(' ')[0]||'';
-    if(vs[1]) vs[1].value=t.contract_number||'';
-    const upd=()=>{ let s=String(x.body||''); $('tpVars').querySelectorAll('.tpv').forEach((el,i)=>{ s=s.replace('{{'+(i+1)+'}}', el.value||('{{'+(i+1)+'}}')); }); $('tpPrev').textContent=s; };
+    const gs=Array.from({length:n},(_,i)=>tplGuess(x.body,i,x.name));
+    $('tpVars').innerHTML=gs.map((g,i)=>`<div>
+      <div class="muted" style="font-size:11px;font-weight:700;margin-bottom:3px">${esc(g.lbl)} · {{${i+1}}}</div>
+      <input class="tpv" data-i="${i}" value="${esc(g.v)}" placeholder="${esc(g.lbl)}" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+    </div>`).join('');
+    const upd=()=>{ let s=String(x.body||''); $('tpVars').querySelectorAll('.tpv').forEach((el,i)=>{ s=s.split('{{'+(i+1)+'}}').join(el.value||('{{'+(i+1)+'}}')); }); $('tpPrev').textContent=s; };
     $('tpVars').querySelectorAll('.tpv').forEach(el=>el.addEventListener('input',upd));
     upd();
   };

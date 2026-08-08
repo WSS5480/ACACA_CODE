@@ -40,7 +40,7 @@ module Api
       user ||= match_user_by_phone(phone)
 
       begin
-        WhatsappCloud.new.send_text(phone, body)
+        resp = WhatsappCloud.new.send_text(phone, body)
       rescue WhatsappCloud::NotConfigured
         return render(json: { error: 'WhatsApp no está configurado en el servidor' }, status: :unprocessable_entity)
       rescue WhatsappCloud::DeliveryError => e
@@ -48,8 +48,12 @@ module Api
         return render(json: { error: "No se pudo enviar: #{e.message}#{hint}" }, status: :unprocessable_entity)
       end
 
-      m = WhatsappMessage.create!(user: user, direction: 'out', wa_phone: WhatsappCloud.normalize_phone(phone),
-                                  body: body, sent_by_id: @current_user.id)
+      m = WhatsappMessage.new(user: user, direction: 'out', wa_phone: WhatsappCloud.normalize_phone(phone),
+                              body: body, sent_by_id: @current_user.id)
+      # Guardar el id de Meta para poder recibir las "palomitas" (recibos de entrega).
+      m.wa_message_id = resp.dig('messages', 0, 'id') if resp.is_a?(Hash)
+      m.status = 'sent' if m.has_attribute?(:status)
+      m.save!
       render json: { ok: true, message: serialize(m) }, status: :created
     end
 
@@ -264,7 +268,8 @@ module Api
 
     def serialize(m)
       { id: m.id, direction: m.direction, body: m.body, media_type: m.media_type,
-        media_url: m.media_url, created_at: m.created_at }
+        media_url: m.media_url, created_at: m.created_at,
+        status: (m.has_attribute?(:status) ? m.status : nil) }
     end
 
     def phone_tail(raw)

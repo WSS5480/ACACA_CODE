@@ -26,6 +26,7 @@ module Api
         WhatsappVerification.process_incoming(from: from, body: body)
         archive_message(msg, from, body)
       end
+      incoming_statuses.each { |st| apply_status(st) }
       head :ok
     rescue StandardError => e
       Rails.logger.error "[WhatsappWebhook] #{e.class}: #{e.message}"
@@ -74,6 +75,37 @@ module Api
       (payload['entry'] || []).flat_map do |entry|
         (entry['changes'] || []).flat_map { |change| change.dig('value', 'messages') || [] }
       end
+    end
+
+    # Recibos de entrega de Meta ('statuses'): sent -> delivered -> read | failed.
+    def incoming_statuses
+      payload = params.to_unsafe_h
+      (payload['entry'] || []).flat_map do |entry|
+        (entry['changes'] || []).flat_map { |change| change.dig('value', 'statuses') || [] }
+      end
+    end
+
+    # Actualiza las "palomitas" del mensaje saliente. Solo avanza (nunca regresa
+    # de leído a entregado) y es inofensivo si la migración aún no corre.
+    STATUS_ORDER = { 'sent' => 1, 'delivered' => 2, 'read' => 3, 'failed' => 9 }.freeze
+    def apply_status(st)
+      return unless WhatsappMessage.column_names.include?('status')
+
+      rec = WhatsappMessage.find_by(wa_message_id: st['id'].to_s)
+      return unless rec
+
+      new_s = st['status'].to_s
+      return unless STATUS_ORDER.key?(new_s)
+      return if (STATUS_ORDER[new_s] || 0) <= (STATUS_ORDER[rec.status.to_s] || 0)
+
+      at = begin
+        Time.zone.at(st['timestamp'].to_i)
+      rescue StandardError
+        Time.current
+      end
+      rec.update_columns(status: new_s, status_at: at)
+    rescue StandardError => e
+      Rails.logger.warn "[WhatsappWebhook] status: #{e.message}"
     end
 
     def valid_signature?

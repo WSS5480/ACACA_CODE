@@ -2099,7 +2099,7 @@ async function openWaThread(tail){
   const ph=t.phone||tail;
   const rm=await api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(ph));
   const rl=await api('GET','/api/contact_logs?phone='+encodeURIComponent(ph));
-  const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at}));
+  const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status}));
   const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
   const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
   box.innerHTML=`
@@ -2116,12 +2116,7 @@ async function openWaThread(tail){
       </div>
     </div>
     <div id="waMsgs" style="flex:1;overflow-y:auto;background:#f0ebe3;padding:16px;display:flex;flex-direction:column;gap:8px">
-      ${(()=>{ const isAdm=['master','admin'].includes(MYROLE);
-        const del=(m)=>isAdm&&m.id?`<button class="${m.kind==='note'?'wandel':'wadel'}" data-id="${esc(String(m.id))}" title="Eliminar (solo admins; queda en la bitácora)" style="border:0;background:none;color:#c62828;font-size:11px;cursor:pointer;padding:0 2px;float:right;margin-left:6px">✕</button>`:'';
-        return all.length?all.map(m=> m.kind==='note'
-        ? `<div style="background:#fef9e3;border:1px solid #f0e3ac;align-self:center;max-width:85%;font-size:12.5px;color:#6b5d1f;border-radius:12px;padding:8px 12px">${del(m)}📝 <b>${esc(m.author||'Nota')}</b>: ${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
-        : `<div style="max-width:72%;border-radius:12px;padding:8px 12px;font-size:13.5px;line-height:1.45;${m.dir==='out'?'background:#d7f7c8;align-self:flex-end;border-bottom-right-radius:3px;':'background:#fff;align-self:flex-start;border-bottom-left-radius:3px;'}box-shadow:0 1px 1px rgba(0,0,0,.06);white-space:pre-wrap;word-break:break-word">${del(m)}${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
-      ).join(''):'<p class="muted" style="align-self:center">Sin mensajes todavía — escribe el primero.</p>'; })()}
+      ${waMsgsHtml(all)}
     </div>
     <div style="padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end;background:#fff;flex-shrink:0">
       <textarea id="waText" placeholder="Escribe un WhatsApp o una nota…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;resize:none;height:46px;font-family:inherit"></textarea>
@@ -2142,16 +2137,8 @@ async function openWaThread(tail){
     } else alert((r2.data&&r2.data.error)||'No se pudo eliminar la conversación.');
   };
   // Eliminar mensajes/notas (SOLO master/admin; queda en la bitácora de auditoría).
-  mb.querySelectorAll('.wadel').forEach(b=>b.onclick=async()=>{
-    if(!confirm('¿Eliminar este mensaje de NUESTRO registro?\n\nNo se borra del teléfono del cliente (WhatsApp no lo permite). Queda registrado en la Bitácora.')) return;
-    const r2=await api('DELETE','/api/whatsapp/messages/'+encodeURIComponent(b.dataset.id));
-    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
-  });
-  mb.querySelectorAll('.wandel').forEach(b=>b.onclick=async()=>{
-    if(!confirm('¿Eliminar esta nota? Queda registrado en la Bitácora.')) return;
-    const r2=await api('DELETE','/api/contact_logs/'+encodeURIComponent(b.dataset.id));
-    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
-  });
+  bindWaMsgDeletes(tail);
+  WA_FP=waFp(all);
   // Llamada: copia el número, intenta abrir la app de llamadas (tel:) y deja
   // lista la nota. Si no pasa nada al hacer clic: Windows necesita la app
   // "Vincular al teléfono" (Phone Link) con tu celular vinculado, o Skype.
@@ -2184,6 +2171,79 @@ async function openWaThread(tail){
     api('POST','/api/whatsapp/read',{phone:ph}).then(()=>{ t.unread=0; renderWaList(); pollWaBadge(); });
   }
 }
+/* ---- Palomitas de entrega + actualización EN VIVO de la bandeja ---- */
+// ✓ enviado · ✓✓ entregado · ✓✓ azul leído · ⚠ falló (recibos del webhook 'statuses')
+function waMsgTick(m){
+  if(m.kind!=='wa'||m.dir!=='out') return '';
+  const s=String(m.st||'');
+  if(s==='read') return ' <span style="color:#34B7F1;font-weight:800">✓✓</span>';
+  if(s==='delivered') return ' <span style="color:#7d8797;font-weight:800">✓✓</span>';
+  if(s==='failed') return ' <span style="color:#c62828;font-weight:800" title="No se pudo entregar">⚠</span>';
+  return ' <span style="color:#a7aebc;font-weight:800">✓</span>';
+}
+function waMsgsHtml(all){
+  const isAdm=['master','admin'].includes(MYROLE);
+  const del=(m)=>isAdm&&m.id?`<button class="${m.kind==='note'?'wandel':'wadel'}" data-id="${esc(String(m.id))}" title="Eliminar (solo admins; queda en la bitácora)" style="border:0;background:none;color:#c62828;font-size:11px;cursor:pointer;padding:0 2px;float:right;margin-left:6px">✕</button>`:'';
+  return all.length?all.map(m=> m.kind==='note'
+    ? `<div style="background:#fef9e3;border:1px solid #f0e3ac;align-self:center;max-width:85%;font-size:12.5px;color:#6b5d1f;border-radius:12px;padding:8px 12px">${del(m)}📝 <b>${esc(m.author||'Nota')}</b>: ${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}</div></div>`
+    : `<div style="max-width:72%;border-radius:12px;padding:8px 12px;font-size:13.5px;line-height:1.45;${m.dir==='out'?'background:#d7f7c8;align-self:flex-end;border-bottom-right-radius:3px;':'background:#fff;align-self:flex-start;border-bottom-left-radius:3px;'}box-shadow:0 1px 1px rgba(0,0,0,.06);white-space:pre-wrap;word-break:break-word">${del(m)}${esc(m.body||'')}<div style="font-size:10.5px;color:#8a90a0;text-align:right;margin-top:3px">${esc(fdatetime(m.at))}${waMsgTick(m)}</div></div>`
+  ).join(''):'<p class="muted" style="align-self:center">Sin mensajes todavía — escribe el primero.</p>';
+}
+function bindWaMsgDeletes(tail){
+  const mb=$('waMsgs'); if(!mb) return;
+  mb.querySelectorAll('.wadel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este mensaje de NUESTRO registro?\n\nNo se borra del teléfono del cliente (WhatsApp no lo permite). Queda registrado en la Bitácora.')) return;
+    const r2=await api('DELETE','/api/whatsapp/messages/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
+  });
+  mb.querySelectorAll('.wandel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar esta nota? Queda registrado en la Bitácora.')) return;
+    const r2=await api('DELETE','/api/contact_logs/'+encodeURIComponent(b.dataset.id));
+    if(r2.ok){ openWaThread(tail); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar.');
+  });
+}
+const waFp=a=>a.length+':'+a.slice(-30).map(m=>m.kind+String(m.id)+String(m.st||'')).join(',');
+let WA_FP='', WA_TFP='', WA_LIVE_BUSY=false;
+// Cada 7 s: refresca la lista de hilos y la conversación abierta SIN tocar lo
+// que estés escribiendo (solo se redibujan los mensajes cuando algo cambió).
+async function waLivePoll(){
+  if(WA_LIVE_BUSY) return;
+  const sec=document.querySelector('.view[data-v="whatsapp"]');
+  if(!sec||sec.classList.contains('hide')||!TOKEN) return;
+  WA_LIVE_BUSY=true;
+  try{
+    const r=await api('GET','/api/whatsapp/threads');
+    if(r.ok&&r.data){
+      WA_THREADS=r.data.threads||[];
+      updateWaBadge(r.data.unread_threads);
+      const tfp=JSON.stringify(WA_THREADS.map(t=>[t.tail,t.unread,t.last_at,t.last_preview]));
+      if(tfp!==WA_TFP){ WA_TFP=tfp; renderWaList(); }
+    }
+    if(WA_CUR){
+      const t=WA_THREADS.find(x=>String(x.tail)===String(WA_CUR));
+      if(t){
+        const ph=t.phone||WA_CUR;
+        const rm=await api('GET','/api/whatsapp/messages?phone='+encodeURIComponent(ph));
+        const rl=await api('GET','/api/contact_logs?phone='+encodeURIComponent(ph));
+        const msgs=((rm.ok&&rm.data&&rm.data.messages)||[]).map(m=>({kind:'wa',id:m.id,dir:m.direction,body:m.body,at:m.created_at,st:m.status}));
+        const notes=((rl.ok&&rl.data&&rl.data.logs)||[]).map(l=>({kind:'note',id:l.id,body:l.body,author:l.author_name,at:l.created_at}));
+        const all=[...msgs,...notes].sort((a,b)=>new Date(a.at)-new Date(b.at));
+        const fp=waFp(all);
+        const mb=$('waMsgs');
+        if(mb&&fp!==WA_FP){
+          const nearBottom=(mb.scrollHeight-mb.scrollTop-mb.clientHeight)<120;
+          mb.innerHTML=waMsgsHtml(all);
+          bindWaMsgDeletes(WA_CUR);
+          if(nearBottom) mb.scrollTop=mb.scrollHeight;
+          WA_FP=fp;
+          if(t.unread>0){ api('POST','/api/whatsapp/read',{phone:ph}); t.unread=0; renderWaList(); }
+        }
+      }
+    }
+  }catch(e){}
+  WA_LIVE_BUSY=false;
+}
+if(!window.WA_LIVE) window.WA_LIVE=setInterval(waLivePoll,7000);
 if($('waRefresh')) $('waRefresh').onclick=loadWaInbox;
 if($('waSearch')) $('waSearch').addEventListener('input',renderWaList);
 if($('waFilter')) $('waFilter').addEventListener('change',renderWaList);

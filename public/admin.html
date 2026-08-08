@@ -2094,11 +2094,13 @@ async function waTplOpen(t, ph, tail, preloaded){
   ov.onclick=()=>ov.remove();
   document.body.appendChild(ov);
   $('tpX').onclick=()=>ov.remove();
-  let list=preloaded||WA_TPLS;
-  if(!list){ const r=await api('GET','/api/whatsapp/templates'); list=(r.data&&r.data.templates)||[]; }
-  WA_TPLS=list;
+  // Sólo se cachea una lista NO vacía: si vino vacía, se vuelve a consultar.
+  let list=(preloaded&&preloaded.length?preloaded:null)||(WA_TPLS&&WA_TPLS.length?WA_TPLS:null);
+  let apiErr='';
+  if(!list){ const r=await api('GET','/api/whatsapp/templates'); list=(r.data&&r.data.templates)||[]; apiErr=(r.data&&r.data.error)||''; }
+  if(list.length) WA_TPLS=list;
   const box=$('tpBody'); if(!box) return;
-  if(!list.length){ box.innerHTML='<p class="empty">No hay plantillas aprobadas todavía. Créalas en WhatsApp Manager → Plantillas de mensajes; al aprobarse aparecen aquí solas.</p>'; return; }
+  if(!list.length){ box.innerHTML='<p class="empty">No hay plantillas aprobadas todavía. Créalas en WhatsApp Manager → Plantillas de mensajes; al aprobarse aparecen aquí solas.'+(apiErr?('<br><span style="color:#c62828">'+esc(apiErr)+'</span>'):'')+'</p>'; return; }
   box.innerHTML=`
     <select class="sel" id="tpSel" style="width:100%;margin-bottom:10px">${list.map((x,i)=>`<option value="${i}">${esc(x.name)} · ${esc(x.language||'')}</option>`).join('')}</select>
     <div id="tpPrev" style="background:#f0ebe3;border-radius:10px;padding:12px 14px;font-size:13.5px;white-space:pre-wrap;line-height:1.5;margin-bottom:10px"></div>

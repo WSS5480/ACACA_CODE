@@ -22,6 +22,18 @@ class ContractSerializer
   attribute :items_count do |c|
     c.orders.size
   end
+  # Miniaturas de los artículos: para VER el producto mientras se atiende al
+  # cliente (Órdenes, Gestión de cuenta / banco de trabajo).
+  attribute :item_thumbs do |c|
+    c.orders.first(4).map do |o|
+      img = begin
+        o.product&.image_urls&.first
+      rescue StandardError
+        nil
+      end
+      { title: (o.respond_to?(:product_title) ? o.product_title : nil), image: img }
+    end
+  end
   attribute :past_due_amount do |c|
     c.past_due_amount
   end

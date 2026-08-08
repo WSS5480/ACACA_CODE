@@ -103,7 +103,14 @@ module Api
       rescue StandardError
         Time.current
       end
-      rec.update_columns(status: new_s, status_at: at)
+      cols = { status: new_s, status_at: at }
+      if new_s == 'failed'
+        err = Array(st['errors']).first || {}
+        reason = [err['code'], err['title'] || err['message'], err.dig('error_data', 'details')].compact.join(' · ')
+        Rails.logger.warn "[WhatsappWebhook] mensaje NO entregado (#{rec.wa_phone}): #{reason}"
+        cols[:status_error] = reason.to_s[0, 250] if WhatsappMessage.column_names.include?('status_error')
+      end
+      rec.update_columns(cols)
     rescue StandardError => e
       Rails.logger.warn "[WhatsappWebhook] status: #{e.message}"
     end

@@ -39,13 +39,27 @@ module Api
       # Si no vino user_id, intentar ligar el mensaje a la cuenta por el teléfono.
       user ||= match_user_by_phone(phone)
 
+      tpl = params[:template].to_s.strip.presence
+      tpl_params = Array(params[:template_params]).map(&:to_s)
       begin
-        resp = WhatsappCloud.new.send_text(phone, body)
+        wa = WhatsappCloud.new
+        resp = if tpl
+                 body = plantilla_preview(tpl, tpl_params, body)
+                 wa.send_template(phone, name: tpl, lang: params[:template_lang].presence || 'es_MX', params: tpl_params)
+               else
+                 wa.send_text(phone, body)
+               end
       rescue WhatsappCloud::NotConfigured
         return render(json: { error: 'WhatsApp no está configurado en el servidor' }, status: :unprocessable_entity)
       rescue WhatsappCloud::DeliveryError => e
-        hint = e.message.to_s =~ /24|window|re-engagement/i ? ' (La persona debe escribirnos primero: fuera de la ventana de 24 horas se requiere una plantilla aprobada.)' : ''
-        return render(json: { error: "No se pudo enviar: #{e.message}#{hint}" }, status: :unprocessable_entity)
+        # Fuera de la ventana de 24 h: el texto libre NO se entrega. Devolvemos las
+        # plantillas aprobadas para que el asesor elija una y sí llegue el mensaje.
+        if !tpl && WhatsappCloud.window_error?(e.message)
+          return render(json: { error: 'Esta persona no nos ha escrito en las últimas 24 horas: WhatsApp sólo permite iniciar la conversación con una PLANTILLA aprobada.',
+                                needs_template: true, templates: (WhatsappCloud.new.templates rescue []) },
+                        status: :unprocessable_entity)
+        end
+        return render(json: { error: "No se pudo enviar: #{e.message}" }, status: :unprocessable_entity)
       end
 
       m = WhatsappMessage.new(user: user, direction: 'out', wa_phone: WhatsappCloud.normalize_phone(phone),
@@ -189,6 +203,15 @@ module Api
       render json: { ok: true, messages: mc, notes: nc }, status: :ok
     end
 
+    # GET /api/whatsapp/templates -> plantillas APROBADAS para iniciar conversación
+    def templates
+      render json: { templates: WhatsappCloud.new.templates }, status: :ok
+    rescue WhatsappCloud::NotConfigured => e
+      render json: { templates: [], error: e.message }, status: :ok
+    rescue StandardError => e
+      render json: { templates: [], error: e.message }, status: :ok
+    end
+
     # GET /api/whatsapp/unread_count -> hilos con mensajes nuevos (globo del menú)
     def unread_count
       unless WhatsappMessage.column_names.include?('read_at')
@@ -269,7 +292,19 @@ module Api
     def serialize(m)
       { id: m.id, direction: m.direction, body: m.body, media_type: m.media_type,
         media_url: m.media_url, created_at: m.created_at,
-        status: (m.has_attribute?(:status) ? m.status : nil) }
+        status: (m.has_attribute?(:status) ? m.status : nil),
+        status_error: (m.has_attribute?(:status_error) ? m.status_error : nil) }
+    end
+
+    # Texto que se guarda en el historial cuando se envía una PLANTILLA:
+    # el cuerpo real con los valores ya sustituidos (si podemos leerlo de Meta).
+    def plantilla_preview(name, values, fallback)
+      t = (WhatsappCloud.new.templates.find { |x| x['name'] == name } rescue nil)
+      txt = t && t['body'].to_s.dup
+      return (fallback.presence || "Plantilla: #{name}") if txt.blank?
+
+      Array(values).each_with_index { |v, i| txt.gsub!("{{#{i + 1}}}", v.to_s) }
+      txt
     end
 
     def phone_tail(raw)

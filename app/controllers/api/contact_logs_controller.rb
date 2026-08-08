@@ -42,6 +42,39 @@ module Api
       render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
 
+    # POST /api/contact_logs/email  { user_id, email, name, subject, body, phone, person_type }
+    # Envía un CORREO al cliente desde el CRM/cobranza y lo deja registrado en su
+    # bitácora, igual que una llamada o un WhatsApp.
+    def email
+      to = params[:email].to_s.strip
+      body = params[:body].to_s.strip
+      subject = params[:subject].to_s.strip
+      to = User.find_by(id: params[:user_id])&.email if to.blank? && params[:user_id].present?
+      return render(json: { error: 'Falta el correo del destinatario' }, status: :unprocessable_entity) if to.blank?
+      return render(json: { error: 'Escribe el mensaje' }, status: :unprocessable_entity) if body.blank?
+
+      from_name = [@current_user&.name, @current_user&.last_name].compact.join(' ').strip.presence || 'Equipo Ácasa'
+      begin
+        UserMailer.with(to: to, name: params[:name].to_s.presence, body: body,
+                        subject: subject.presence, from_name: from_name).send_staff_message.deliver_now
+      rescue StandardError => e
+        return render(json: { error: "No se pudo enviar el correo: #{e.message}" }, status: :unprocessable_entity)
+      end
+
+      log = ContactLog.create!(
+        user_id: params[:user_id].presence,
+        person_type: params[:person_type].to_s.presence || 'customer',
+        person_name: params[:name].to_s.presence,
+        phone: params[:phone].to_s.gsub(/\D/, '').presence,
+        body: "📧 CORREO a #{to}#{subject.present? ? " · #{subject}" : ''}\n#{body}",
+        author_id: @current_user&.id,
+        author_name: from_name
+      )
+      render json: { ok: true, log: serialize(log) }, status: :created
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+
     # DELETE /api/contact_logs/:id  (SOLO master/admin) — queda en la bitácora.
     def destroy
       unless %w[master admin].include?(@current_user&.role&.name)

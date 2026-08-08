@@ -995,9 +995,12 @@ function renderGesWb(){
   $('gwTitle').textContent=GW.name||'Cliente';
   $('gwContact').innerHTML=`
     <button class="btn" id="gwWa" style="background:#25D366;font-size:13px;padding:8px 13px">💬 WhatsApp</button>
+    <button class="btn" id="gwMail" style="background:#1b2a4a;font-size:13px;padding:8px 13px">✉ Correo</button>
     ${GW.phone?`<button class="btn" id="gwTel" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📞 ${esc(GW.phone)}</button>`:''}
     <button class="btn" id="gwFicha" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📋 Ficha</button>`;
   $('gwWa').onclick=()=>convOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null, person_type:'customer'});
+  $('gwMail').onclick=()=>mailOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null,
+    email:(GW.list[0]&&pick(GW.list[0],['client_email'],''))||'', subject:'Sobre tu cuenta en Ácasa', body:''});
   if($('gwTel')) $('gwTel').onclick=()=>{ try{navigator.clipboard.writeText(GW.phone);}catch(e){} location.href='tel:+'+String(GW.phone).replace(/\D/g,''); };
   $('gwFicha').onclick=()=>{ loaded.con=1; show('contratos'); openClientSheet(GW.uid); };
   const list=GW.list;
@@ -2020,12 +2023,17 @@ async function loadCrm(){
       <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo esperando'}">${wait}</span></td>
       <td class="right">
         <button class="crmwa" data-uid="${esc(String(uid||''))}" data-name="${esc(name)}" data-phone="${esc(phone||'')}" onclick="event.stopPropagation()" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
+        <button class="crmmail" data-uid="${esc(String(uid||''))}" data-name="${esc(name)}" data-phone="${esc(phone||'')}" data-email="${esc(pick(c,['client_email'],'')||'')}" onclick="event.stopPropagation()" title="Enviar correo al cliente" style="border:0;background:#1b2a4a;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✉</button>
         <button class="crmdel" data-cid="${esc(String(c.id))}" data-name="${esc(name)}" onclick="event.stopPropagation()" title="Eliminar intento (libera su crédito)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑️</button>
       </td></tr>`;
   }).join('') : '<tr><td colspan="9" class="empty">Sin ventas pendientes de pago — todos los que llegaron a la pantalla de pago, pagaron. 🎉</td></tr>';
   body.querySelectorAll('.crm-row').forEach(tr=>tr.onclick=()=>{ loaded.con=1; show('contratos'); openContract(tr.dataset.cid); });
   body.querySelectorAll('.crmwa').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
     convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}); });
+  body.querySelectorAll('.crmmail').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
+    mailOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, email:b.dataset.email||'',
+              subject:'Tu compra en Ácasa te está esperando',
+              body:'Te escribimos de Ácasa para ayudarte a terminar tu compra. Solo falta el pago inicial y comenzamos el envío a tu familia en México.\n\n¿Te ayudamos a completarla? Responde este correo o escríbenos por WhatsApp.'}); });
   body.querySelectorAll('.crmdel').forEach(b=>b.onclick=async(e)=>{ e.stopPropagation();
     if(!confirm('¿Eliminar el intento de compra de '+(b.dataset.name||'este cliente')+'?\n\nSe libera su crédito y los artículos vuelven a estar disponibles. No se puede deshacer.')) return;
     const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(b.dataset.cid));
@@ -2053,10 +2061,14 @@ async function loadCrmCarts(){
       <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo esperando'}">${wait}</span></td>
       <td class="right">
         <button class="cartwa" data-uid="${esc(String(s.user_id||''))}" data-name="${esc(s.name||'')}" data-phone="${esc(s.phone||'')}" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
+        <button class="cartmail" data-uid="${esc(String(s.user_id||''))}" data-name="${esc(s.name||'')}" data-phone="${esc(s.phone||'')}" data-email="${esc(s.email||'')}" data-arts="${esc((s.items||[]).map(i=>String(i.title||'')).slice(0,3).join(', '))}" title="Enviar correo al cliente" style="border:0;background:#1b2a4a;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✉</button>
         <button class="cartdel" data-uid="${esc(String(s.user_id||''))}" data-name="${esc(s.name||'')}" title="Descartar del CRM (no toca el carrito del cliente)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑️</button>
       </td></tr>`;
   }).join('') : '<tr><td colspan="6" class="empty">Sin carritos abandonados.</td></tr>';
   body.querySelectorAll('.cartwa').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
+  body.querySelectorAll('.cartmail').forEach(b=>b.onclick=()=>mailOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, email:b.dataset.email||'',
+    subject:'¿Terminamos tu compra?',
+    body:'Vimos que dejaste artículos en tu carrito'+(b.dataset.arts?(' ('+b.dataset.arts+')'):'')+'.\n\nSi quieres, te ayudamos a completar tu pedido hoy mismo: solo necesitas el pago inicial y nosotros lo entregamos directo a tu familia en México.\n\nResponde este correo o escríbenos por WhatsApp y con gusto te apoyamos.'}));
   body.querySelectorAll('.cartdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('¿Descartar el carrito de '+(b.dataset.name||'este cliente')+' del CRM?\n\nSu carrito en la tienda NO se toca; si vuelve a moverlo, reaparece aquí.')) return;
     const r2=await api('DELETE','/api/carts/'+encodeURIComponent(b.dataset.uid));
@@ -2064,6 +2076,45 @@ async function loadCrmCarts(){
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;
+
+/* ---- CORREO al cliente (CRM, carritos, banco de trabajo) ----
+   Se envía con el SMTP de la plataforma y queda en la bitácora de la persona. */
+function mailOpen(p){
+  const mail=(p.email||'').trim();
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;width:min(560px,96vw);max-height:92vh;overflow:auto;padding:20px 22px" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="font-weight:800;color:var(--navy);font-size:16px">✉ Correo a ${esc(p.name||mail||'cliente')}</div>
+      <div class="sp"></div>
+      <button id="mlX" style="border:0;background:none;font-size:19px;cursor:pointer;color:var(--mut)">✕</button>
+    </div>
+    <input id="mlTo" value="${esc(mail)}" placeholder="correo@cliente.com" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;margin-bottom:8px">
+    <input id="mlSubj" value="${esc(p.subject||'')}" placeholder="Asunto" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:600;margin-bottom:8px">
+    <textarea id="mlBody" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:170px;font-family:inherit;resize:vertical;line-height:1.5">${esc(p.body||'')}</textarea>
+    <p class="muted" style="font-size:11.5px;margin:7px 0 0">Se envía desde el correo de la plataforma con el diseño de Ácasa y queda registrado en la bitácora de esta persona.</p>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn" id="mlSend" style="flex:1">Enviar correo</button>
+      <button class="btn" id="mlCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button>
+    </div>
+    <p class="muted" id="mlMsg" style="font-size:12.5px;margin:8px 0 0"></p>
+  </div>`;
+  const close=()=>ov.remove();
+  ov.onclick=close;
+  document.body.appendChild(ov);
+  $('mlX').onclick=close; $('mlCancel').onclick=close;
+  $('mlSend').onclick=async()=>{
+    const to=$('mlTo').value.trim(), body=$('mlBody').value.trim(), subject=$('mlSubj').value.trim();
+    if(!to){ $('mlMsg').textContent='Falta el correo del cliente.'; return; }
+    if(!body){ $('mlMsg').textContent='Escribe el mensaje.'; return; }
+    $('mlSend').disabled=true; $('mlMsg').textContent='Enviando…';
+    const r=await api('POST','/api/contact_logs/email',{user_id:p.user_id||null, email:to, name:p.name||null,
+                       phone:p.phone||null, person_type:p.person_type||'customer', subject:subject, body:body});
+    $('mlSend').disabled=false;
+    if(r.ok&&r.data&&r.data.ok){ $('mlMsg').textContent='✓ Correo enviado y registrado.'; setTimeout(close,900); if(typeof loadGwNotes==='function'&&GW&&GW.uid) loadGwNotes(); }
+    else $('mlMsg').textContent=(r.data&&r.data.error)||'No se pudo enviar.';
+  };
+}
 
 /* ================= WHATSAPP — bandeja de conversaciones ================= */
 let WA_THREADS=[], WA_CUR=null;

@@ -62,6 +62,18 @@ class UserMailer < ApplicationMailer
     mail to: @admin.email, subject: "Firma requerida: cambio en #{@kind_label} — acasa"
   end
 
+  # Correo LIBRE del equipo a una persona (CRM, cobranza, seguimiento).
+  # El texto lo escribe el asesor; queda registrado en la bitácora de la persona.
+  def send_staff_message
+    @to = params[:to]
+    @name = params[:name]
+    @body = params[:body]
+    @from_name = params[:from_name]
+    subject = params[:subject].presence || 'Mensaje de Ácasa'
+
+    mail to: @to, subject: subject
+  end
+
   # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno).
   # SIN direcciones de la agencia: sólo lo que esté configurado (o el buzón propio).
   def send_new_order_notification

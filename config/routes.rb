@@ -160,7 +160,9 @@ Rails.application.routes.draw do
     put  'marketing/library',  to: 'api/marketing#save_library'
 
     # Bitácora de conversaciones (notas de llamadas) por persona
-    resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create, :destroy]
+    resources :contact_logs, controller: 'api/contact_logs', only: [:index, :create, :destroy] do
+      post 'email', on: :collection # correo del equipo al cliente (queda en su bitácora)
+    end
 
     # Bitácora de AUDITORÍA (solo master/admin): quién hizo qué — cambios de tasas,
     # pagos, aprobaciones, entregas, firmas, eliminaciones...

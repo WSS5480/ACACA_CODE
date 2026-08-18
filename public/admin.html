@@ -1660,6 +1660,7 @@ function convOpen(p){
         <textarea id="convInput" placeholder="Escribe el mensaje o la nota de la llamada…" style="width:100%;min-height:52px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
           <button id="convNote" class="btn" style="background:#eef0f6;color:var(--navy)" title="Guarda la nota en la bitácora (NO envía nada)">&#128221; Guardar nota</button>
+          <button id="convTpl" class="btn" style="background:#1b2a4a" title="Enviar una PLANTILLA aprobada — la única forma de escribirle a quien no nos ha contestado en 24 h">&#128203; Plantilla</button>
           <div class="sp" style="flex:1"></div>
           <button id="convWa" class="btn" style="background:#25D366" title="Envía por WhatsApp">Enviar WhatsApp &#10148;</button>
         </div>
@@ -1669,6 +1670,9 @@ function convOpen(p){
     $('convClose').onclick=()=>{ ov.style.display='none'; CONV=null; if(CONV_TIMER){clearInterval(CONV_TIMER);CONV_TIMER=null;} };
     $('convNote').onclick=convSaveNote;
     $('convWa').onclick=convSendWa;
+    $('convTpl').onclick=()=>{ if(!CONV) return;
+      waTplOpen({name:CONV.name, user_id:CONV.user_id||null}, CONV.phone||null,
+        ()=>{ $('convStatus').textContent='✓ Plantilla enviada.'; convLoad(); }); };
     $('convInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); convSendWa(); } });
   }
   ov.style.display='flex';
@@ -1740,6 +1744,12 @@ async function convSendWa(){
   const r=await api('POST','/api/whatsapp/send',body);
   $('convWa').disabled=false;
   if(r.ok){ inp.value=''; $('convStatus').textContent=''; convLoad(); }
+  else if(r.data&&r.data.needs_template){
+    // Fuera de la ventana de 24 h: el texto libre no llega — se abren las plantillas.
+    $('convStatus').textContent='⏳ Esta persona no nos ha escrito en 24 h: elige una plantilla para que SÍ le llegue.';
+    waTplOpen({name:CONV.name, user_id:CONV.user_id||null}, CONV.phone||null,
+      ()=>{ inp.value=''; $('convStatus').textContent='✓ Plantilla enviada.'; convLoad(); }, r.data.templates||null);
+  }
   else { $('convStatus').textContent=(r.data&&r.data.error)||'No se pudo enviar.'; }
 }
 
@@ -2299,12 +2309,12 @@ if($('waTplMgr')) $('waTplMgr').onclick=waTplMgrOpen;
    Fuera de la ventana de 24 h Meta descarta el texto libre sin avisar; con una
    plantilla aprobada el mensaje SÍ llega y se abre la ventana para conversar. */
 let WA_TPLS=null;
-async function waTplOpen(t, ph, tail, preloaded){
+async function waTplOpen(t, ph, onSent, preloaded){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:1300;display:flex;align-items:center;justify-content:center;padding:20px';
   ov.innerHTML=`<div style="background:#fff;border-radius:14px;width:min(560px,96vw);max-height:92vh;overflow:auto;padding:20px 22px" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div style="font-weight:800;color:var(--navy);font-size:16px">📋 Plantilla para ${esc(t.name||ph)}</div>
+      <div style="font-weight:800;color:var(--navy);font-size:16px">📋 Plantilla para ${esc(t.name||ph||'cliente')}</div>
       <div class="sp"></div><button id="tpX" style="border:0;background:none;font-size:19px;cursor:pointer;color:var(--mut)">✕</button>
     </div>
     <div id="tpBody"><p class="muted">Cargando plantillas aprobadas…</p></div>
@@ -2364,11 +2374,12 @@ async function waTplOpen(t, ph, tail, preloaded){
     const vals=Array.from($('tpVars').querySelectorAll('.tpv')).map(el=>el.value.trim());
     if(vals.some(v=>!v)){ $('tpMsg').textContent='Llena todos los valores de la plantilla.'; return; }
     $('tpSend').disabled=true; $('tpMsg').textContent='Enviando…';
-    const body={phone:ph, message:$('tpPrev').textContent, template:x.name, template_lang:x.language, template_params:vals};
+    const body={message:$('tpPrev').textContent, template:x.name, template_lang:x.language, template_params:vals};
+    if(ph) body.phone=ph;
     if(t.user_id) body.user_id=t.user_id;
     const r=await api('POST','/api/whatsapp/send',body);
     $('tpSend').disabled=false;
-    if(r.ok){ ov.remove(); $('waText').value=''; $('waThreadMsg').textContent='✓ Plantilla enviada.'; openWaThread(tail); loadWaInbox(); }
+    if(r.ok){ ov.remove(); if(typeof onSent==='function') onSent(); }
     else $('tpMsg').textContent=(r.data&&r.data.error)||'No se pudo enviar la plantilla.';
   };
 }
@@ -2542,11 +2553,11 @@ async function openWaThread(tail){
     else if(r2.data&&r2.data.needs_template){
       // Fuera de la ventana de 24 h: el texto libre NO llega. Abrimos las plantillas.
       $('waThreadMsg').innerHTML='⏳ <b>'+esc(t.name||ph)+'</b> no nos ha escrito en las últimas 24 horas: WhatsApp sólo deja iniciar la conversación con una <b>plantilla aprobada</b>. Elige una…';
-      waTplOpen(t, ph, tail, (r2.data&&r2.data.templates)||null);
+      waTplOpen(t, ph, ()=>{ $('waText').value=''; $('waThreadMsg').textContent='✓ Plantilla enviada.'; openWaThread(tail); loadWaInbox(); }, (r2.data&&r2.data.templates)||null);
     }
     else $('waThreadMsg').textContent='No se pudo enviar: '+((r2.data&&r2.data.error)||'error');
   };
-  if($('waTplBtn')) $('waTplBtn').onclick=()=>waTplOpen(t, ph, tail, null);
+  if($('waTplBtn')) $('waTplBtn').onclick=()=>waTplOpen(t, ph, ()=>{ $('waText').value=''; $('waThreadMsg').textContent='✓ Plantilla enviada.'; openWaThread(tail); loadWaInbox(); }, null);
   $('waNoteBtn').onclick=async()=>{
     const b=$('waText').value.trim(); if(!b) return;
     const r2=await api('POST','/api/contact_logs',{user_id:t.user_id||null, phone:ph, person_type:t.person_type||'customer', person_name:t.name||ph, body:b});

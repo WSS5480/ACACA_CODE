@@ -1,14 +1,26 @@
 ¡Bienvenid@ a acasa, <%= @user&.name || '' %>!
 
-Nos alegra que formes parte de acasa. Tu cuenta ya fue creada.
+Tu cuenta ya fue creada. Con acasa compras desde Estados Unidos y nosotros lo entregamos directo a tu familia en México.
 <% if @whatsapp_url.present? %>
-Activa tu cuenta por WhatsApp: abre este enlace y envíanos el mensaje que aparece. En cuanto lo recibamos, tu cuenta quedará verificada:
+SOLO FALTA UN PASO: activa tu cuenta por WhatsApp. Abre este enlace desde tu celular y envíanos el mensaje que aparece (ya lleva tu código):
 <%= @whatsapp_url %>
+<% if @confirmation_url.present? %>
+¿No usas WhatsApp en este dispositivo? Verifica por correo aquí:
+<%= @confirmation_url %>
+<% end %>
+<% elsif @confirmation_url.present? %>
+SOLO FALTA UN PASO: confirma tu cuenta aquí:
+<%= @confirmation_url %>
 <% end %>
 Tu número de cliente: <%= @user.number %>
 
+¿Qué sigue?
+1. Elige lo que quieras regalarle a tu familia<% if @store_url.present? %> en <%= @store_url %><% end %>.
+2. Paga tu enganche y ve cubriendo tus pagos en línea desde tu cuenta.
+3. Nosotros lo compramos y lo entregamos directo en la puerta de tu familia en México.
+
 Para iniciar sesión usa tu correo y la contraseña que elegiste al registrarte.
 
-¡Gracias por confiar en nosotros!
+¡Gracias por confiar en nosotros! — El equipo de acasa
 
 acasa © <%= Date.current.year %>

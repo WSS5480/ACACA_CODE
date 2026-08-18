@@ -28,6 +28,16 @@ class UserMailer < ApplicationMailer
       base = frontend_base_url
       "#{base}/confirmar-cuenta?confirmation_token=#{ERB::Util.url_encode(raw_token)}"
     end
+    # VERIFICACIÓN POR WHATSAPP (principal): botón wa.me con el código del
+    # cliente ya escrito; al enviarnos ese mensaje, el webhook activa la cuenta
+    # y además queda abierta su ventana de 24 h para conversar.
+    @whatsapp_url = begin
+      @user.ensure_whatsapp_verify_token! if @user.respond_to?(:ensure_whatsapp_verify_token!)
+      @user.respond_to?(:whatsapp_verify_url) ? @user.whatsapp_verify_url : nil
+    rescue StandardError
+      nil
+    end
+    @store_url = frontend_base_url
 
     mail to: @user.email, subject: "¡Bienvenid@ a acasa!"
   end

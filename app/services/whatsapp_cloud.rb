@@ -68,6 +68,15 @@ class WhatsappCloud
     m.include?('131047') || m =~ /re-?engagement|24 hours|outside the allowed window/i ? true : false
   end
 
+  # Dígitos del número de la empresa tal como los usa wa.me (p. ej. 5218118247975).
+  def display_number_digits
+    r = get_json("https://#{GRAPH_HOST}/#{@version}/#{@phone_number_id}?fields=display_phone_number")
+    d = r['display_phone_number'].to_s.gsub(/\D/, '')
+    d.presence
+  rescue StandardError
+    nil
+  end
+
   # Identificador de la cuenta de WhatsApp Business (para listar plantillas).
   def waba_id
     return @waba_id if defined?(@waba_id) && @waba_id

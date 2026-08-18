@@ -53,12 +53,24 @@ class User < ApplicationRecord
   end
 
   def whatsapp_verify_url
+    # Número de la empresa: de ENV, o se consulta a Meta una vez y se cachea.
     num = ENV['WHATSAPP_BUSINESS_NUMBER'].to_s.gsub(/[^0-9]/, '')
+    num = User.business_whatsapp_digits if num.blank?
     return nil if num.blank?
     token = has_attribute?(:whatsapp_verify_token) ? whatsapp_verify_token : nil
     return nil if token.blank?
     text = "Hola, quiero verificar mi cuenta acasa. Codigo: #{token}"
     "https://wa.me/#{num}?text=#{ERB::Util.url_encode(text)}"
+  rescue StandardError
+    nil
+  end
+
+  # Dígitos del número de WhatsApp de la empresa (para enlaces wa.me), leídos
+  # de Meta y cacheados 12 h. Respaldo cuando WHATSAPP_BUSINESS_NUMBER no está.
+  def self.business_whatsapp_digits
+    Rails.cache.fetch('wa_business_digits', expires_in: 12.hours) do
+      WhatsappCloud.configured? ? WhatsappCloud.new.display_number_digits : nil
+    end
   rescue StandardError
     nil
   end

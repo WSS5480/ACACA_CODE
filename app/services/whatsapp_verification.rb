@@ -28,7 +28,11 @@ class WhatsappVerification
 
   def self.send_confirmation(user, to)
     return unless WhatsappCloud.configured?
-    WhatsappCloud.new.send_text(to, "¡Verificado! Tu cuenta acasa ya está activa. Bienvenid@ #{user.name}. Por aquí podrás dar seguimiento a tus pedidos.")
+    store = (ENV['FRONT_HOST'].presence || 'https://www.acasamx.com').chomp('/')
+    WhatsappCloud.new.send_text(to,
+      "¡Verificado! Tu cuenta acasa ya está activa. Bienvenid@ #{user.name}. " \
+      "Por aquí podrás dar seguimiento a tus pedidos.\n\n" \
+      "🛒 Empieza a comprar para tu familia en México: #{store}")
   rescue StandardError => e
     Rails.logger.error "[WhatsappVerification] reply failed: #{e.message}"
   end

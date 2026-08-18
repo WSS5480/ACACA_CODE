@@ -199,5 +199,7 @@ Rails.application.routes.draw do
     end
 
     post 'autopay/run', to: 'api/autopay#run'
+    # Tick programado (Cron Job de Render cada 15 min; corre lo recurrente)
+    post 'ticks/run', to: 'api/ticks#run'
   end
 end

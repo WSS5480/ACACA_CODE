@@ -37,6 +37,7 @@ class Api::BuyersController < ApplicationController
     )
 
     if @buyer.save
+      enqueue_reference_pings(@buyer.order_id)
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :created
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
@@ -46,6 +47,7 @@ class Api::BuyersController < ApplicationController
   # PATCH/PUT /api/buyers/:id
   def update
     if @buyer.update(buyer_params.except(:order_id))
+      enqueue_reference_pings(@buyer.order_id)
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :ok
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
@@ -89,11 +91,22 @@ class Api::BuyersController < ApplicationController
     render json: { error: 'No autorizado para acceder a este comprador' }, status: :forbidden
   end
 
+  # Al COMPLETARSE los datos se encolan las verificaciones de referencias.
+  def enqueue_reference_pings(order_id)
+    order = Order.find_by(id: order_id)
+    contract = order&.respond_to?(:contract) ? order&.contract : nil
+    ReferencePing.enqueue_for!(contract) if contract
+  rescue StandardError => e
+    Rails.logger.warn "[buyers] pings: #{e.message}"
+  end
+
   def buyer_params
     params.require(:buyer).permit(
       :order_id,
       :name,
       :last_name,
+      :home_contact_name,
+      :home_contact_phone,
       :nationality,
       :state_residence,
       :living_address1,

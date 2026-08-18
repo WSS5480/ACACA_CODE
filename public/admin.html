@@ -551,7 +551,29 @@
 
     <!-- ---------- MOTOR DE RIESGO ---------- -->
     <section class="view hide" data-v="riesgo">
-      <div class="head"><h1>Motor de Riesgo</h1></div>
+      <div class="head"><h1>Motor de Riesgo</h1><div class="sp"></div>
+        <button class="btn" id="aqToggle" style="background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</button>
+      </div>
+      <div id="aqPanel" class="sec" style="display:none;padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">❓ Preguntas de aprobación</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 12px">Lista maestra de lo que se pregunta para <b>establecer el crédito</b>: la PRE-APROBACIÓN al abrir la cuenta y la APROBACIÓN FINAL al completar la compra. Agrega, edita, reordena, desactiva o elimina. Cada cambio queda en la Bitácora.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">1️⃣ Pre-aprobación (al abrir la cuenta)</div>
+            <div id="aqPre"></div>
+            <button class="btn aqadd" data-l="pre" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
+          </div>
+          <div>
+            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">2️⃣ Aprobación final (al completar la compra)</div>
+            <div id="aqFinal"></div>
+            <button class="btn aqadd" data-l="final" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+          <button class="btn" id="aqSave">💾 Guardar preguntas</button>
+          <span class="muted" id="aqMsg" style="font-size:12.5px"></span>
+        </div>
+      </div>
       <p class="muted" style="margin:-6px 0 16px">Cada configuración es una versión guardada. Edita, prueba con un solicitante, guarda como nueva versión (con el motivo) o revierte a una anterior.</p>
 
       <div class="rk-warn" id="rk-warn" style="display:none"></div>
@@ -883,7 +905,49 @@ function show(view){
   if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
   if(view==='security') loadChangeReqs();
   if(view==='gestion') loadGestion();
+  if(view==='riesgo' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
 }
+
+/* ---- PREGUNTAS DE APROBACIÓN (Motor de riesgo): lista maestra editable ---- */
+let AQ={pre:[],final:[]};
+async function loadApprovalQuestions(){
+  const r=await api('GET','/api/settings/approval_questions');
+  if(r.ok&&r.data&&r.data.questions){ AQ={pre:r.data.questions.pre||[],final:r.data.questions.final||[]}; renderAQ(); }
+}
+function renderAQ(){
+  ['pre','final'].forEach(k=>{
+    const box=$(k==='pre'?'aqPre':'aqFinal'); if(!box) return;
+    box.innerHTML=(AQ[k]||[]).map((q,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;${q.active===false?'opacity:.5':''}">
+      <span class="muted" style="font-size:11px;min-width:18px;text-align:right">${i+1}.</span>
+      <input class="aqtext" data-l="${k}" data-i="${i}" value="${esc(q.text||'')}" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px">
+      <button class="aqmove" data-l="${k}" data-i="${i}" data-d="-1" title="Subir" style="border:0;background:none;cursor:pointer;color:var(--mut)">↑</button>
+      <button class="aqmove" data-l="${k}" data-i="${i}" data-d="1" title="Bajar" style="border:0;background:none;cursor:pointer;color:var(--mut)">↓</button>
+      <input type="checkbox" class="aqact" data-l="${k}" data-i="${i}" ${q.active===false?'':'checked'} title="Activa / inactiva">
+      <button class="aqdel" data-l="${k}" data-i="${i}" title="Eliminar" style="border:0;background:none;cursor:pointer;color:#c62828">✕</button>
+    </div>`).join('')||'<p class="empty" style="padding:6px">Sin preguntas.</p>';
+  });
+  document.querySelectorAll('.aqtext').forEach(el=>el.addEventListener('input',()=>{ AQ[el.dataset.l][+el.dataset.i].text=el.value; }));
+  document.querySelectorAll('.aqact').forEach(el=>el.onchange=()=>{ AQ[el.dataset.l][+el.dataset.i].active=el.checked; renderAQ(); });
+  document.querySelectorAll('.aqdel').forEach(el=>el.onclick=()=>{ if(!confirm('¿Eliminar esta pregunta de la lista?')) return; AQ[el.dataset.l].splice(+el.dataset.i,1); renderAQ(); });
+  document.querySelectorAll('.aqmove').forEach(el=>el.onclick=()=>{
+    const l=AQ[el.dataset.l], i=+el.dataset.i, j=i+(+el.dataset.d);
+    if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; renderAQ();
+  });
+}
+if($('aqToggle')) $('aqToggle').onclick=()=>{ const p=$('aqPanel'); p.style.display=p.style.display==='none'?'':'none'; };
+document.addEventListener('click',e=>{
+  const a=e.target.closest('.aqadd'); if(!a) return;
+  AQ[a.dataset.l].push({id:0,text:'',active:true}); renderAQ();
+  const inputs=$(a.dataset.l==='pre'?'aqPre':'aqFinal').querySelectorAll('.aqtext');
+  if(inputs.length) inputs[inputs.length-1].focus();
+});
+if($('aqSave')) $('aqSave').onclick=async()=>{
+  $('aqMsg').textContent='Guardando…'; $('aqSave').disabled=true;
+  const r=await api('PUT','/api/settings/approval_questions',{questions:AQ});
+  $('aqSave').disabled=false;
+  if(r.ok&&r.data&&r.data.ok){ AQ=r.data.questions; renderAQ(); $('aqMsg').textContent='✓ Guardado (queda en la Bitácora).'; }
+  else $('aqMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
+};
 
 /* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */
 let GES=[], GESALL=[], GESBUCKET='', GESCUST=[];
@@ -1495,7 +1559,7 @@ async function openOrderVerify(id){
   const benName=ben?[ben.name,ben.last_name].filter(Boolean).join(' '):'';
   const buyName=buy?[buy.name,buy.last_name].filter(Boolean).join(' '):'';
   const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
-  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:''),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:'')].join('') : '');
+  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Contacto de domicilio',null)),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:''),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:'')].join('') : '');
   // Referencias: editables y ampliables DURANTE la verificación. Cada orden
   // guarda su propia copia: editar aquí no toca órdenes anteriores.
   const refDataOrderId = (refs.length && refs[0].order_id) ? refs[0].order_id : o.id;

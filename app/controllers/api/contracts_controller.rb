@@ -43,7 +43,14 @@ module Api
           copy_datos!(src[:data_order], first_order)
           first_order = contract.orders.reload.first
           datos_complete = contract.respond_to?(:datos_complete?) ? contract.reload.datos_complete? : true
-          data[:datos_reused] = true if datos_complete
+          if datos_complete
+            data[:datos_reused] = true
+            begin
+              ReferencePing.enqueue_for!(contract)
+            rescue StandardError => e
+              Rails.logger.warn "[contracts] pings: #{e.message}"
+            end
+          end
         elsif src
           data[:needs_reconfirm] = true
           data[:previous_datos] = {
@@ -368,6 +375,12 @@ module Api
 
       copy_datos!(src[:data_order], first_order)
       fo = first_order.reload
+      # Datos completos por reutilización -> también se encolan las verificaciones.
+      begin
+        ReferencePing.enqueue_for!(contract.reload)
+      rescue StandardError => e
+        Rails.logger.warn "[contracts] pings: #{e.message}"
+      end
       render json: { ok: true,
                      datos_complete: (contract.respond_to?(:datos_complete?) ? contract.reload.datos_complete? : true),
                      first_order_id: fo.id }, status: :ok

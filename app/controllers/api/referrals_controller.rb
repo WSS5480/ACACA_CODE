@@ -31,6 +31,7 @@ class Api::ReferralsController < ApplicationController
     end
 
     if @referral.save
+      enqueue_reference_pings(@referral.order)
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :created
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
@@ -40,10 +41,20 @@ class Api::ReferralsController < ApplicationController
   # PATCH/PUT /api/referrals/:id
   def update
     if @referral.update(referral_params.except(:order_id))
+      enqueue_reference_pings(@referral.order)
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :ok
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  # Al COMPLETARSE los datos de la compra se encolan solas las verificaciones
+  # de referencias por WhatsApp (se envían en horario local 8am-9pm).
+  def enqueue_reference_pings(order)
+    contract = order&.respond_to?(:contract) ? order.contract : nil
+    ReferencePing.enqueue_for!(contract) if contract
+  rescue StandardError => e
+    Rails.logger.warn "[referrals] pings: #{e.message}"
   end
 
   # DELETE /api/referrals/:id

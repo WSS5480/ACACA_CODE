@@ -32,7 +32,8 @@ class AuditLog < ApplicationRecord
     'wa_template_deleted'  => 'Eliminó plantilla de WhatsApp',
     'commitment_created'   => 'Registró compromiso de pago',
     'commitment_updated'   => 'Actualizó compromiso de pago',
-    'lead_released'        => 'Liberó cuenta nueva del CRM'
+    'lead_released'        => 'Liberó cuenta nueva del CRM',
+    'questions_updated'    => 'Editó preguntas de aprobación'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

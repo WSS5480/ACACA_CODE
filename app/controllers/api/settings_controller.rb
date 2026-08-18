@@ -203,6 +203,78 @@ class Api::SettingsController < ApplicationController
            status: :accepted
   end
 
+  QUESTIONS_KEY = 'approval_questions'
+  # Preguntas ACTUALES del proceso (semilla editable): las de PRE-APROBACIÓN se
+  # hacen al abrir la cuenta (alimentan el motor de riesgo) y las de APROBACIÓN
+  # FINAL al completar la compra (expediente que verifica el equipo).
+  DEFAULT_QUESTIONS = {
+    'pre' => [
+      '¿Tu vivienda es propia o rentada?',
+      '¿Cuántos meses llevas viviendo en Estados Unidos?',
+      '¿Cuántos meses llevas en tu domicilio actual?',
+      '¿Cuántos meses llevas en tu empleo actual?',
+      '¿Cuál es tu ingreso semanal estimado?',
+      '¿A qué país se entregará tu compra?',
+      '¿Compartes tu ingreso con alguien más?'
+    ],
+    'final' => [
+      'Datos del comprador: nombre, nacionalidad y estado donde vive',
+      'Domicilio completo en EE.UU. y tipo de vivienda (propia o rentada)',
+      'Contacto de tu domicilio (casero o conocido) y su teléfono',
+      'Empleo, teléfono del trabajo e ingreso semanal',
+      'Identificación oficial, comprobante de domicilio y de ingresos',
+      '2 referencias en México (nombre, teléfono y tel. de trabajo)',
+      '2 referencias en Estados Unidos (nombre, teléfono y tel. de trabajo)',
+      'Beneficiario que recibe en México: nombre, teléfono y dirección'
+    ]
+  }.freeze
+
+  # GET /api/settings/approval_questions
+  def approval_questions
+    rec = AppSetting.find_by(key: QUESTIONS_KEY)
+    data = begin
+      JSON.parse(rec&.value.to_s)
+    rescue StandardError
+      nil
+    end
+    unless data.is_a?(Hash) && data['pre'].is_a?(Array)
+      data = { 'pre' => DEFAULT_QUESTIONS['pre'].each_with_index.map { |t, i| { 'id' => i + 1, 'text' => t, 'active' => true } },
+               'final' => DEFAULT_QUESTIONS['final'].each_with_index.map { |t, i| { 'id' => i + 101, 'text' => t, 'active' => true } } }
+    end
+    render json: { questions: data, updated_at: rec&.updated_at }, status: :ok
+  end
+
+  # PUT /api/settings/approval_questions { questions: { pre: [...], final: [...] } }
+  def update_approval_questions
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden editar las preguntas' }, status: :forbidden
+    end
+
+    q = params[:questions]
+    return render(json: { error: 'Formato inválido' }, status: :unprocessable_entity) unless q.respond_to?(:[])
+
+    clean = {}
+    %w[pre final].each do |k|
+      list = Array(q[k]).map do |it|
+        { 'id' => it[:id].to_i, 'text' => it[:text].to_s.strip[0, 300],
+          'active' => ActiveModel::Type::Boolean.new.cast(it[:active]) }
+      end.reject { |it| it['text'].blank? }
+      return render(json: { error: "Máximo 40 preguntas por lista (#{k})" }, status: :unprocessable_entity) if list.size > 40
+
+      nid = (list.map { |i| i['id'] }.max || 0) + 1
+      list.each { |i| (i['id'] = nid; nid += 1) if i['id'] <= 0 }
+      clean[k] = list
+    end
+    AppSetting.set(QUESTIONS_KEY, clean.to_json)
+    AuditLog.record!(actor: @current_user, action: 'questions_updated',
+                     label: 'Preguntas de aprobación',
+                     details: "Pre: #{clean['pre'].size} · Final: #{clean['final'].size}")
+    render json: { ok: true, questions: clean }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def default_privacy_policy

@@ -13,3 +13,9 @@ commitment_reminders:
   class: 'CommitmentRemindersJob'
   queue: notifications
   description: 'Avisa por WhatsApp el DÍA ANTERIOR a cada compromiso de pago acordado'
+
+reference_pings:
+  cron: '*/15 * * * *'          # cada 15 minutos (el modelo respeta 8am-9pm local)
+  class: 'ReferencePingsJob'
+  queue: notifications
+  description: 'Envia por WhatsApp las verificaciones de referencias pendientes (ref_personal / ref_trabajo / ref_domicilio) en horario local permitido'

@@ -51,6 +51,10 @@ Rails.application.routes.draw do
     get 'settings/privacy', to: 'api/settings#privacy'
     put 'settings/privacy', to: 'api/settings#update_privacy'
 
+    # Preguntas de aprobación (Motor de riesgo): pre-aprobación y aprobación final
+    get 'settings/approval_questions', to: 'api/settings#approval_questions'
+    put 'settings/approval_questions', to: 'api/settings#update_approval_questions'
+
     # Tasas e impuestos (Seguridad): IVA, tasa de interés (define los factores) y seguro/waiver
     get 'settings/rates', to: 'api/settings#rates'
     put 'settings/rates', to: 'api/settings#update_rates'

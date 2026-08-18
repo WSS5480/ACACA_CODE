@@ -6,7 +6,8 @@ class BuyerSerializer
              :living_city, :housing_type, :months_usa, :months_address, :job,
              :phone, :phone_work, :email, :weekly_income, :relationship_with_beneficiary,
              :delivery_address1, :delivery_address2, :delivery_zip_code, :delivery_state,
-             :delivery_city, :phone_beneficiary, :created_at, :updated_at
+             :delivery_city, :phone_beneficiary, :home_contact_name, :home_contact_phone,
+             :created_at, :updated_at
 
   attribute :identification_url do |buyer|
     if buyer.identification.attached?

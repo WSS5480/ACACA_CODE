@@ -180,6 +180,10 @@ Rails.application.routes.draw do
       post 'reject', on: :member
     end
 
+    # CRM: cuentas nuevas que nunca compraron (contactar o LIBERAR)
+    get  'crm/leads',             to: 'api/leads#index'
+    post 'crm/leads/:id/dismiss', to: 'api/leads#dismiss'
+
     # Carritos abandonados (CRM): el storefront reporta el carrito del cliente
     post 'carts/track', to: 'api/carts#track'
     get  'carts',       to: 'api/carts#index'

@@ -307,6 +307,15 @@
           </tr></thead><tbody id="crmCartBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
+      <div class="sec" style="margin-top:14px">
+        <div class="stitle" style="padding:14px 16px 4px">🆕 Cuentas nuevas sin compra</div>
+        <p class="muted" style="margin:0 16px 10px;font-size:12.5px">Se registraron (recibieron su correo de bienvenida) y <b>nunca regresaron</b>: sin carrito y sin pedido. Contáctalos por WhatsApp o correo; si no hay manera de localizarlos, <b>Liberar</b> los saca del seguimiento (la cuenta NO se borra — si vuelven y compran, entran al pipeline normal).</p>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>Cliente</th><th>Correo</th><th>Teléfono</th><th>Verificación</th><th>Se registró</th><th>Esperando</th><th class="right">Acciones</th>
+          </tr></thead><tbody id="crmLeadBody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
     </section>
 
     <!-- ---------- CATÁLOGOS ---------- -->
@@ -2142,6 +2151,44 @@ async function loadCrmCarts(){
     if(!confirm('¿Descartar el carrito de '+(b.dataset.name||'este cliente')+' del CRM?\n\nSu carrito en la tienda NO se toca; si vuelve a moverlo, reaparece aquí.')) return;
     const r2=await api('DELETE','/api/carts/'+encodeURIComponent(b.dataset.uid));
     if(r2.ok){ loadCrmCarts(); } else { alert('No se pudo descartar.'); }
+  });
+  loadCrmLeads();
+}
+// CUENTAS NUEVAS SIN COMPRA: registrados que nunca regresaron (como Elvia).
+// Contactar por WhatsApp/correo, o LIBERAR si no se les pudo localizar.
+async function loadCrmLeads(){
+  const body=$('crmLeadBody'); if(!body) return;
+  const r=await api('GET','/api/crm/leads');
+  if(!r.ok||!r.data){ body.innerHTML='<tr><td colspan="7" class="empty">No se pudieron cargar.</td></tr>'; return; }
+  const leads=r.data.leads||[];
+  const now=Date.now();
+  body.innerHTML = leads.length ? leads.map(u=>{
+    const hrs=u.created_at?Math.max(0,Math.round((now-new Date(u.created_at).getTime())/36e5)):null;
+    const wait=hrs==null?'—':(hrs<48?(hrs+' h'):(Math.round(hrs/24)+' días'));
+    const hot=hrs!=null&&hrs<48;
+    return `<tr>
+      <td style="font-weight:600">${esc(u.name||'—')}${u.phone_problem?`<span title="Teléfono mal capturado: ${esc(u.phone_problem)}" style="margin-left:6px;cursor:help">⚠️</span>`:''}</td>
+      <td style="font-size:12.5px">${esc(u.email||'—')}</td>
+      <td class="mono">${esc(u.phone||'—')}</td>
+      <td>${u.confirmed?'<span class="pill p-appr">✓ Verificada</span>':'<span class="pill p-pend" title="No ha enviado su WhatsApp de verificación">Pendiente de WhatsApp</span>'}</td>
+      <td>${fdate(u.created_at)}</td>
+      <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo sin regresar'}">${wait}</span></td>
+      <td class="right">
+        <button class="leadwa" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
+        <button class="leadmail" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" data-email="${esc(u.email||'')}" data-conf="${u.confirmed?'1':''}" title="Enviar correo" style="border:0;background:#1b2a4a;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✉</button>
+        <button class="leadfree" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="Liberar del CRM (la cuenta NO se borra)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🔓</button>
+      </td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">Sin cuentas nuevas pendientes de seguimiento. 🎉</td></tr>';
+  body.querySelectorAll('.leadwa').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.uid, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
+  body.querySelectorAll('.leadmail').forEach(b=>b.onclick=()=>mailOpen({user_id:b.dataset.uid, name:b.dataset.name, phone:b.dataset.phone||null, email:b.dataset.email||'',
+    subject:'Tu cuenta de Ácasa te está esperando',
+    body: b.dataset.conf
+      ? 'Vimos que creaste tu cuenta en Ácasa y queremos ayudarte a estrenarla. Elige lo que quieras regalarle a tu familia en México, tú lo pagas en pagos desde EE.UU. y nosotros lo entregamos en su puerta.\n\n¿Te ayudamos a hacer tu primer pedido? Responde este correo o escríbenos por WhatsApp.'
+      : 'Creaste tu cuenta en Ácasa pero falta un pasito: verificarla por WhatsApp con el botón de tu correo de bienvenida. En cuanto la actives podrás hacer tu primer pedido y nosotros lo entregamos directo a tu familia en México.\n\n¿Necesitas que te reenviemos el correo o tienes alguna duda? Responde por aquí con confianza.'}));
+  body.querySelectorAll('.leadfree').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿LIBERAR a '+(b.dataset.name||'este cliente')+' del seguimiento del CRM?\n\nSu cuenta NO se borra: si regresa y compra, entra al pipeline normal. Queda registrado en la Bitácora.')) return;
+    const r2=await api('POST','/api/crm/leads/'+encodeURIComponent(b.dataset.uid)+'/dismiss');
+    if(r2.ok){ loadCrmLeads(); } else alert((r2.data&&r2.data.error)||'No se pudo liberar.');
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;

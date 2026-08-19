@@ -2280,7 +2280,7 @@ if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;
 
 /* ---- CONSTRUCTOR de plantillas: crear, revisar estado y elegir cuál usa
    cada aviso automático de la plataforma (firma, cobranza, carrito, contacto). */
-const TPL_EVENTS={firma:'Contrato listo para firma',pago:'Recordatorio de pago',carrito:'Carrito abandonado',contacto:'Primer contacto'};
+const TPL_EVENTS={firma:'Contrato listo para firma',pago:'Recordatorio de pago',carrito:'Carrito abandonado',contacto:'Primer contacto',aprobada:'Cuenta aprobada 🎉'};
 function tplStatusPill(s){
   const m={APPROVED:['p-appr','Aprobada'],PENDING:['p-pend','En revisión'],IN_APPEAL:['p-pend','En apelación'],
            REJECTED:['p-canc','Rechazada'],PAUSED:['p-canc','Pausada'],DISABLED:['p-canc','Deshabilitada']}[String(s||'').toUpperCase()];

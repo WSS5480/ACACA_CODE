@@ -47,6 +47,9 @@ class Api::OrdersController < ApplicationController
     if fields.key?('admin_approved')
       fields['approved_at'] = fields['admin_approved'] ? Time.current : nil
     end
+    # ¿Es una aprobación NUEVA? (antes no estaba aprobada) -> avisar al cliente por WhatsApp.
+    newly_approved = fields['admin_approved'] == true &&
+                     !(order.respond_to?(:admin_approved) && order.admin_approved)
     order.update!(fields)
     # La verificación es de las PERSONAS de la compra (comprador, beneficiario, referencias),
     # no del artículo: se aplica a TODOS los artículos del mismo contrato (una sola verificación
@@ -69,6 +72,7 @@ class Api::OrdersController < ApplicationController
                          details: (checks.any? ? "Verificación guardada · #{checks.join(' · ')}" : 'Verificación guardada'))
       end
     end
+    notify_account_approved(order) if newly_approved
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -357,6 +361,27 @@ class Api::OrdersController < ApplicationController
 
   def staff_user?
     %w[master admin].include?(@current_user&.role&.name)
+  end
+
+  # 🎉 CUENTA APROBADA: aviso automático por WhatsApp al cliente (en español).
+  # Texto libre dentro de la ventana de 24 h; fuera de ella WhatsappOutbound lo
+  # reenvía solo como plantilla 'cuenta_aprobada' (evento 'aprobada').
+  def notify_account_approved(order)
+    user = order.user
+    return unless user&.phone.present?
+
+    nombre = user.name.to_s.split.first.presence || 'cliente'
+    texto = "¡Felicidades, #{nombre}! 🎉 Tu cuenta Ácasa fue APROBADA. " \
+            'El siguiente paso es tu contrato: lo generamos y te lo enviamos ' \
+            'por este medio para tu firma. Cualquier duda, responde aquí mismo.'
+    res = WhatsappOutbound.deliver(phone: user.phone, text: texto, event: 'aprobada',
+                                   params: [nombre], user: user, actor: @current_user)
+    ContactLog.create!(user_id: user.id, person_type: 'buyer',
+                       person_name: [user.name, user.last_name].compact.join(' ').strip,
+                       phone: user.phone, author_name: 'Automático',
+                       body: res[:ok] ? "🤖 Aviso de cuenta APROBADA enviado por WhatsApp (#{res[:via]})" : "🤖 Aviso de cuenta aprobada NO se pudo enviar: #{res[:error]}")
+  rescue StandardError => e
+    Rails.logger.warn "[notify_account_approved] #{e.message}"
   end
 
   # Etiqueta legible de la orden para la bitácora de auditoría.

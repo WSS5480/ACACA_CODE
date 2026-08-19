@@ -14,7 +14,8 @@ class WhatsappOutbound
     'firma'    => 'firma_contrato',
     'pago'     => 'recordatorio_pago',
     'carrito'  => 'carrito_pendiente',
-    'contacto' => 'contacto_inicial'
+    'contacto' => 'contacto_inicial',
+    'aprobada' => 'cuenta_aprobada'
   }.freeze
   SETTING_KEY = 'wa_auto_templates'
 

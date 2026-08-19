@@ -342,15 +342,15 @@ module Api
       em = nil
       if ActiveModel::Type::Boolean.new.cast(params[:send_whatsapp])
         wa = send_signing_whatsapp(contract)
-        # Respaldo por CORREO: si el WhatsApp no salió (o no está configurado), el enlace
-        # de firma le llega al cliente por email con el servicio SMTP que ya funciona.
-        em = send_signing_email(contract) unless wa[:ok]
+        # SIEMPRE por los DOS medios: el enlace de firma va por WhatsApp Y por correo
+        # (el cliente firma desde donde le quede más cómodo, con dedo o mouse).
+        em = send_signing_email(contract)
         contract.update_column(:document_sent_at, Time.current) if wa[:ok] || (em && em[:ok])
       end
-      sent_via = if wa && wa[:ok] then "WhatsApp a #{wa[:sent_to]}"
-                 elsif em && em[:ok] then "correo a #{em[:sent_to]}"
-                 else 'sin envío'
-                 end
+      vias = []
+      vias << "WhatsApp a #{wa[:sent_to]}" if wa && wa[:ok]
+      vias << "correo a #{em[:sent_to]}" if em && em[:ok]
+      sent_via = vias.any? ? vias.join(' y ') : 'sin envío'
       AuditLog.record!(actor: @current_user, action: 'contract_generated', target: contract,
                        label: audit_contract_label(contract),
                        details: "Documento generado para firma · aviso: #{sent_via}")

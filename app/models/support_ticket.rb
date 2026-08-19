@@ -28,7 +28,16 @@ class SupportTicket < ApplicationRecord
     digits = from.to_s.gsub(/\D/, '')
     tail = digits[-10..]
     return if tail.blank?
-    return if open_ones.where("regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}").exists?
+
+    existing = open_ones.where("regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}")
+                        .order(:id).last
+    if existing
+      # Ya hay un ticket ABIERTO de este número: el nuevo mensaje se anota ahí
+      # (sin duplicar tickets) y el ticket sube al frente de la lista.
+      existing.notes.create!(author_name: 'Automático', body: "💬 El cliente volvió a escribir: “#{body.to_s[0, 300]}”")
+      existing.touch
+      return existing
+    end
 
     name = user ? [user.name, user.last_name].compact.join(' ').strip.presence : nil
     t = create!(user_id: user&.id, customer_name: name || "WhatsApp #{from}", phone: digits,
@@ -37,6 +46,15 @@ class SupportTicket < ApplicationRecord
     t.notes.create!(author_name: 'Automático', body: "🆘 El cliente escribió desde la página de Soporte: “#{body.to_s[0, 300]}”")
     AuditLog.record!(actor: nil, action: 'ticket_created', target: t, label: t.ref,
                      details: "Auto-ticket de WhatsApp · #{t.customer_name}")
+    # Acuse INMEDIATO al cliente (su ventana está abierta: nos acaba de escribir).
+    begin
+      nombre = name.to_s.split.first.presence || 'hola'
+      ack = "¡Recibido, #{nombre}! 🙏 Abrimos tu solicitud de ayuda (ticket #{t.ref}). " \
+            'Una persona de nuestro equipo te responde por aquí en breve.'
+      WhatsappOutbound.deliver(phone: digits, text: ack, user: user)
+    rescue StandardError => e
+      Rails.logger.warn "[SupportTicket] acuse: #{e.message}"
+    end
     t
   rescue StandardError => e
     Rails.logger.warn "[SupportTicket] auto: #{e.message}"

@@ -78,6 +78,18 @@ class WaAutoText
       label: '🎤 Entrevista — cierre cuando dice NO conocer al cliente',
       vars: [],
       text: 'Entendido, muchas gracias por tu tiempo 🙏 ¡Que tengas buen día!'
+    },
+    'soporte_recibido' => {
+      label: '🆘 Soporte — acuse al ABRIR el ticket',
+      vars: %w[nombre ticket],
+      text: '¡Recibido, {nombre}! 🙏 Abrimos tu solicitud de ayuda (ticket {ticket}). ' \
+            'Una persona de nuestro equipo te responde por aquí en breve.'
+    },
+    'soporte_resuelto' => {
+      label: '🆘 Soporte — aviso al RESOLVER el ticket',
+      vars: %w[nombre ticket resolucion],
+      text: '¡Listo, {nombre}! ✅ Tu solicitud {ticket} quedó resuelta: {resolucion}. ' \
+            'Si necesitas algo más, escríbenos por aquí con confianza 🙌'
     }
   }.freeze
 

@@ -85,6 +85,7 @@ module Api
         t.notes.create!(author_name: staff_name, body: "✅ RESUELTO: #{t.resolution.to_s[0, 400]}")
         AuditLog.record!(actor: @current_user, action: 'ticket_resolved', target: t, label: t.ref,
                          details: "#{t.customer_name} · #{t.resolution.to_s[0, 150]}")
+        notify_resolved(t)
       elsif fields.any?
         AuditLog.record!(actor: @current_user, action: 'ticket_updated', target: t, label: t.ref,
                          details: fields.keys.join(', '))
@@ -110,6 +111,22 @@ module Api
     end
 
     private
+
+    # ✅ Al RESOLVER: aviso automático por WhatsApp al cliente con la resolución.
+    # Texto EDITABLE en Respuestas WhatsApp ('soporte_resuelto'). Si su ventana
+    # de 24 h está cerrada y no hay plantilla, queda anotado en el ticket.
+    def notify_resolved(t)
+      return if t.phone.to_s.strip.blank?
+
+      nombre = t.customer_name.to_s.split.first.presence || 'hola'
+      texto = WaAutoText.render('soporte_resuelto', nombre: nombre, ticket: t.ref,
+                                resolucion: t.resolution.to_s[0, 300])
+      r = WhatsappOutbound.deliver(phone: t.phone, text: texto, user: t.user, actor: @current_user)
+      t.notes.create!(author_name: 'Automático',
+                      body: r[:ok] ? '📲 Aviso de resolución enviado al cliente por WhatsApp' : "⚠ No se pudo avisar por WhatsApp: #{r[:error]}")
+    rescue StandardError => e
+      Rails.logger.warn "[SupportTickets] notify_resolved: #{e.message}"
+    end
 
     def serialize(t, notes: false)
       h = { id: t.id, ref: t.ref, user_id: t.user_id, customer_name: t.customer_name,

@@ -47,10 +47,10 @@ class SupportTicket < ApplicationRecord
     AuditLog.record!(actor: nil, action: 'ticket_created', target: t, label: t.ref,
                      details: "Auto-ticket de WhatsApp · #{t.customer_name}")
     # Acuse INMEDIATO al cliente (su ventana está abierta: nos acaba de escribir).
+    # Texto EDITABLE en Respuestas WhatsApp ('soporte_recibido').
     begin
       nombre = name.to_s.split.first.presence || 'hola'
-      ack = "¡Recibido, #{nombre}! 🙏 Abrimos tu solicitud de ayuda (ticket #{t.ref}). " \
-            'Una persona de nuestro equipo te responde por aquí en breve.'
+      ack = WaAutoText.render('soporte_recibido', nombre: nombre, ticket: t.ref)
       WhatsappOutbound.deliver(phone: digits, text: ack, user: user)
     rescue StandardError => e
       Rails.logger.warn "[SupportTicket] acuse: #{e.message}"

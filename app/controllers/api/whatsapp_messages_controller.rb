@@ -97,6 +97,9 @@ module Api
         g[:phone] = m.wa_phone
         g[:user_id] ||= m.user_id
         g[:unread] += 1 if has_read && m.direction == 'in' && m.read_at.nil?
+        # 🆘 Solicitud de SOPORTE: entró por el botón de www.acasamx.com/soporte
+        # (saludo de ayuda precargado) — el hilo se marca para verlo de inmediato.
+        g[:support] = true if m.direction == 'in' && m.body.to_s.downcase.include?('necesito ayuda')
         g[:last_at] = m.created_at
         g[:last_preview] = m.body.to_s[0, 90]
         g[:last_dir] = m.direction

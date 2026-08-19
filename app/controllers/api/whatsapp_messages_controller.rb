@@ -333,6 +333,13 @@ module Api
           g[:person_type] = u.role&.name == 'cliente' ? 'cliente' : 'equipo'
           g[:name] = [u.name, u.last_name].compact.join(' ').strip.presence || u.email
           g[:user_id] ||= u.id
+          # Mismo teléfono en VARIAS cuentas (pruebas o duplicados): avisarlo en el
+          # hilo — todo lo de ese número cae en UNA sola conversación.
+          same = users.count { |x| phone_tail(x.phone) == g[:tail] }
+          if same > 1
+            g[:accounts_same_phone] = same
+            g[:name] = "#{g[:name]} · ⚠ #{same} cuentas con este tel."
+          end
         elsif (b = buyers.find { |x| phone_tail(x.phone) == g[:tail] })
           g[:person_type] = 'comprador'
           g[:name] = [b.name, b.last_name].compact.join(' ').strip

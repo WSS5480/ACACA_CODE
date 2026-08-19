@@ -80,7 +80,17 @@ class ContractDocument
       'bien_numero' => @orders.size.to_s,
       'bien_descripcion' => @orders.each_with_index.map { |o, i| "#{i + 1}) #{o.product_title} (ASIN #{o.product_asin})" }.join('  '),
       'bien_serie' => nil,
-      'bien_modelo' => nil,
+      # MODELO del artículo: ya viene del catálogo (products.model_number) — sin
+      # migración. Con varios artículos se numera igual que la descripción.
+      'bien_modelo' => begin
+        mods = @orders.each_with_index.map do |o, i|
+          m = o.product&.model_number.to_s.strip
+          next nil if m.blank?
+
+          @orders.size > 1 ? "#{i + 1}) #{m}" : m
+        end.compact
+        mods.any? ? mods.join('  ') : nil
+      end,
 
       'monto_contado' => money(@c.total_amount),
       'monto_enganche' => money(@c.downpayment),

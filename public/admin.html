@@ -153,6 +153,7 @@
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
       <a data-view="waresp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Respuestas WhatsApp</a>
+      <a data-view="soporte"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg> Soporte</a>
       <a data-view="config"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
       <a data-view="security"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Seguridad</a>
       </div><!-- /navAdmin -->
@@ -790,6 +791,22 @@
       </div>
     </section>
 
+    <section class="view hide" data-v="soporte">
+      <div class="head"><h1>Soporte — Tickets</h1><button class="btn" id="stNew">➕ Nuevo ticket</button></div>
+      <div id="stMain">
+        <div id="stStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div class="sec" style="padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="stQ" placeholder="Buscar cliente, asunto, teléfono…" style="flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px">
+          <select id="stF" class="sel" style="width:190px"><option value="">Todos los estados</option><option value="abierto">Abiertos</option><option value="en_proceso">En proceso</option><option value="esperando_cliente">Esperando cliente</option><option value="resuelto">Resueltos</option></select>
+          <button class="btn" id="stRefresh" style="background:#eef0f6;color:var(--navy)">🔄 Actualizar</button>
+        </div>
+        <div class="sec" style="overflow:auto"><table class="tbl"><thead><tr>
+          <th>Ticket</th><th>Cliente</th><th>Asunto</th><th>Canal</th><th>Prioridad</th><th>Estado</th><th>Atiende</th><th>Actualizado</th>
+        </tr></thead><tbody id="stBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table></div>
+      </div>
+      <div id="stDetail" style="display:none"></div>
+    </section>
+
     <section class="view hide" data-v="waresp">
       <div class="head"><h1>Respuestas automáticas de WhatsApp</h1></div>
             <div class="sec" style="padding:16px;margin-bottom:16px">
@@ -952,6 +969,7 @@ function show(view){
   if(view==='gestion') loadGestion();
   if(view==='preguntas' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
   if(view==='waresp' && !loaded.war){ loadWaResponses(); loaded.war=1; }
+  if(view==='soporte'){ stBack(); loadTickets(); }
 }
 
 /* ---- PREGUNTAS DE APROBACIÓN (Motor de riesgo): lista maestra editable ---- */
@@ -1078,6 +1096,130 @@ if($('wtSend')) $('wtSend').onclick=async()=>{
   $('wtSend').disabled=false;
   if(r.ok){ $('wtMsg').textContent='✓ Enviada a Meta — queda ⏳ En revisión; usa 🔄 para ver cuándo llega su ✅.'; $('wtName').value='';$('wtBody').value='';$('wtEx').value=''; loadWarTpls(); }
   else $('wtMsg').textContent=(r.data&&r.data.error)||'Meta rechazó la solicitud.';
+};
+
+/* ---------------- SOPORTE con TICKETS (bajo la línea): registrar por cliente y gestionar hasta la resolución ---------------- */
+let ST=[], ST_CUR=null;
+const ST_STATUS={abierto:['p-canc','🔴 Abierto'],en_proceso:['p-pend','🟡 En proceso'],esperando_cliente:['p-pend','⏳ Esperando cliente'],resuelto:['p-appr','✅ Resuelto']};
+const ST_PR={alta:['#fdecec','#b00020','🔥 Alta'],media:['#fff7e6','#b26a00','Media'],baja:['#eef0f6','#5b6270','Baja']};
+function stPill(st){const m=ST_STATUS[st]||['p-other',st];return `<span class="pill ${m[0]}">${m[1]}</span>`;}
+function stPr(p){const m=ST_PR[p]||ST_PR.media;return `<span style="font-size:11px;font-weight:800;border-radius:6px;padding:2px 8px;background:${m[0]};color:${m[1]}">${m[2]}</span>`;}
+function stBack(){ const d=$('stDetail'); if(d){d.style.display='none';d.innerHTML='';} if($('stMain'))$('stMain').style.display=''; ST_CUR=null; }
+async function loadTickets(){
+  const q=$('stQ')?$('stQ').value.trim():'', f=$('stF')?$('stF').value:'';
+  const r=await api('GET','/api/support/tickets?status='+encodeURIComponent(f)+'&q='+encodeURIComponent(q));
+  const body=$('stBody'); if(!body) return;
+  if(!r.ok){ body.innerHTML='<tr><td colspan="8" class="empty">'+esc((r.data&&r.data.error)||'No se pudieron cargar los tickets.')+'</td></tr>'; return; }
+  ST=(r.data&&r.data.tickets)||[];
+  const c=(r.data&&r.data.counts)||{};
+  $('stStats').innerHTML=[['abierto','Abiertos'],['en_proceso','En proceso'],['esperando_cliente','Esperando cliente'],['resuelto','Resueltos']].map(([k,l])=>`
+    <div class="sec" style="padding:12px 18px;min-width:130px;cursor:pointer" onclick="$('stF').value='${k}';loadTickets()">
+      <div style="font-size:22px;font-weight:800;color:var(--navy)">${c[k]||0}</div><div class="muted" style="font-size:12px">${l}</div></div>`).join('');
+  body.innerHTML=ST.length?ST.map(t=>`
+    <tr class="strow" data-id="${t.id}" style="cursor:pointer">
+      <td class="mono" style="font-weight:800">${esc(t.ref)}</td>
+      <td style="font-weight:600">${esc(t.customer_name||'—')}</td>
+      <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(t.subject||'')}">${esc(t.subject||'—')}</td>
+      <td>${esc({whatsapp:'💬 WhatsApp',admin:'🧑‍💻 Interno',telefono:'📞 Teléfono',correo:'✉ Correo'}[t.channel]||t.channel||'—')}</td>
+      <td>${stPr(t.priority)}</td><td>${stPill(t.status)}</td>
+      <td style="font-size:12.5px">${esc(t.assigned_name||'—')}</td>
+      <td style="font-size:12px" class="muted">${fdate(t.updated_at)}</td>
+    </tr>`).join(''):'<tr><td colspan="8" class="empty">Sin tickets con este filtro. 🎉</td></tr>';
+  body.querySelectorAll('.strow').forEach(tr=>tr.onclick=()=>openTicket(tr.dataset.id));
+}
+if($('stRefresh')) $('stRefresh').onclick=loadTickets;
+if($('stQ')) $('stQ').onkeydown=(e)=>{ if(e.key==='Enter') loadTickets(); };
+if($('stF')) $('stF').onchange=loadTickets;
+async function openTicket(id){
+  const r=await api('GET','/api/support/tickets/'+encodeURIComponent(id));
+  if(!r.ok){ alert((r.data&&r.data.error)||'No se pudo abrir el ticket.'); return; }
+  const t=r.data.ticket; ST_CUR=t.id;
+  $('stMain').style.display='none';
+  const d=$('stDetail'); d.style.display='';
+  const notes=(t.notes||[]).map(n=>`
+    <div style="border-left:3px solid var(--line);padding:6px 12px;margin-bottom:8px">
+      <div style="font-size:11.5px;color:var(--mut)">${esc(n.author||'—')} · ${fdate(n.at)}</div>
+      <div style="font-size:13.5px;white-space:pre-wrap">${esc(n.body)}</div></div>`).join('')||'<p class="muted" style="font-size:12.5px">Sin notas todavía.</p>';
+  d.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="stBackL" style="color:var(--brand-d);font-weight:700">&larr; Volver a tickets</a></div>
+    <div class="sec" style="padding:18px;margin-bottom:14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span class="mono" style="font-weight:800;font-size:15px;color:var(--navy)">${esc(t.ref)}</span>
+        ${stPill(t.status)} ${stPr(t.priority)}
+        <span style="flex:1"></span>
+        ${t.phone?`<button class="btn" id="stWa" style="background:#25D366;font-size:12.5px;padding:7px 12px">💬 WhatsApp</button>`:''}
+      </div>
+      <div style="font-weight:800;font-size:16px;color:var(--navy);margin-bottom:2px">${esc(t.subject||'')}</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:8px">${esc(t.customer_name||'—')}${t.phone?' · '+esc(t.phone):''} · ${esc({whatsapp:'entró por WhatsApp',admin:'registrado por el equipo',telefono:'por teléfono',correo:'por correo'}[t.channel]||t.channel||'')} · abierto ${fdate(t.created_at)} por ${esc(t.created_by||'—')}</div>
+      ${t.description?`<div style="font-size:13.5px;white-space:pre-wrap;background:#f7f8fb;border-radius:10px;padding:10px 12px;margin-bottom:10px">${esc(t.description)}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        ${t.status!=='en_proceso'&&t.status!=='resuelto'?'<button class="btn stact" data-st="en_proceso" style="background:#f5b301;color:#1b1b1b;font-size:12.5px;padding:7px 12px">▶ En proceso</button>':''}
+        ${t.status!=='esperando_cliente'&&t.status!=='resuelto'?'<button class="btn stact" data-st="esperando_cliente" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">⏳ Esperando cliente</button>':''}
+        ${t.status!=='resuelto'?'<button class="btn" id="stResolve" style="background:#1c8a43;font-size:12.5px;padding:7px 12px">✅ Resolver…</button>':'<button class="btn stact" data-st="abierto" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">↩ Reabrir</button>'}
+        <select id="stPrSel" class="sel" style="width:110px"><option value="alta" ${t.priority==='alta'?'selected':''}>🔥 Alta</option><option value="media" ${t.priority==='media'?'selected':''}>Media</option><option value="baja" ${t.priority==='baja'?'selected':''}>Baja</option></select>
+        <input id="stAsg" value="${esc(t.assigned_name||'')}" placeholder="¿Quién lo atiende?" style="width:170px;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12.5px">
+        <button class="btn" id="stSaveMeta" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">💾</button>
+        <span class="muted" id="stMsg" style="font-size:12.5px"></span>
+      </div>
+      <div id="stResBox" style="display:none;margin-bottom:10px">
+        <textarea id="stResTxt" placeholder="¿CÓMO se resolvió? (obligatorio para cerrar)" style="width:100%;min-height:64px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit">${esc(t.resolution||'')}</textarea>
+        <button class="btn" id="stResGo" style="background:#1c8a43;font-size:12.5px;padding:7px 12px;margin-top:6px">✅ Confirmar resolución</button>
+      </div>
+      ${t.status==='resuelto'&&t.resolution?`<div style="border:1px solid #bfe3c8;background:#f0faf2;border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:10px"><b>✅ Resolución</b> (${fdate(t.resolved_at)}): ${esc(t.resolution)}</div>`:''}
+    </div>
+    <div class="sec" style="padding:18px">
+      <div class="stitle" style="padding:0 0 8px">📝 Seguimiento</div>
+      ${notes}
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="stNoteTxt" placeholder="Agregar nota de seguimiento…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px">
+        <button class="btn" id="stNoteAdd" style="font-size:12.5px;padding:8px 14px">Agregar</button>
+      </div>
+    </div>`;
+  $('stBackL').onclick=(e)=>{e.preventDefault(); stBack(); $('stMain').style.display=''; loadTickets();};
+  if($('stWa')) $('stWa').onclick=()=>convOpen({user_id:t.user_id, name:t.customer_name, phone:t.phone, person_type:'customer'});
+  d.querySelectorAll('.stact').forEach(b=>b.onclick=async()=>{
+    const r2=await api('PUT','/api/support/tickets/'+t.id,{status:b.dataset.st});
+    if(r2.ok) openTicket(t.id); else $('stMsg').textContent=(r2.data&&r2.data.error)||'No se pudo actualizar.';
+  });
+  if($('stResolve')) $('stResolve').onclick=()=>{ $('stResBox').style.display=''; $('stResTxt').focus(); };
+  if($('stResGo')) $('stResGo').onclick=async()=>{
+    const r2=await api('PUT','/api/support/tickets/'+t.id,{status:'resuelto',resolution:$('stResTxt').value});
+    if(r2.ok) openTicket(t.id); else $('stMsg').textContent=(r2.data&&r2.data.error)||'No se pudo resolver.';
+  };
+  $('stSaveMeta').onclick=async()=>{
+    const r2=await api('PUT','/api/support/tickets/'+t.id,{priority:$('stPrSel').value,assigned_name:$('stAsg').value});
+    $('stMsg').textContent=r2.ok?'✓ Guardado':((r2.data&&r2.data.error)||'No se pudo guardar.');
+  };
+  $('stNoteAdd').onclick=async()=>{
+    const v=$('stNoteTxt').value.trim(); if(!v) return;
+    const r2=await api('POST','/api/support/tickets/'+t.id+'/notes',{body:v});
+    if(r2.ok) openTicket(t.id); else $('stMsg').textContent=(r2.data&&r2.data.error)||'No se pudo agregar.';
+  };
+}
+if($('stNew')) $('stNew').onclick=()=>{
+  const d=$('stDetail'); $('stMain').style.display='none'; d.style.display='';
+  d.innerHTML=`
+    <div style="margin-bottom:14px"><a href="#" id="stBackL2" style="color:var(--brand-d);font-weight:700">&larr; Volver a tickets</a></div>
+    <div class="sec" style="padding:18px;max-width:640px">
+      <div class="stitle" style="padding:0 0 10px">➕ Nuevo ticket de soporte</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="ntName" placeholder="Nombre del cliente" style="flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px">
+        <input id="ntPhone" placeholder="Teléfono (con lada)" style="width:190px;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px">
+      </div>
+      <input id="ntSubject" placeholder="Asunto" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px;margin-bottom:8px">
+      <textarea id="ntDesc" placeholder="Descripción del problema…" style="width:100%;min-height:84px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit;margin-bottom:8px"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="ntPr" class="sel" style="width:120px"><option value="media">Media</option><option value="alta">🔥 Alta</option><option value="baja">Baja</option></select>
+        <select id="ntCh" class="sel" style="width:150px"><option value="admin">🧑‍💻 Interno</option><option value="whatsapp">💬 WhatsApp</option><option value="telefono">📞 Teléfono</option><option value="correo">✉ Correo</option></select>
+      </div>
+      <button class="btn" id="ntGo">Abrir ticket</button> <span class="muted" id="ntMsg" style="font-size:12.5px"></span>
+    </div>`;
+  $('stBackL2').onclick=(e)=>{e.preventDefault(); stBack(); $('stMain').style.display=''; loadTickets();};
+  $('ntGo').onclick=async()=>{
+    $('ntMsg').textContent='Abriendo…';
+    const r=await api('POST','/api/support/tickets',{customer_name:$('ntName').value,phone:$('ntPhone').value,subject:$('ntSubject').value,description:$('ntDesc').value,priority:$('ntPr').value,channel:$('ntCh').value});
+    if(r.ok){ openTicket(r.data.ticket.id); } else $('ntMsg').textContent=(r.data&&r.data.error)||'No se pudo abrir el ticket.';
+  };
 };
 
 /* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */

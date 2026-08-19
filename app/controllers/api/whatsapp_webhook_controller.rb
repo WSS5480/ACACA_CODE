@@ -28,6 +28,11 @@ module Api
         # todo ocurra en el mismo segundo.
         archive_message(msg, from, body)
         WhatsappVerification.process_incoming(from: from, body: body)
+        # 🆘 Botón de Soporte del sitio: el saludo de ayuda abre un TICKET
+        # automáticamente (uno abierto por teléfono; se gestiona en Soporte).
+        if body.to_s.downcase.include?('necesito ayuda') && defined?(SupportTicket)
+          SupportTicket.log_from_whatsapp!(from: from, body: body, user: match_user(from))
+        end
         # Respuesta de BOTÓN de la mini-entrevista -> avanza la encuesta;
         # cualquier otro mensaje de una referencia pendiente -> la inicia.
         bid = msg.dig('interactive', 'button_reply', 'id').to_s
@@ -81,9 +86,8 @@ module Api
     end
 
     def match_user(from)
-      tail = from.to_s.gsub(/[^0-9]/, '')[-10..]
-      return nil if tail.blank?
-      User.where.not(phone: [nil, '']).find { |u| u.phone.to_s.gsub(/[^0-9]/, '')[-10..] == tail }
+      # Ligar SIEMPRE a la cuenta VERIFICADA de ese número (no a duplicados).
+      User.by_whatsapp_tail(from)
     end
 
     def incoming_messages

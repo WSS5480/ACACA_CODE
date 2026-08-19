@@ -36,6 +36,9 @@ class AuditLog < ApplicationRecord
     'questions_updated'    => 'Editó preguntas de aprobación',
     'wa_responses_updated' => 'Editó respuestas automáticas de WhatsApp',
     'auto_send_failed'     => '⚠ Falló un envío automático (alerta interna)',
+    'ticket_created'       => 'Abrió ticket de soporte',
+    'ticket_updated'       => 'Actualizó ticket de soporte',
+    'ticket_resolved'      => '✅ Resolvió ticket de soporte',
     'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada'
   }.freeze
 

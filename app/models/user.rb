@@ -67,6 +67,17 @@ class User < ApplicationRecord
 
   # Dígitos del número de WhatsApp de la empresa (para enlaces wa.me), leídos
   # de Meta y cacheados 12 h. Respaldo cuando WHATSAPP_BUSINESS_NUMBER no está.
+  # DUEÑO de un número de WhatsApp: SIEMPRE la cuenta VERIFICADA por WhatsApp
+  # (la más antigua si hubiera duplicados); si ninguna está verificada, la más
+  # antigua. Toda conversación se liga al cliente con su número verificado.
+  def self.by_whatsapp_tail(raw)
+    t = raw.to_s.gsub(/\D/, '')[-10..]
+    return nil if t.blank? || t.length < 10
+
+    scope = where("regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{t}")
+    scope.where.not(confirmed_at: nil).order(:created_at).first || scope.order(:created_at).first
+  end
+
   def self.business_whatsapp_digits
     Rails.cache.fetch('wa_business_digits', expires_in: 12.hours) do
       WhatsappCloud.configured? ? WhatsappCloud.new.display_number_digits : nil

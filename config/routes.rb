@@ -57,6 +57,13 @@ Rails.application.routes.draw do
     get 'settings/wa_responses',       to: 'api/settings#wa_responses'
     put 'settings/wa_responses',       to: 'api/settings#update_wa_responses'
 
+    # Soporte con tickets (pagina bajo la linea)
+    get  'support/tickets',           to: 'api/support_tickets#index'
+    post 'support/tickets',           to: 'api/support_tickets#create'
+    get  'support/tickets/:id',       to: 'api/support_tickets#show'
+    put  'support/tickets/:id',       to: 'api/support_tickets#update'
+    post 'support/tickets/:id/notes', to: 'api/support_tickets#create_note'
+
     # Tasas e impuestos (Seguridad): IVA, tasa de interés (define los factores) y seguro/waiver
     get 'settings/rates', to: 'api/settings#rates'
     put 'settings/rates', to: 'api/settings#update_rates'

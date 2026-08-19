@@ -331,7 +331,10 @@ module Api
                  'referencia' => 'Referencia', 'equipo' => 'Equipo' }
 
       groups.each_value do |g|
-        u = by_user_id[g[:user_id]] || users.find { |x| phone_tail(x.phone) == g[:tail] }
+        # El hilo se liga a la cuenta VERIFICADA de ese número; los mensajes que
+        # quedaron pegados a un duplicado sin verificar no mandan.
+        matches = users.select { |x| phone_tail(x.phone) == g[:tail] }.sort_by { |x| x.created_at || Time.current }
+        u = matches.find { |x| x.confirmed_at.present? } || by_user_id[g[:user_id]] || matches.first
         if u
           g[:person_type] = u.role&.name == 'cliente' ? 'cliente' : 'equipo'
           g[:name] = [u.name, u.last_name].compact.join(' ').strip.presence || u.email
@@ -395,9 +398,8 @@ module Api
     end
 
     def match_user_by_phone(raw)
-      tail = phone_tail(raw)
-      return nil if tail.blank?
-      User.where.not(phone: [nil, '']).find { |u| phone_tail(u.phone) == tail }
+      # SIEMPRE la cuenta VERIFICADA de ese número (no duplicados sin verificar).
+      User.by_whatsapp_tail(raw)
     end
 
     def authorize_staff!

@@ -1123,7 +1123,7 @@ async function loadTickets(){
       <td>${esc({whatsapp:'💬 WhatsApp',admin:'🧑‍💻 Interno',telefono:'📞 Teléfono',correo:'✉ Correo'}[t.channel]||t.channel||'—')}</td>
       <td>${stPr(t.priority)}</td><td>${stPill(t.status)}</td>
       <td style="font-size:12.5px">${esc(t.assigned_name||'—')}</td>
-      <td style="font-size:12px" class="muted">${fdate(t.updated_at)}</td>
+      <td style="font-size:12px" class="muted">${fdatetime(t.updated_at)}</td>
     </tr>`).join(''):'<tr><td colspan="8" class="empty">Sin tickets con este filtro. 🎉</td></tr>';
   body.querySelectorAll('.strow').forEach(tr=>tr.onclick=()=>openTicket(tr.dataset.id));
 }
@@ -1138,7 +1138,7 @@ async function openTicket(id){
   const d=$('stDetail'); d.style.display='';
   const notes=(t.notes||[]).map(n=>`
     <div style="border-left:3px solid var(--line);padding:6px 12px;margin-bottom:8px">
-      <div style="font-size:11.5px;color:var(--mut)">${esc(n.author||'—')} · ${fdate(n.at)}</div>
+      <div style="font-size:11.5px;color:var(--mut)">${esc(n.author||'—')} · ${fdatetime(n.at)}</div>
       <div style="font-size:13.5px;white-space:pre-wrap">${esc(n.body)}</div></div>`).join('')||'<p class="muted" style="font-size:12.5px">Sin notas todavía.</p>';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="stBackL" style="color:var(--brand-d);font-weight:700">&larr; Volver a tickets</a></div>
@@ -1150,7 +1150,7 @@ async function openTicket(id){
         ${t.phone?`<button class="btn" id="stWa" style="background:#25D366;font-size:12.5px;padding:7px 12px">💬 WhatsApp</button>`:''}
       </div>
       <div style="font-weight:800;font-size:16px;color:var(--navy);margin-bottom:2px">${esc(t.subject||'')}</div>
-      <div class="muted" style="font-size:12.5px;margin-bottom:8px">${esc(t.customer_name||'—')}${t.phone?' · '+esc(t.phone):''} · ${esc({whatsapp:'entró por WhatsApp',admin:'registrado por el equipo',telefono:'por teléfono',correo:'por correo'}[t.channel]||t.channel||'')} · abierto ${fdate(t.created_at)} por ${esc(t.created_by||'—')}</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:8px">${esc(t.customer_name||'—')}${t.phone?' · '+esc(t.phone):''} · ${esc({whatsapp:'entró por WhatsApp',admin:'registrado por el equipo',telefono:'por teléfono',correo:'por correo'}[t.channel]||t.channel||'')} · abierto ${fdatetime(t.created_at)} por ${esc(t.created_by||'—')}</div>
       ${t.description?`<div style="font-size:13.5px;white-space:pre-wrap;background:#f7f8fb;border-radius:10px;padding:10px 12px;margin-bottom:10px">${esc(t.description)}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
         ${t.status!=='en_proceso'&&t.status!=='resuelto'?'<button class="btn stact" data-st="en_proceso" style="background:#f5b301;color:#1b1b1b;font-size:12.5px;padding:7px 12px">▶ En proceso</button>':''}
@@ -1165,7 +1165,7 @@ async function openTicket(id){
         <textarea id="stResTxt" placeholder="¿CÓMO se resolvió? (obligatorio para cerrar)" style="width:100%;min-height:64px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit">${esc(t.resolution||'')}</textarea>
         <button class="btn" id="stResGo" style="background:#1c8a43;font-size:12.5px;padding:7px 12px;margin-top:6px">✅ Confirmar resolución</button>
       </div>
-      ${t.status==='resuelto'&&t.resolution?`<div style="border:1px solid #bfe3c8;background:#f0faf2;border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:10px"><b>✅ Resolución</b> (${fdate(t.resolved_at)}): ${esc(t.resolution)}</div>`:''}
+      ${t.status==='resuelto'&&t.resolution?`<div style="border:1px solid #bfe3c8;background:#f0faf2;border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:10px"><b>✅ Resolución</b> (${fdatetime(t.resolved_at)}): ${esc(t.resolution)}</div>`:''}
     </div>
     <div class="sec" style="padding:18px">
       <div class="stitle" style="padding:0 0 8px">📝 Seguimiento</div>

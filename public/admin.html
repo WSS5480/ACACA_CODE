@@ -152,7 +152,6 @@
       <a data-view="gestion"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg> Gestión de cuenta</a>
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
-      <a data-view="riesgo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Motor de Riesgo</a>
       <a data-view="config"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
       <a data-view="security"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Seguridad</a>
       </div><!-- /navAdmin -->
@@ -551,29 +550,8 @@
 
     <!-- ---------- MOTOR DE RIESGO ---------- -->
     <section class="view hide" data-v="riesgo">
-      <div class="head"><h1>Motor de Riesgo</h1><div class="sp"></div>
-        <button class="btn" id="aqToggle" style="background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</button>
-      </div>
-      <div id="aqPanel" class="sec" style="display:none;padding:16px;margin-bottom:16px">
-        <div class="stitle" style="padding:0 0 6px">❓ Preguntas de aprobación</div>
-        <p class="muted" style="font-size:12.5px;margin:0 0 12px">Lista maestra de lo que se pregunta para <b>establecer el crédito</b>: la PRE-APROBACIÓN al abrir la cuenta y la APROBACIÓN FINAL al completar la compra. Agrega, edita, reordena, desactiva o elimina. Cada cambio queda en la Bitácora.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div>
-            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">1️⃣ Pre-aprobación (al abrir la cuenta)</div>
-            <div id="aqPre"></div>
-            <button class="btn aqadd" data-l="pre" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
-          </div>
-          <div>
-            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">2️⃣ Aprobación final (al completar la compra)</div>
-            <div id="aqFinal"></div>
-            <button class="btn aqadd" data-l="final" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-          <button class="btn" id="aqSave">💾 Guardar preguntas</button>
-          <span class="muted" id="aqMsg" style="font-size:12.5px"></span>
-        </div>
-      </div>
+      <div class="head"><h1>Configuración — Motor de Riesgo</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a></div>
       <p class="muted" style="margin:-6px 0 16px">Cada configuración es una versión guardada. Edita, prueba con un solicitante, guarda como nueva versión (con el motivo) o revierte a una anterior.</p>
 
       <div class="rk-warn" id="rk-warn" style="display:none"></div>
@@ -785,8 +763,35 @@
     </section>
 
     <!-- ---------- CONFIGURACIÓN ---------- -->
+    <!-- ---------- CONFIGURACIÓN · PREGUNTAS DE APROBACIÓN ---------- -->
+    <section class="view hide" data-v="preguntas">
+      <div class="head"><h1>Configuración — Preguntas de aprobación</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">❓ Preguntas de aprobación</a></div>
+      <div id="aqPanel" class="sec" style="padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">❓ Preguntas de aprobación</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 12px">Lista maestra de lo que se pregunta para <b>establecer el crédito</b>: la PRE-APROBACIÓN al abrir la cuenta y la APROBACIÓN FINAL al completar la compra. Agrega, edita, reordena, desactiva o elimina. Cada cambio queda en la Bitácora.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">1️⃣ Pre-aprobación (al abrir la cuenta)</div>
+            <div id="aqPre"></div>
+            <button class="btn aqadd" data-l="pre" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
+          </div>
+          <div>
+            <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:8px">2️⃣ Aprobación final (al completar la compra)</div>
+            <div id="aqFinal"></div>
+            <button class="btn aqadd" data-l="final" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px;margin-top:6px">＋ Agregar pregunta</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+          <button class="btn" id="aqSave">💾 Guardar preguntas</button>
+          <span class="muted" id="aqMsg" style="font-size:12.5px"></span>
+        </div>
+      </div>
+    </section>
+
     <section class="view hide" data-v="config">
       <div class="head"><h1>Configuración</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a></div>
       <div class="sec" style="padding:18px">
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="flex:1;min-width:220px">
@@ -905,7 +910,7 @@ function show(view){
   if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
   if(view==='security') loadChangeReqs();
   if(view==='gestion') loadGestion();
-  if(view==='riesgo' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
+  if(view==='preguntas' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
 }
 
 /* ---- PREGUNTAS DE APROBACIÓN (Motor de riesgo): lista maestra editable ---- */
@@ -934,7 +939,6 @@ function renderAQ(){
     if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; renderAQ();
   });
 }
-if($('aqToggle')) $('aqToggle').onclick=()=>{ const p=$('aqPanel'); p.style.display=p.style.display==='none'?'':'none'; };
 document.addEventListener('click',e=>{
   const a=e.target.closest('.aqadd'); if(!a) return;
   AQ[a.dataset.l].push({id:0,text:'',active:true}); renderAQ();

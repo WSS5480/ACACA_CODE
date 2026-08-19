@@ -443,9 +443,12 @@ module Api
           limit = (cr.respond_to?(:credit_limit) ? cr.credit_limit : nil) || cr.amount
           cr.update!(amount: [cr.amount.to_f + restore, limit.to_f].min.round(2))
         end
-        if unpaid
-          # Cancelación de un pedido sin pago: se elimina TODO el intento (artículos incluidos)
-          # para que no queden órdenes huérfanas en el pipeline.
+        ReferencePing.where(contract_id: contract.id).delete_all if defined?(ReferencePing) && ReferencePing.table_exists?
+        PaymentCommitment.where(contract_id: contract.id).delete_all if defined?(PaymentCommitment) && PaymentCommitment.table_exists?
+        if unpaid || (staff? && ActiveModel::Type::Boolean.new.cast(params[:purge]))
+          # Cancelación de un pedido sin pago — o borrado COMPLETO por un admin
+          # (purge): se elimina TODO el pedido, artículos incluidos, para que no
+          # queden órdenes huérfanas en el pipeline.
           contract.orders.find_each(&:destroy!)
         else
           contract.orders.update_all(contract_id: nil)

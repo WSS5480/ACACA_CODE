@@ -178,6 +178,17 @@ class Api::UsersController < ApplicationController
     client_name = [@user.name, @user.last_name].compact.join(' ').strip
     client_email = @user.email
     ActiveRecord::Base.transaction do
+      # BORRADO COMPLETO del cliente: contratos, órdenes y TODO su rastro
+      # (verificaciones, compromisos, carritos, WhatsApp e historial). La
+      # Bitácora conserva el registro de QUIÉN lo eliminó y cuándo.
+      cids = contracts.map(&:id)
+      ReferencePing.where(contract_id: cids).delete_all if defined?(ReferencePing) && ReferencePing.table_exists?
+      PaymentCommitment.where(user_id: @user.id).delete_all if defined?(PaymentCommitment) && PaymentCommitment.table_exists?
+      CartSnapshot.where(user_id: @user.id).delete_all if defined?(CartSnapshot) && CartSnapshot.table_exists?
+      ContactLog.where(user_id: @user.id).delete_all if defined?(ContactLog) && ContactLog.table_exists?
+      if defined?(WhatsappMessage) && WhatsappMessage.table_exists?
+        WhatsappMessage.where(user_id: @user.id).find_each(&:destroy) # destroy: purga fotos/documentos adjuntos
+      end
       # Contratos primero (cascada pagos/cuotas), luego SUS ordenes (cascada comprador/aval/referencias).
       contracts.each(&:destroy!)
       @user.orders.find_each(&:destroy!)

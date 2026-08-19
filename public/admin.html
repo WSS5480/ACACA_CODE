@@ -1075,12 +1075,20 @@ function renderGesWb(){
     <button class="btn" id="gwWa" style="background:#25D366;font-size:13px;padding:8px 13px">💬 WhatsApp</button>
     <button class="btn" id="gwMail" style="background:#1b2a4a;font-size:13px;padding:8px 13px">✉ Correo</button>
     ${GW.phone?`<button class="btn" id="gwTel" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📞 ${esc(GW.phone)}</button>`:''}
-    <button class="btn" id="gwFicha" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📋 Ficha</button>`;
+    <button class="btn" id="gwFicha" style="background:#eef0f6;color:var(--navy);font-size:13px;padding:8px 13px">📋 Ficha</button>
+    ${['master','admin'].includes(MYROLE)?`<button class="btn" id="gwDelCli" style="background:#fdecec;color:#b00020;font-size:13px;padding:8px 13px" title="Función de PRUEBAS: elimina al cliente COMPLETO (cuenta, contratos, pedidos, historial y WhatsApp). Quitar al salir en vivo.">🗑 Eliminar cliente</button>`:''}`;
   $('gwWa').onclick=()=>convOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null, person_type:'customer'});
   $('gwMail').onclick=()=>mailOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null,
     email:(GW.list[0]&&pick(GW.list[0],['client_email'],''))||'', subject:'Sobre tu cuenta en Ácasa', body:''});
   if($('gwTel')) $('gwTel').onclick=()=>{ try{navigator.clipboard.writeText(GW.phone);}catch(e){} location.href='tel:+'+String(GW.phone).replace(/\D/g,''); };
   $('gwFicha').onclick=()=>{ loaded.con=1; show('contratos'); openClientSheet(GW.uid); };
+  /* PURGE-CLIENTE (PRUEBAS): quitar este bloque al salir en vivo. */
+  if($('gwDelCli')) $('gwDelCli').onclick=async()=>{
+    if(!confirm('⚠ FUNCIÓN DE PRUEBAS\n\n¿Eliminar a '+(GW.name||'este cliente')+' POR COMPLETO?\n\nSe borra TODO: cuenta, contratos, pedidos, pagos, historial y WhatsApp. Solo queda el registro en la Bitácora. Esta acción NO se puede deshacer.')) return;
+    const r=await api('DELETE','/api/users/'+encodeURIComponent(GW.uid));
+    if(r.ok){ CLIENTS=[]; loaded.cli=0; loaded.con=0; show('gestion'); }
+    else alert((r.data&&r.data.error)||'No se pudo eliminar al cliente.');
+  };
   const list=GW.list;
   const pd=list.reduce((s,c)=>s+(Number(pick(c,['past_due_amount'],0))||0),0);
   const days=list.reduce((mx,c)=>Math.max(mx,Number(pick(c,['days_past_due'],0))||0),0);
@@ -1630,6 +1638,7 @@ async function openOrderVerify(id){
           ? `<button class="btn" id="ovBuy" style="${semBtn('yellow')}">🛒 Comprar en Amazon</button>`
           : `<button class="btn" disabled style="${semBtn('red')};opacity:.8;cursor:not-allowed" title="Se habilita hasta que la orden esté APROBADA y el contrato FIRMADO">🛒 Comprar en Amazon</button>`)):''}
       ${allDelivered?`<span class="pill p-appr">Entregado ${fdate(o.delivered_at)}</span>`:''}
+      ${['master','admin'].includes(MYROLE)&&pick(o,['contract_id'],null)?`<button class="btn" id="ovDel" style="background:#fdecec;color:#b00020" title="Eliminar este pedido COMPLETO (contrato y artículos). Queda registrado en la Bitácora.">🗑 Eliminar pedido</button>`:''}
       <span class="muted" id="ovMsg"></span>
     </div>
     ${!canBuy?'<p class="muted" style="font-size:12.5px">🛒 La compra en Amazon se habilita cuando las tres secciones están verificadas, la orden APROBADA y el contrato FIRMADO. Al entregarse todo, la orden sale de aquí y el cliente pasa a Gestión de cuenta.</p>':''}`;
@@ -1699,6 +1708,14 @@ async function openOrderVerify(id){
     b.admin_approved=true; $('ovMsg').textContent='Aprobando…';
     const r2=await api('POST','/api/orders/'+encodeURIComponent(id)+'/verify',b);
     if(r2.ok){ openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo aprobar.'; }
+  };
+  // 🗑 ELIMINAR pedido completo (solo master/admin): contrato + artículos.
+  const delbtn=$('ovDel'); if(delbtn) delbtn.onclick=async()=>{
+    if(!confirm('¿ELIMINAR este pedido POR COMPLETO?\n\nSe borran el contrato y sus artículos, y el crédito consumido se le restaura al cliente. Queda registrado en la Bitácora. Esta acción NO se puede deshacer.')) return;
+    delbtn.disabled=true; $('ovMsg').textContent='Eliminando pedido…';
+    const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(pick(o,['contract_id'],''))+'?purge=1');
+    if(r2.ok){ d.style.display='none'; if(wrap) wrap.style.display=''; loadOrders('all'); }
+    else { delbtn.disabled=false; $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo eliminar el pedido.'; }
   };
   // Entrega POR ARTÍCULO (cada artículo de la compra llega por separado).
   d.querySelectorAll('.ovdeliver1').forEach(b=>b.onclick=async()=>{
@@ -2262,6 +2279,7 @@ async function loadCrmLeads(){
         <button class="leadwa" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
         <button class="leadmail" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" data-email="${esc(u.email||'')}" data-conf="${u.confirmed?'1':''}" title="Enviar correo" style="border:0;background:#1b2a4a;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✉</button>
         <button class="leadfree" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="Liberar del CRM (la cuenta NO se borra)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🔓</button>
+        ${['master','admin'].includes(MYROLE)?`<button class="leaddel" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="ELIMINAR la cuenta por completo (queda en la Bitácora)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑</button>`:''}
       </td></tr>`;
   }).join('') : '<tr><td colspan="7" class="empty">Sin cuentas nuevas pendientes de seguimiento. 🎉</td></tr>';
   body.querySelectorAll('.leadwa').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.uid, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
@@ -2274,6 +2292,11 @@ async function loadCrmLeads(){
     if(!confirm('¿LIBERAR a '+(b.dataset.name||'este cliente')+' del seguimiento del CRM?\n\nSu cuenta NO se borra: si regresa y compra, entra al pipeline normal. Queda registrado en la Bitácora.')) return;
     const r2=await api('POST','/api/crm/leads/'+encodeURIComponent(b.dataset.uid)+'/dismiss');
     if(r2.ok){ loadCrmLeads(); } else alert((r2.data&&r2.data.error)||'No se pudo liberar.');
+  });
+  body.querySelectorAll('.leaddel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿ELIMINAR la cuenta de '+(b.dataset.name||'este cliente')+' POR COMPLETO?\n\nSe borra todo su rastro (cuenta, historial y WhatsApp). Solo queda el registro en la Bitácora. Esta acción NO se puede deshacer.')) return;
+    const r2=await api('DELETE','/api/users/'+encodeURIComponent(b.dataset.uid));
+    if(r2.ok){ loadCrmLeads(); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar la cuenta.');
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;

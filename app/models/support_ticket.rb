@@ -33,9 +33,18 @@ class SupportTicket < ApplicationRecord
                         .order(:id).last
     if existing
       # Ya hay un ticket ABIERTO de este número: el nuevo mensaje se anota ahí
-      # (sin duplicar tickets) y el ticket sube al frente de la lista.
+      # (sin duplicar tickets), el ticket sube al frente y el cliente recibe un
+      # "sigue en proceso" (texto editable: 'soporte_en_proceso').
       existing.notes.create!(author_name: 'Automático', body: "💬 El cliente volvió a escribir: “#{body.to_s[0, 300]}”")
       existing.touch
+      begin
+        nombre = existing.customer_name.to_s.split.first.presence || 'hola'
+        WhatsappOutbound.deliver(phone: digits,
+                                 text: WaAutoText.render('soporte_en_proceso', nombre: nombre, ticket: existing.ref),
+                                 user: user || existing.user)
+      rescue StandardError => e
+        Rails.logger.warn "[SupportTicket] en_proceso: #{e.message}"
+      end
       return existing
     end
 

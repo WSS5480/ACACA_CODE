@@ -85,6 +85,12 @@ class WaAutoText
       text: '¡Recibido, {nombre}! 🙏 Abrimos tu solicitud de ayuda (ticket {ticket}). ' \
             'Una persona de nuestro equipo te responde por aquí en breve.'
     },
+    'soporte_en_proceso' => {
+      label: '🆘 Soporte — el cliente vuelve a escribir con ticket ABIERTO',
+      vars: %w[nombre ticket],
+      text: 'Hola {nombre} 🙏 Tu solicitud {ticket} sigue EN PROCESO — nuestro equipo ya la tiene. ' \
+            'Te respondemos por aquí lo antes posible.'
+    },
     'soporte_resuelto' => {
       label: '🆘 Soporte — aviso al RESOLVER el ticket',
       vars: %w[nombre ticket resolucion],

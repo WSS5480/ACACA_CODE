@@ -351,6 +351,9 @@ module Api
       vias << "WhatsApp a #{wa[:sent_to]}" if wa && wa[:ok]
       vias << "correo a #{em[:sent_to]}" if em && em[:ok]
       sent_via = vias.any? ? vias.join(' y ') : 'sin envío'
+      if wa && em && !wa[:ok] && !em[:ok] && defined?(WaAlert)
+        WaAlert.notify("Enviar a firma #{contract.contract_number}", "WhatsApp: #{wa[:error]} · Correo: #{em[:error]}")
+      end
       AuditLog.record!(actor: @current_user, action: 'contract_generated', target: contract,
                        label: audit_contract_label(contract),
                        details: "Documento generado para firma · aviso: #{sent_via}")
@@ -575,9 +578,8 @@ module Api
 
       front = ENV['FRONT_HOST'].presence || 'https://www.acasamx.com'
       link = "#{front.chomp('/')}/contratos/#{contract.id}/firmar"
-      body = "Hola #{user.name}! 🎉 Tu contrato #{contract.contract_number} de acasa está listo. " \
-             "Inicia sesión y fírmalo aquí: #{link}\n\n" \
-             "Hello! Your acasa contract #{contract.contract_number} is ready. Please log in and sign it here: #{link}"
+      # Texto EDITABLE en Configuración → Respuestas WhatsApp.
+      body = WaAutoText.render('firma', nombre: user.name, contrato: contract.contract_number, enlace: link)
       # Fuera de la ventana de 24 h el texto libre NO se entrega: se reenvía como
       # PLANTILLA aprobada (firma_contrato) para que al cliente SÍ le llegue.
       r = WhatsappOutbound.deliver(phone: user.phone, text: body, event: 'firma',

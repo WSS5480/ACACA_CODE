@@ -64,29 +64,23 @@ class ReferencePing < ApplicationRecord
     return unless order
 
     link = 'https://www.acasamx.com/wa' # enlace corto y humano: abre nuestro WhatsApp
+    # Textos EDITABLES en Configuración → Respuestas WhatsApp.
     msgs = []
     order.referrals.each do |rf|
       rname = [rf.name, rf.last_name].compact.join(' ').strip.presence || 'amig@'
-      msgs << "Hola #{rname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
-              'y te puse como referencia 🙏 ¿Me ayudas con una verificación rápida? ' \
-              "Solo toca aquí y mándales un saludo: #{link}"
+      msgs << WaAutoText.render('fwd_referencia', referencia: rname.split.first, cliente: cust, enlace: link)
     end
     b = order.respond_to?(:buyer) ? order.buyer : nil
     if b && b.respond_to?(:home_contact_phone) && b.home_contact_phone.present?
       hname = b.home_contact_name.to_s.strip.presence || 'hola'
-      msgs << "Hola #{hname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
-              'y te puse como mi contacto de domicilio 🙏 ¿Me ayudas con una verificación rápida? ' \
-              "Solo toca aquí y mándales un saludo: #{link}"
+      msgs << WaAutoText.render('fwd_domicilio', referencia: hname.split.first, cliente: cust, enlace: link)
     end
     if b && b.respond_to?(:phone_work) && b.phone_work.present?
-      msgs << "Hola! Soy #{cust}. Ácasa necesita una verificación rápida de mi empleo 🙏 ¿Me apoyas? " \
-              "Solo toca aquí y mándales un saludo: #{link}"
+      msgs << WaAutoText.render('fwd_trabajo', cliente: cust, enlace: link)
     end
     return if msgs.empty?
 
-    intro = "¡Ya casi, #{user.name.to_s.split.first}! 🙌 Para agilizar tu aprobación, REENVÍA cada uno " \
-            'de los siguientes mensajes a la persona indicada. Ellos solo tocan el enlace y nos mandan ' \
-            'el saludo — así los verificamos al instante 💪'
+    intro = WaAutoText.render('fwd_intro', nombre: user.name.to_s.split.first)
     ok = 0
     ([intro] + msgs).each do |t|
       r = WhatsappOutbound.deliver(phone: user.phone, text: t, user: user)
@@ -102,6 +96,7 @@ class ReferencePing < ApplicationRecord
     end
   rescue StandardError => e
     Rails.logger.error "[ReferencePing] forward_pack: #{e.message}"
+    WaAlert.notify('Paquete de reenvío al cliente', e.message) if defined?(WaAlert)
   end
 
 

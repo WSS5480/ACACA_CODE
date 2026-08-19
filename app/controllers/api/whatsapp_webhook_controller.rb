@@ -40,6 +40,7 @@ module Api
       head :ok
     rescue StandardError => e
       Rails.logger.error "[WhatsappWebhook] #{e.class}: #{e.message}"
+      WaAlert.notify('Webhook de WhatsApp (mensajes entrantes)', "#{e.class}: #{e.message}") if defined?(WaAlert)
       head :ok # responder 200 para que Meta no reintente en bucle
     end
 

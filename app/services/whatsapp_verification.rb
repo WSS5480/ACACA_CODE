@@ -29,9 +29,8 @@ class WhatsappVerification
   def self.send_confirmation(user, to)
     return unless WhatsappCloud.configured?
     store = (ENV['FRONT_HOST'].presence || 'https://www.acasamx.com').chomp('/')
-    body = "¡Verificado! Tu cuenta acasa ya está activa. Bienvenid@ #{user.name}. " \
-           "Por aquí podrás dar seguimiento a tus pedidos.\n\n" \
-           "🛒 Empieza a comprar para tu familia en México: #{store}"
+    # Texto EDITABLE en Configuración → Respuestas WhatsApp.
+    body = WaAutoText.render('verificado', nombre: user.name, tienda: store)
     resp = WhatsappCloud.new.send_text(to, body)
     # ARCHIVAR la respuesta automática: sin esto no aparece en la bandeja de
     # WhatsApp del admin (la bandeja muestra lo guardado en nuestra base).

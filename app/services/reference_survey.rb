@@ -98,6 +98,7 @@ class ReferenceSurvey
       send_opener(target)
     rescue StandardError => e
       Rails.logger.warn "[ReferenceSurvey] on_inbound: #{e.message}"
+      WaAlert.notify('Entrevista de referencias (inicio)', e.message) if defined?(WaAlert)
     end
 
     # BOTONES: rs<ping>ok / rs<ping>no (apertura) · rs<ping>q<idx><a|b|c> (preguntas)
@@ -113,7 +114,7 @@ class ReferenceSurvey
           ask_current(p)
         else
           p.update_columns(survey_state: 'deferred')
-          say(p, 'Sin problema 🙏 Te escribimos más tarde. ¡Que tengas excelente día!')
+          say(p, WaAutoText.text('ent_despues'))
           ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
                              person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
                              body: "📋 #{p.ref_name} (#{p.target_kind}) pidió que le escribamos MÁS TARDE (entrevista pospuesta)")
@@ -132,6 +133,7 @@ class ReferenceSurvey
       false
     rescue StandardError => e
       Rails.logger.warn "[ReferenceSurvey] handle_button: #{e.message}"
+      WaAlert.notify('Entrevista de referencias (botones)', e.message) if defined?(WaAlert)
       true
     end
 
@@ -148,8 +150,8 @@ class ReferenceSurvey
             when 'trabajo'   then 'como referencia de su trabajo'
             else                  'como referencia'
             end
-      body = "Hola #{first}, te contacto de Ácasa porque #{p.customer_name} te nombró #{rol} " \
-             'para validar un crédito. Son solo 4 preguntas y todas se contestan con UN toque. ¿Empezamos?'
+      # Texto EDITABLE en Configuración → Respuestas WhatsApp.
+      body = WaAutoText.render('ent_apertura', referencia: first, cliente: p.customer_name, rol: rol)
       resp = WhatsappCloud.new.send_buttons(p.phone, body: body,
                                             buttons: [{ id: "rs#{p.id}ok", title: 'Sí, adelante' },
                                                       { id: "rs#{p.id}no", title: 'Ahora no' }])
@@ -205,8 +207,7 @@ class ReferenceSurvey
       p.update_columns(survey_state: 'done')
       p.update_columns(recommends: negs.positive? ? 'no' : 'si') if p.respond_to?(:recommends)
       # Cierre con BOTÓN humano (sin URL fea): "Conocer Ácasa" abre la tienda.
-      body = '¡Listo, mil gracias por tu ayuda! 🙌 Eso era todo. Y si a ti también te gustaría ' \
-             'estrenar con crédito Ácasa, échanos un ojo:'
+      body = WaAutoText.text('ent_gracias') # editable en Configuración → Respuestas WhatsApp
       resp = WhatsappCloud.new.send_link_button(p.phone, body: body, button_text: '🛍 Conocer Ácasa', url: STORE)
       archive(p, "#{body}\n[🛍 Conocer Ácasa]", resp)
       ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
@@ -225,7 +226,7 @@ class ReferenceSurvey
       ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
                          person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
                          body: "🚩 BANDERA ROJA: #{p.ref_name} (#{p.target_kind}) indica NO conocer a #{p.customer_name} (\"#{body.to_s[0, 120]}\") — revisar antes de aprobar")
-      say(p, 'Entendido, muchas gracias por tu tiempo 🙏 ¡Que tengas buen día!')
+      say(p, WaAutoText.text('ent_flag'))
     end
 
     def say(p, text)

@@ -34,6 +34,8 @@ class AuditLog < ApplicationRecord
     'commitment_updated'   => 'Actualizó compromiso de pago',
     'lead_released'        => 'Liberó cuenta nueva del CRM',
     'questions_updated'    => 'Editó preguntas de aprobación',
+    'wa_responses_updated' => 'Editó respuestas automáticas de WhatsApp',
+    'auto_send_failed'     => '⚠ Falló un envío automático (alerta interna)',
     'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada'
   }.freeze
 

@@ -22,7 +22,12 @@ class ScheduledTick
     #    se dispara en la mañana de Monterrey (9-10 am); reminded_at evita duplicados.
     t = Time.now.in_time_zone('America/Monterrey')
     if t.hour == 9 && defined?(PaymentCommitment) && PaymentCommitment.table_exists?
-      out[:commitment_reminders] = PaymentCommitment.run_reminders!
+      begin
+        out[:commitment_reminders] = PaymentCommitment.run_reminders!
+      rescue StandardError => e
+        out[:commitment_reminders] = e.message
+        WaAlert.notify('Recordatorios de compromisos de pago', e.message) if defined?(WaAlert)
+      end
     end
 
     # 3) Tipo de cambio USD->MXN una vez al día (mediodía de Monterrey).

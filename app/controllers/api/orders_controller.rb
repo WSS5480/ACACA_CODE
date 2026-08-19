@@ -371,15 +371,15 @@ class Api::OrdersController < ApplicationController
     return unless user&.phone.present?
 
     nombre = user.name.to_s.split.first.presence || 'cliente'
-    texto = "¡Felicidades, #{nombre}! 🎉 Tu cuenta Ácasa fue APROBADA. " \
-            'El siguiente paso es tu contrato: lo generamos y te lo enviamos ' \
-            'por este medio para tu firma. Cualquier duda, responde aquí mismo.'
+    # Texto EDITABLE en Configuración → Respuestas WhatsApp.
+    texto = WaAutoText.render('aprobada', nombre: nombre)
     res = WhatsappOutbound.deliver(phone: user.phone, text: texto, event: 'aprobada',
                                    params: [nombre], user: user, actor: @current_user)
     ContactLog.create!(user_id: user.id, person_type: 'buyer',
                        person_name: [user.name, user.last_name].compact.join(' ').strip,
                        phone: user.phone, author_name: 'Automático',
                        body: res[:ok] ? "🤖 Aviso de cuenta APROBADA enviado por WhatsApp (#{res[:via]})" : "🤖 Aviso de cuenta aprobada NO se pudo enviar: #{res[:error]}")
+    WaAlert.notify("Aviso de cuenta aprobada (#{user.phone})", res[:error]) if !res[:ok] && defined?(WaAlert)
   rescue StandardError => e
     Rails.logger.warn "[notify_account_approved] #{e.message}"
   end

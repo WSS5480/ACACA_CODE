@@ -54,6 +54,8 @@ Rails.application.routes.draw do
     # Preguntas de aprobación (Motor de riesgo): pre-aprobación y aprobación final
     get 'settings/approval_questions', to: 'api/settings#approval_questions'
     put 'settings/approval_questions', to: 'api/settings#update_approval_questions'
+    get 'settings/wa_responses',       to: 'api/settings#wa_responses'
+    put 'settings/wa_responses',       to: 'api/settings#update_wa_responses'
 
     # Tasas e impuestos (Seguridad): IVA, tasa de interés (define los factores) y seguro/waiver
     get 'settings/rates', to: 'api/settings#rates'

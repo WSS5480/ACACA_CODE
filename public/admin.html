@@ -551,7 +551,7 @@
     <!-- ---------- MOTOR DE RIESGO ---------- -->
     <section class="view hide" data-v="riesgo">
       <div class="head"><h1>Configuración — Motor de Riesgo</h1></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a><a data-view="waresp" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">💬 Respuestas WhatsApp</a></div>
       <p class="muted" style="margin:-6px 0 16px">Cada configuración es una versión guardada. Edita, prueba con un solicitante, guarda como nueva versión (con el motivo) o revierte a una anterior.</p>
 
       <div class="rk-warn" id="rk-warn" style="display:none"></div>
@@ -766,7 +766,7 @@
     <!-- ---------- CONFIGURACIÓN · PREGUNTAS DE APROBACIÓN ---------- -->
     <section class="view hide" data-v="preguntas">
       <div class="head"><h1>Configuración — Preguntas de aprobación</h1></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">❓ Preguntas de aprobación</a></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">❓ Preguntas de aprobación</a><a data-view="waresp" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">💬 Respuestas WhatsApp</a></div>
       <div id="aqPanel" class="sec" style="padding:16px;margin-bottom:16px">
         <div class="stitle" style="padding:0 0 6px">❓ Preguntas de aprobación</div>
         <p class="muted" style="font-size:12.5px;margin:0 0 12px">Lista maestra de lo que se pregunta para <b>establecer el crédito</b>: la PRE-APROBACIÓN al abrir la cuenta y la APROBACIÓN FINAL al completar la compra. Agrega, edita, reordena, desactiva o elimina. Cada cambio queda en la Bitácora.</p>
@@ -789,9 +789,35 @@
       </div>
     </section>
 
+    <section class="view hide" data-v="waresp">
+      <div class="head"><h1>Configuración — Respuestas automáticas de WhatsApp</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a><a data-view="waresp" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">💬 Respuestas WhatsApp</a></div>
+      <div class="sec" style="padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">💬 Respuestas automáticas de WhatsApp</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 12px">Todo lo que la plataforma responde <b>SOLA</b> por WhatsApp, en un solo lugar. Edita el texto a tu gusto, ponle sabor con los emojis 😎 y presiona Guardar — los próximos envíos usan tu versión. Las <code>{variables}</code> se rellenan solas (nombre, cliente, enlace…). <b>↩ Original</b> regresa el texto de fábrica. Cada cambio queda en la Bitácora.</p>
+        <div id="warEmojiBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div id="warList" class="empty">Cargando…</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+          <button class="btn" id="warSave">💾 Guardar respuestas</button>
+          <span class="muted" id="warMsg" style="font-size:12.5px"></span>
+        </div>
+      </div>
+      <div class="sec" style="padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">📋 Plantillas de Meta (mensajes fuera de la ventana de 24 h)</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 10px">Las PLANTILLAS son la otra mitad: los mensajes que inician conversación con quien no nos ha escrito en 24 horas. Meta las aprueba y <b>no permite editar una plantilla aprobada</b> — para cambiar el texto se crea una nueva desde el constructor y se asigna al aviso. Ahí mismo se ve el estado de cada una (aprobada / en revisión / rechazada).</p>
+        <button class="btn" id="warTpls" style="background:#1b2a4a">📋 Abrir constructor de plantillas</button>
+      </div>
+      <div class="sec" style="padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">🚨 Alertas internas (si un disparador automático falla)</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 10px">Si un envío automático FALLA (webhook, tick, aviso de aprobación, firma, entrevista...), la plataforma manda un WhatsApp interno a estos números del equipo — la misma alerta no se repite más de una vez cada 10 minutos, y también queda en la Bitácora. Sepáralos con comas (con lada, p. ej. <code>15127778480, 5218118247975</code>).</p>
+        <input id="warAlertNums" placeholder="Números del equipo separados por comas" style="width:100%;max-width:520px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13.5px">
+        <p class="muted" style="font-size:11.5px;margin:8px 0 0">Se guardan con el mismo botón 💾 de arriba. Consejo: estos números deben escribirle de vez en cuando al WhatsApp del negocio para mantener abierta su ventana de 24 h.</p>
+      </div>
+    </section>
+
     <section class="view hide" data-v="config">
       <div class="head"><h1>Configuración</h1></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a><a data-view="waresp" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">💬 Respuestas WhatsApp</a></div>
       <div class="sec" style="padding:18px">
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="flex:1;min-width:220px">
@@ -911,6 +937,7 @@ function show(view){
   if(view==='security') loadChangeReqs();
   if(view==='gestion') loadGestion();
   if(view==='preguntas' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
+  if(view==='waresp' && !loaded.war){ loadWaResponses(); loaded.war=1; }
 }
 
 /* ---- PREGUNTAS DE APROBACIÓN (Motor de riesgo): lista maestra editable ---- */
@@ -952,6 +979,53 @@ if($('aqSave')) $('aqSave').onclick=async()=>{
   if(r.ok&&r.data&&r.data.ok){ AQ=r.data.questions; renderAQ(); $('aqMsg').textContent='✓ Guardado (queda en la Bitácora).'; }
   else $('aqMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
 };
+
+/* ---- RESPUESTAS AUTOMÁTICAS de WhatsApp: repositorio editable + sandbox de emojis ---- */
+let WAR=[], warFocus=null;
+const WAR_EMOJIS=['🎉','🎁','✅','🙌','🙏','💪','😎','😊','❤️','🔥','⭐','👋','🤝','📦','🛒','🚚','🏠','💳','💰','📄','🖊','⏰','🔔','📲','💬','🇺🇸','🇲🇽','👨‍👩‍👧‍👦','👉','✨'];
+async function loadWaResponses(){
+  const bar=$('warEmojiBar');
+  if(bar&&!bar.childNodes.length){
+    WAR_EMOJIS.forEach(em=>{
+      const b=document.createElement('button');
+      b.type='button'; b.textContent=em; b.title='Insertar '+em;
+      b.style.cssText='border:1px solid var(--line);background:#fff;border-radius:8px;font-size:17px;padding:4px 7px;cursor:pointer';
+      b.onmousedown=(ev)=>ev.preventDefault(); // no robar el foco del textarea
+      b.onclick=()=>{ const t=warFocus||document.querySelector('#warList textarea'); if(!t) return;
+        const s=(t.selectionStart!=null?t.selectionStart:t.value.length), e=(t.selectionEnd!=null?t.selectionEnd:s);
+        t.value=t.value.slice(0,s)+em+t.value.slice(e); t.focus(); t.selectionStart=t.selectionEnd=s+em.length; };
+      bar.appendChild(b);
+    });
+  }
+  const r=await api('GET','/api/settings/wa_responses');
+  if(!r.ok){ $('warList').innerHTML='<div class="empty">'+esc((r.data&&r.data.error)||'No se pudieron cargar las respuestas.')+'</div>'; return; }
+  WAR=(r.data&&r.data.responses)||[];
+  if($('warAlertNums')) $('warAlertNums').value=(r.data&&r.data.alert_numbers)||'';
+  $('warList').className='';
+  $('warList').innerHTML=WAR.map(x=>`
+    <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px">
+        <div style="font-weight:800;color:var(--navy);font-size:13.5px">${esc(x.label)} ${x.edited?'<span class="pill p-pend" style="margin-left:6px">personalizada</span>':''}</div>
+        <button type="button" class="warreset" data-k="${esc(x.key)}" title="Volver al texto original" style="border:0;background:none;cursor:pointer;font-size:12.5px;color:var(--brand-d);font-weight:700">↩ Original</button>
+      </div>
+      ${x.vars&&x.vars.length?`<div class="muted" style="font-size:11.5px;margin-bottom:6px">Variables (se rellenan solas): ${x.vars.map(v=>'<code>{'+esc(v)+'}</code>').join(' · ')}</div>`:''}
+      <textarea class="wartxt" data-k="${esc(x.key)}" style="width:100%;min-height:84px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit;resize:vertical">${esc(x.text)}</textarea>
+    </div>`).join('');
+  document.querySelectorAll('#warList textarea').forEach(t=>{ t.onfocus=()=>{warFocus=t;}; });
+  document.querySelectorAll('.warreset').forEach(b=>b.onclick=()=>{
+    const x=WAR.find(w=>w.key===b.dataset.k), t=document.querySelector('.wartxt[data-k="'+b.dataset.k+'"]');
+    if(x&&t){ t.value=x.original; t.focus(); }
+  });
+}
+if($('warSave')) $('warSave').onclick=async()=>{
+  const out={}; document.querySelectorAll('.wartxt').forEach(t=>{ out[t.dataset.k]=t.value; });
+  $('warMsg').textContent='Guardando…'; $('warSave').disabled=true;
+  const r=await api('PUT','/api/settings/wa_responses',{responses:out, alert_numbers:($('warAlertNums')?$('warAlertNums').value:'')});
+  $('warSave').disabled=false;
+  if(r.ok){ WAR=(r.data&&r.data.responses)||WAR; $('warMsg').textContent='✓ Guardado. Los próximos envíos automáticos usan estos textos.'; loadWaResponses(); }
+  else $('warMsg').textContent=(r.data&&r.data.error)||'No se pudo guardar.';
+};
+if($('warTpls')) $('warTpls').onclick=()=>waTplMgrOpen();
 
 /* ---------------- GESTIÓN DE CUENTA (solo administración, bajo la línea) ---------------- */
 let GES=[], GESALL=[], GESBUCKET='', GESCUST=[];

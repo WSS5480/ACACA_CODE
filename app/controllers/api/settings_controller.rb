@@ -275,6 +275,37 @@ class Api::SettingsController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  # GET /api/settings/wa_responses — repositorio de respuestas automáticas de
+  # WhatsApp (Configuración → Respuestas WhatsApp), con original y texto vigente.
+  def wa_responses
+    render json: { responses: WaAutoText.all,
+                   alert_numbers: (defined?(WaAlert) ? AppSetting.get(WaAlert::SETTING_KEY).to_s : '') }, status: :ok
+  end
+
+  # PUT /api/settings/wa_responses { responses: { clave => texto } }
+  # Texto vacío = volver al ORIGINAL de esa respuesta.
+  def update_wa_responses
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden editar las respuestas' }, status: :forbidden
+    end
+
+    incoming = params[:responses].respond_to?(:to_unsafe_h) ? params[:responses].to_unsafe_h : params[:responses]
+    return render(json: { error: 'Formato inválido' }, status: :unprocessable_entity) unless incoming.is_a?(Hash)
+
+    clean = incoming.slice(*WaAutoText::DEFAULTS.keys)
+                    .transform_values { |v| v.to_s.strip }
+                    .reject { |k, v| v.blank? || v == WaAutoText::DEFAULTS.dig(k, :text) }
+    WaAutoText.save!(clean)
+    WaAlert.numbers = params[:alert_numbers].to_s if params.key?(:alert_numbers) && defined?(WaAlert)
+    AuditLog.record!(actor: @current_user, action: 'wa_responses_updated',
+                     details: "Respuestas personalizadas: #{clean.size} de #{WaAutoText::DEFAULTS.size}" \
+                              "#{params.key?(:alert_numbers) ? " · Alertas internas: #{WaAlert.numbers.size} número(s)" : ''}")
+    render json: { ok: true, responses: WaAutoText.all }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def default_privacy_policy

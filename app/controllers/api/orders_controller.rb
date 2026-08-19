@@ -119,6 +119,24 @@ class Api::OrdersController < ApplicationController
     # Alertas de dirección: el CP debe corresponder a la ciudad/estado capturados (datos reales).
     response[:data][:address_alerts] = address_alerts_for(@order, buyer: buyer, beneficiary: beneficiary)
 
+    # COMUNICACIONES POR REFERENCIA: estado y respuestas de la entrevista de
+    # CADA referencia / contacto de domicilio / trabajo — se muestran BAJO cada
+    # persona en la verificación (no en un área general).
+    if defined?(ReferencePing) && ReferencePing.table_exists? && @order.contract_id.present?
+      response[:data][:reference_checks] = ReferencePing.where(contract_id: @order.contract_id).order(:id).map do |p|
+        ans = begin
+          JSON.parse(p.answers.to_s)
+        rescue StandardError
+          []
+        end
+        { kind: p.target_kind, phone: p.phone, name: p.ref_name, status: p.status,
+          survey_state: (p.respond_to?(:survey_state) ? p.survey_state : nil),
+          recommends: (p.respond_to?(:recommends) ? p.recommends : nil),
+          time_known: (p.respond_to?(:time_known) ? p.time_known : nil),
+          answers: (ans.is_a?(Array) ? ans : []), sent_at: p.sent_at }
+      end
+    end
+
     render json: response, status: :ok
   end
 

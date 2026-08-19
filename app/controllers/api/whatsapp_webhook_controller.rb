@@ -31,7 +31,7 @@ module Api
         handled = bid.present? && defined?(ReferenceSurvey) &&
                   ReferenceSurvey.handle_button(from: from, id: bid,
                                                 title: msg.dig('interactive', 'button_reply', 'title').to_s)
-        ReferenceSurvey.on_inbound(from) if !handled && defined?(ReferenceSurvey)
+        ReferenceSurvey.on_inbound(from, body) if !handled && defined?(ReferenceSurvey)
       end
       incoming_statuses.each { |st| apply_status(st) }
       head :ok

@@ -47,6 +47,23 @@ class WhatsappCloud
     post_message(messaging_product: 'whatsapp', recipient_type: 'individual', to: to, type: 'text', text: { body: body.to_s })
   end
 
+  # Mensaje INTERACTIVO con botones de respuesta (máx. 3, títulos de 20 caracteres).
+  # Solo entra dentro de la ventana de 24 h — perfecto cuando la persona nos acaba
+  # de escribir. La respuesta llega al webhook como type 'interactive' con el id.
+  def send_buttons(phone, body:, buttons:)
+    to = self.class.normalize_phone(phone)
+    raise DeliveryError, 'Numero de telefono invalido' if to.blank?
+
+    btns = Array(buttons).first(3).map do |b|
+      { type: 'reply', reply: { id: b[:id].to_s[0, 200], title: b[:title].to_s[0, 20] } }
+    end
+    raise DeliveryError, 'Faltan los botones' if btns.empty?
+
+    post_message(messaging_product: 'whatsapp', recipient_type: 'individual', to: to, type: 'interactive',
+                 interactive: { type: 'button', body: { text: body.to_s[0, 1024] },
+                                action: { buttons: btns } })
+  end
+
   # Envía una PLANTILLA aprobada. Es la ÚNICA forma de iniciar conversación con
   # alguien que no nos ha escrito en las últimas 24 horas (fuera de esa ventana,
   # Meta acepta el texto libre y lo DESCARTA sin avisar).

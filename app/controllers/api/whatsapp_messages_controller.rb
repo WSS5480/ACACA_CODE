@@ -13,7 +13,7 @@ module Api
         tail = phone_tail(params[:phone])
         return render(json: { error: 'Teléfono inválido' }, status: :unprocessable_entity) if tail.blank?
 
-        scope = WhatsappMessage.where("regexp_replace(coalesce(wa_phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}").order(:created_at)
+        scope = WhatsappMessage.where("regexp_replace(coalesce(wa_phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}").order(:created_at, :id)
         render json: { phone: params[:phone], messages: scope.last(200).map { |m| serialize(m) } }, status: :ok
       else
         user = User.find_by(id: params[:user_id])
@@ -88,7 +88,7 @@ module Api
     def threads
       has_read = WhatsappMessage.column_names.include?('read_at')
       groups = {}
-      WhatsappMessage.order(:created_at).last(3000).each do |m|
+      WhatsappMessage.order(:created_at, :id).last(3000).each do |m|
         tail = phone_tail(m.wa_phone)
         next if tail.blank?
 

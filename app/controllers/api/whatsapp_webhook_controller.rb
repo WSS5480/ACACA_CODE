@@ -23,8 +23,11 @@ module Api
       incoming_messages.each do |msg|
         from = msg['from'].to_s
         body = msg.dig('text', 'body').to_s
-        WhatsappVerification.process_incoming(from: from, body: body)
+        # PRIMERO se archiva el mensaje entrante y DESPUÉS se responde: así la
+        # conversación queda en orden (pregunta arriba, respuesta abajo) aunque
+        # todo ocurra en el mismo segundo.
         archive_message(msg, from, body)
+        WhatsappVerification.process_incoming(from: from, body: body)
         # Respuesta de BOTÓN de la mini-entrevista -> avanza la encuesta;
         # cualquier otro mensaje de una referencia pendiente -> la inicia.
         bid = msg.dig('interactive', 'button_reply', 'id').to_s

@@ -38,10 +38,10 @@ class Api::OrdersController < ApplicationController
     return render(json: { error: 'Orden no encontrada' }, status: :not_found) unless order
 
     fields = {}
-    %w[beneficiary_verified buyer_verified references_verified admin_approved].each do |f|
+    %w[beneficiary_verified buyer_verified references_verified residency_verified employment_verified admin_approved].each do |f|
       fields[f] = ActiveModel::Type::Boolean.new.cast(params[f]) if params.key?(f) && order.respond_to?(f)
     end
-    %w[beneficiary_comment buyer_comment references_comment].each do |f|
+    %w[beneficiary_comment buyer_comment references_comment residency_comment employment_comment].each do |f|
       fields[f] = params[f].to_s if params.key?(f) && order.respond_to?(f)
     end
     if fields.key?('admin_approved')

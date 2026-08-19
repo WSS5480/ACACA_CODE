@@ -1524,11 +1524,12 @@ async function openOrderVerify(id){
   // Contrato para firma: generar (rellena la plantilla legal) + WhatsApp; estado de la firma.
   const docGen=!!pick(o,['contract_document_generated'],false), docSigned=!!pick(o,['contract_signed'],false);
   // SEMÁFORO del pipeline: ROJO = sin empezar · AMARILLO = en proceso · VERDE = completado.
-  const nVer=[o.beneficiary_verified,o.buyer_verified,o.references_verified].filter(Boolean).length;
+  const nVer=[o.beneficiary_verified,o.buyer_verified,o.residency_verified,o.employment_verified,o.references_verified].filter(Boolean).length;
+  const NSEC=5; // beneficiario · comprador · residencia · empleo · referencias
   const anyDelivered=grp.some(x=>pick(x,['delivered_at'],null));
   const SEM={red:'#c62828',yellow:'#f2b010',green:'#2e7d32'};
-  const stVer = nVer===0?'red':(nVer<3?'yellow':'green');
-  const stApr = approved?'green':(nVer===3?'yellow':'red');
+  const stVer = nVer===0?'red':(nVer<NSEC?'yellow':'green');
+  const stApr = approved?'green':(nVer===NSEC?'yellow':'red');
   const stDoc = docSigned?'green':(docGen?'yellow':'red');
   const canBuy = approved&&docSigned;
   const stBuy = allDelivered?'green':(canBuy?'yellow':'red');
@@ -1536,7 +1537,7 @@ async function openOrderVerify(id){
   const semBtn=(st)=>`background:${SEM[st]};color:${st==='yellow'?'#1b1b1b':'#fff'}`;
   const semStep=(st,n,lbl)=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid ${SEM[st]};color:${SEM[st]};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800">${st==='green'?'✓':n} ${lbl}</span>`;
   const stepper=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-    ${semStep(stVer,'1','Verificación'+(stVer==='yellow'?(' '+nVer+'/3'):''))}
+    ${semStep(stVer,'1','Verificación'+(stVer==='yellow'?(' '+nVer+'/'+NSEC):''))}
     ${semStep(stApr,'2','Aprobación')}
     ${semStep(stDoc,'3','Contrato y firma')}
     ${semStep(stBuy,'4','Compra en Amazon')}
@@ -1563,7 +1564,11 @@ async function openOrderVerify(id){
   const benName=ben?[ben.name,ben.last_name].filter(Boolean).join(' '):'';
   const buyName=buy?[buy.name,buy.last_name].filter(Boolean).join(' '):'';
   const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
-  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),vField('Empleo',buy.job),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Contacto de domicilio',null)),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:''),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:'')].join('') : '');
+  const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
+  // RESIDENCIA: domicilio + contacto del domicilio (¿renta o es dueño?) + comprobante.
+  const resInner = buy ? [vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Tipo de vivienda',{owner:'Propia',tenant:'Rentada'}[buy.housing_type]||buy.housing_type),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Contacto de domicilio',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. domicilio',null))].join('') : '';
+  // EMPLEO: trabajo + teléfono del trabajo + ingreso + comprobante.
+  const empInner = buy ? [vField('¿En qué trabaja?',buy.job),(buy.phone_work?vPerson('Tel. del trabajo',buy.phone_work,{phone:buy.phone_work,name:(buyName||'Comprador')+' (trabajo)',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Tel. del trabajo',null)),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. ingresos',null))].join('') : '';
   // Referencias: editables y ampliables DURANTE la verificación. Cada orden
   // guarda su propia copia: editar aquí no toca órdenes anteriores.
   const refDataOrderId = (refs.length && refs[0].order_id) ? refs[0].order_id : o.id;
@@ -1612,9 +1617,11 @@ async function openOrderVerify(id){
     </div>
     ${vSection('beneficiary','Beneficiario (recibe en México)',benInner,o.beneficiary_verified,o.beneficiary_comment)}
     ${vSection('buyer','Comprador',buyInner,o.buyer_verified,o.buyer_comment)}
+    ${vSection('residency','Residencia — domicilio (¿renta o es dueño?)',resInner,o.residency_verified,o.residency_comment)}
+    ${vSection('employment','Empleo — trabajo e ingresos',empInner,o.employment_verified,o.employment_comment)}
     ${vSection('references','Referencias ('+refs.length+')',refInner,o.references_verified,o.references_comment)}
     <div class="sec" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/3)'):'')}</button>
+      <button class="btn" id="ovSave" style="${semBtn(stVer)}">${stVer==='green'?'✓ Verificación completa':'Guardar verificación'+(stVer==='yellow'?(' ('+nVer+'/'+NSEC+')'):'')}</button>
       <button class="btn" id="ovApprove" ${approved?'disabled':''} style="${semBtn(stApr)}">${approved?'✓ Aprobada para compra':'Aprobar para compra'}</button>
       ${docCell}
       ${pick(o,['contract_id'],null)?(allDelivered
@@ -1686,7 +1693,7 @@ async function openOrderVerify(id){
   };
   $('ovApprove').onclick=async()=>{
     const b=collect();
-    if(!(b.beneficiary_verified&&b.buyer_verified&&b.references_verified)){ $('ovMsg').textContent='Verifica las tres secciones antes de aprobar.'; return; }
+    if(!(b.beneficiary_verified&&b.buyer_verified&&b.residency_verified&&b.employment_verified&&b.references_verified)){ $('ovMsg').textContent='Verifica las CINCO secciones (beneficiario, comprador, residencia, empleo y referencias) antes de aprobar.'; return; }
     if(docGen&&!docSigned){ if(!confirm('El cliente AÚN NO FIRMA su contrato. ¿Aprobar para compra de todos modos?')) return; }
     if(!confirm('¿Aprobar esta orden para compra en Amazon?')) return;
     b.admin_approved=true; $('ovMsg').textContent='Aprobando…';

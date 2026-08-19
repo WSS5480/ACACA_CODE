@@ -36,7 +36,8 @@ class OrderSerializer
   end
 
   %i[beneficiary_verified beneficiary_comment buyer_verified buyer_comment
-     references_verified references_comment admin_approved approved_at delivered_at].each do |f|
+     references_verified references_comment residency_verified residency_comment
+     employment_verified employment_comment admin_approved approved_at delivered_at].each do |f|
     attribute f do |order|
       order.respond_to?(f) ? order.public_send(f) : nil
     end

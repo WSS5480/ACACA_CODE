@@ -35,8 +35,82 @@ class ReferencePing < ApplicationRecord
     if b && b.respond_to?(:home_contact_phone)
       add!(contract, 'domicilio', b.home_contact_phone, b.home_contact_name, cust)
     end
+    # EMPLEO: el teléfono del trabajo del COMPRADOR también recibe verificación
+    # (saludo neutro "buen día" porque no capturamos nombre de contacto ahí).
+    if b && b.respond_to?(:phone_work) && b.phone_work.present?
+      add!(contract, 'trabajo', b.phone_work, 'buen día', cust)
+    end
+    send_forward_pack!(contract)
   rescue StandardError => e
     Rails.logger.error "[ReferencePing] enqueue: #{e.message}"
+  end
+
+  # 📨 PAQUETE DE REENVÍO: además de los mensajes directos, AL CLIENTE se le
+  # manda un mensaje listo para REENVIAR a cada contacto (referencias, contacto
+  # de domicilio y trabajo). El contacto solo toca el enlace de WhatsApp con
+  # texto precargado y nos escribe — su ventana de 24 h se abre y la
+  # verificación se hace en conversación libre, sin esperar plantillas.
+  # Se envía UNA sola vez por contrato (marcador en el historial).
+  def self.send_forward_pack!(contract)
+    user = contract&.user
+    return if user&.phone.to_s.strip.blank?
+
+    ref = contract.respond_to?(:order_ref) ? contract.order_ref : "PED-#{contract.id}"
+    marker = "🤖 Paquete de reenvío (#{ref})"
+    return if ContactLog.where(user_id: user.id).where('body LIKE ?', "%#{marker}%").exists?
+
+    digits = User.business_whatsapp_digits
+    return if digits.blank?
+
+    cust = [user.name, user.last_name].compact.join(' ').strip.presence || 'cliente Ácasa'
+    order = contract.orders.detect { |o| o.respond_to?(:referrals) && o.referrals.any? } || contract.orders.first
+    return unless order
+
+    msgs = []
+    order.referrals.each do |rf|
+      rname = [rf.name, rf.last_name].compact.join(' ').strip.presence || 'amig@'
+      pre = "Hola, soy #{rname}, referencia de #{cust}."
+      msgs << "Hola #{rname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
+              'y te puse como referencia 🙏 ¿Me ayudas con una verificación rápida? Solo toca este ' \
+              "enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+    end
+    b = order.respond_to?(:buyer) ? order.buyer : nil
+    if b && b.respond_to?(:home_contact_phone) && b.home_contact_phone.present?
+      hname = b.home_contact_name.to_s.strip.presence || 'hola'
+      pre = "Hola, soy #{hname}, contacto de domicilio de #{cust}."
+      msgs << "Hola #{hname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
+              'y te puse como mi contacto de domicilio 🙏 ¿Me ayudas con una verificación rápida? ' \
+              "Solo toca este enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+    end
+    if b && b.respond_to?(:phone_work) && b.phone_work.present?
+      pre = "Hola, buen día. Escribo por la verificación de empleo de #{cust}."
+      msgs << "Hola! Soy #{cust}. Ácasa necesita una verificación rápida de mi empleo 🙏 ¿Me apoyas? " \
+              "Solo toca este enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+    end
+    return if msgs.empty?
+
+    intro = "¡Ya casi, #{user.name.to_s.split.first}! 🙌 Para agilizar tu aprobación, REENVÍA cada uno " \
+            'de los siguientes mensajes a la persona indicada. Ellos solo tocan el enlace y nos mandan ' \
+            'el saludo — así los verificamos al instante 💪'
+    ok = 0
+    ([intro] + msgs).each do |t|
+      r = WhatsappOutbound.deliver(phone: user.phone, text: t, user: user)
+      break unless r[:ok] # ventana cerrada: no insistir (se reintenta al próximo guardado de datos)
+
+      ok += 1
+    end
+    if ok.positive?
+      ContactLog.create!(user_id: user.id, person_type: 'buyer', person_name: cust, phone: user.phone,
+                         author_name: 'Automático',
+                         body: "#{marker}: #{ok}/#{msgs.size + 1} mensajes enviados al cliente para " \
+                               'reenviar a sus referencias, domicilio y trabajo')
+    end
+  rescue StandardError => e
+    Rails.logger.error "[ReferencePing] forward_pack: #{e.message}"
+  end
+
+  def self.wa_link(digits, text)
+    'https://wa.me/' + digits.to_s + '?text=' + ERB::Util.url_encode(text)
   end
 
   def self.add!(contract, kind, phone, name, cust)

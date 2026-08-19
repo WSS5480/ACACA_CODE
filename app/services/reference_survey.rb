@@ -204,8 +204,11 @@ class ReferenceSurvey
       negs = log.is_a?(Array) ? log.count { |x| x['neg'] } : 0
       p.update_columns(survey_state: 'done')
       p.update_columns(recommends: negs.positive? ? 'no' : 'si') if p.respond_to?(:recommends)
-      say(p, '¡Listo, mil gracias por tu ayuda! 🙌 Eso era todo. Y si a ti también te gustaría ' \
-             "estrenar con crédito Ácasa, visítanos: #{STORE}")
+      # Cierre con BOTÓN humano (sin URL fea): "Conocer Ácasa" abre la tienda.
+      body = '¡Listo, mil gracias por tu ayuda! 🙌 Eso era todo. Y si a ti también te gustaría ' \
+             'estrenar con crédito Ácasa, échanos un ojo:'
+      resp = WhatsappCloud.new.send_link_button(p.phone, body: body, button_text: '🛍 Conocer Ácasa', url: STORE)
+      archive(p, "#{body}\n[🛍 Conocer Ácasa]", resp)
       ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
                          person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
                          body: negs.positive? ? "⚠ Entrevista COMPLETA de #{p.ref_name} (#{p.target_kind}) con #{negs} respuesta(s) NEGATIVA(s) — revisar antes de aprobar" : "✅ Entrevista COMPLETA de #{p.ref_name} (#{p.target_kind}) — todo favorable")

@@ -64,6 +64,19 @@ class WhatsappCloud
                                 action: { buttons: btns } })
   end
 
+  # Mensaje con BOTÓN DE ENLACE (cta_url): en lugar de mostrar la URL fea, el
+  # mensaje trae un botón con texto humano ("Visitar Ácasa") que abre el enlace.
+  # Solo dentro de la ventana de 24 h, igual que el texto libre.
+  def send_link_button(phone, body:, button_text:, url:)
+    to = self.class.normalize_phone(phone)
+    raise DeliveryError, 'Numero de telefono invalido' if to.blank?
+
+    post_message(messaging_product: 'whatsapp', recipient_type: 'individual', to: to, type: 'interactive',
+                 interactive: { type: 'cta_url', body: { text: body.to_s[0, 1024] },
+                                action: { name: 'cta_url',
+                                          parameters: { display_text: button_text.to_s[0, 20], url: url.to_s } } })
+  end
+
   # Envía una PLANTILLA aprobada. Es la ÚNICA forma de iniciar conversación con
   # alguien que no nos ha escrito en las últimas 24 horas (fuera de esa ventana,
   # Meta acepta el texto libre y lo DESCARTA sin avisar).

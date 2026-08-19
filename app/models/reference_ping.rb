@@ -59,33 +59,28 @@ class ReferencePing < ApplicationRecord
     marker = "🤖 Paquete de reenvío (#{ref})"
     return if ContactLog.where(user_id: user.id).where('body LIKE ?', "%#{marker}%").exists?
 
-    digits = User.business_whatsapp_digits
-    return if digits.blank?
-
     cust = [user.name, user.last_name].compact.join(' ').strip.presence || 'cliente Ácasa'
     order = contract.orders.detect { |o| o.respond_to?(:referrals) && o.referrals.any? } || contract.orders.first
     return unless order
 
+    link = 'https://www.acasamx.com/wa' # enlace corto y humano: abre nuestro WhatsApp
     msgs = []
     order.referrals.each do |rf|
       rname = [rf.name, rf.last_name].compact.join(' ').strip.presence || 'amig@'
-      pre = "Hola, soy #{rname}, referencia de #{cust}."
       msgs << "Hola #{rname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
-              'y te puse como referencia 🙏 ¿Me ayudas con una verificación rápida? Solo toca este ' \
-              "enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+              'y te puse como referencia 🙏 ¿Me ayudas con una verificación rápida? ' \
+              "Solo toca aquí y mándales un saludo: #{link}"
     end
     b = order.respond_to?(:buyer) ? order.buyer : nil
     if b && b.respond_to?(:home_contact_phone) && b.home_contact_phone.present?
       hname = b.home_contact_name.to_s.strip.presence || 'hola'
-      pre = "Hola, soy #{hname}, contacto de domicilio de #{cust}."
       msgs << "Hola #{hname.split.first}! Soy #{cust}. Estoy abriendo mi cuenta de crédito en Ácasa " \
               'y te puse como mi contacto de domicilio 🙏 ¿Me ayudas con una verificación rápida? ' \
-              "Solo toca este enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+              "Solo toca aquí y mándales un saludo: #{link}"
     end
     if b && b.respond_to?(:phone_work) && b.phone_work.present?
-      pre = "Hola, buen día. Escribo por la verificación de empleo de #{cust}."
       msgs << "Hola! Soy #{cust}. Ácasa necesita una verificación rápida de mi empleo 🙏 ¿Me apoyas? " \
-              "Solo toca este enlace y envía el mensaje que aparece: #{wa_link(digits, pre)}"
+              "Solo toca aquí y mándales un saludo: #{link}"
     end
     return if msgs.empty?
 
@@ -109,9 +104,6 @@ class ReferencePing < ApplicationRecord
     Rails.logger.error "[ReferencePing] forward_pack: #{e.message}"
   end
 
-  def self.wa_link(digits, text)
-    'https://wa.me/' + digits.to_s + '?text=' + ERB::Util.url_encode(text)
-  end
 
   def self.add!(contract, kind, phone, name, cust)
     digits = phone.to_s.gsub(/\D/, '')

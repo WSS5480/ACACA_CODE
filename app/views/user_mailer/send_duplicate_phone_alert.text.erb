@@ -1,0 +1,13 @@
+ALERTA: teléfono duplicado en un registro nuevo
+
+Una cuenta NUEVA se registró con el mismo teléfono de una cuenta EXISTENTE ya verificada por WhatsApp.
+
+CUENTA NUEVA (sin verificar):
+<%= [@new_user&.name, @new_user&.last_name].compact.join(' ') %> · #<%= @new_user&.number %>
+<%= @new_user&.email %> · Tel: <%= @new_user&.phone %>
+
+CUENTA EXISTENTE (verificada):
+<%= [@existing&.name, @existing&.last_name].compact.join(' ') %> · #<%= @existing&.number %>
+<%= @existing&.email %> · Tel: <%= @existing&.phone %> · Cliente desde <%= @existing&.created_at&.strftime('%d/%m/%Y') %>
+
+Revísala en el admin (CRM -> Cuentas nuevas sin compra, o Clientes). El evento quedó en la Bitácora.

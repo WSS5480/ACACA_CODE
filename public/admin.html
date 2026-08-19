@@ -2248,7 +2248,7 @@ async function loadCrmLeads(){
       <td style="font-weight:600">${esc(u.name||'—')}${u.phone_problem?`<span title="Teléfono mal capturado: ${esc(u.phone_problem)}" style="margin-left:6px;cursor:help">⚠️</span>`:''}</td>
       <td style="font-size:12.5px">${esc(u.email||'—')}</td>
       <td class="mono">${esc(u.phone||'—')}</td>
-      <td>${u.confirmed?'<span class="pill p-appr">✓ Verificada</span>':'<span class="pill p-pend" title="No ha enviado su WhatsApp de verificación">Pendiente de WhatsApp</span>'}</td>
+      <td>${u.confirmed?'<span class="pill p-appr">✓ Verificada</span>':'<span class="pill p-pend" title="No ha enviado su WhatsApp de verificación">Pendiente de WhatsApp</span>'}${u.duplicate_of?`<br><span class="pill p-canc" style="margin-top:4px" title="Este teléfono ya pertenece a una cuenta VERIFICADA: ${esc(u.duplicate_of)}. Revisar antes de dar crédito.">⚠ Tel. de otra cuenta</span>`:''}</td>
       <td>${fdate(u.created_at)}</td>
       <td><span class="pill ${hot?'p-pend':'p-canc'}" title="${hot?'Reciente: buen momento para contactar':'Lleva tiempo sin regresar'}">${wait}</span></td>
       <td class="right">

@@ -33,7 +33,8 @@ class AuditLog < ApplicationRecord
     'commitment_created'   => 'Registró compromiso de pago',
     'commitment_updated'   => 'Actualizó compromiso de pago',
     'lead_released'        => 'Liberó cuenta nueva del CRM',
-    'questions_updated'    => 'Editó preguntas de aprobación'
+    'questions_updated'    => 'Editó preguntas de aprobación',
+    'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

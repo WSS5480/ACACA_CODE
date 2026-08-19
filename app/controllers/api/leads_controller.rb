@@ -23,11 +23,27 @@ module Api
       scope = scope.where.not(id: with_contract)
       scope = scope.where.not(id: CartSnapshot.select(:user_id)) if defined?(CartSnapshot) && CartSnapshot.table_exists?
 
-      leads = scope.order(created_at: :desc).limit(300).map do |u|
+      rows = scope.order(created_at: :desc).limit(300).to_a
+      # ⚠ Duplicados: mismo teléfono que una cuenta VERIFICADA más antigua.
+      tails = rows.map { |u| u.phone.to_s.gsub(/\D/, '')[-10..] }.compact.uniq.reject { |t| t.length < 10 }
+      dup_map = {}
+      if tails.any?
+        User.where.not(confirmed_at: nil)
+            .where("regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g') ~ ?", "(#{tails.join('|')})$")
+            .order(:created_at).each do |e|
+          t = e.phone.to_s.gsub(/\D/, '')[-10..]
+          dup_map[t] ||= e
+        end
+      end
+      leads = rows.map do |u|
+        t = u.phone.to_s.gsub(/\D/, '')[-10..]
+        dup = t && dup_map[t]
+        dup = nil if dup && dup.id == u.id
         { id: u.id, name: [u.name, u.last_name].compact.join(' ').strip.presence || u.email,
           email: u.email, phone: u.phone,
           confirmed: u.respond_to?(:confirmed?) ? u.confirmed? : true,
           phone_problem: (PhoneCheck.problem(u.phone) rescue nil),
+          duplicate_of: (dup ? "##{dup.number} · #{[dup.name, dup.last_name].compact.join(' ').strip.presence || dup.email}" : nil),
           created_at: u.created_at }
       end
       render json: { leads: leads }, status: :ok

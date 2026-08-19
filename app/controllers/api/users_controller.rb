@@ -271,6 +271,21 @@ class Api::UsersController < ApplicationController
       @user.create_credit!(credit_attrs)
     end
 
+    # ALERTA de teléfono duplicado: la cuenta nueva usa el MISMO teléfono que una
+    # cuenta EXISTENTE ya verificada por WhatsApp. No se bloquea el registro —
+    # se avisa al equipo (correo + Bitácora) y se marca en el CRM para revisarla.
+    begin
+      dup = duplicate_phone_account(@user)
+      if dup
+        AuditLog.record!(actor: @user, action: 'duplicate_phone_signup', target: @user,
+                         label: [@user.name, @user.last_name].compact.join(' ').strip.presence || @user.email,
+                         details: "Mismo teléfono (#{@user.phone}) que la cuenta verificada ##{dup.number} de #{[dup.name, dup.last_name].compact.join(' ').strip.presence || dup.email}")
+        UserMailer.with(new_user: @user, existing: dup).send_duplicate_phone_alert.deliver_now
+      end
+    rescue StandardError => dup_error
+      Rails.logger.error "Alerta de teléfono duplicado falló: #{dup_error.message}"
+    end
+
     # Token de verificacion por WhatsApp (se incrusta en el enlace/QR que el cliente nos envia).
     # Defensivo: si algo falla aqui (p.ej. la columna aun no migro), NO debe impedir crear la cuenta.
     begin
@@ -328,6 +343,20 @@ class Api::UsersController < ApplicationController
   end
 
   private
+
+  # Cuenta EXISTENTE, verificada (confirmó por WhatsApp) y distinta de la nueva,
+  # con los mismos últimos 10 dígitos de teléfono. nil si no hay duplicado.
+  def duplicate_phone_account(user)
+    tail = user.phone.to_s.gsub(/\D/, '')[-10..]
+    return nil if tail.blank? || tail.length < 10
+
+    User.where.not(id: user.id)
+        .where.not(confirmed_at: nil)
+        .where("regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g') LIKE ?", "%#{tail}")
+        .order(:created_at).first
+  rescue StandardError
+    nil
+  end
 
   # Toda la información de una orden para la ficha del cliente.
   def order_full_info(o)

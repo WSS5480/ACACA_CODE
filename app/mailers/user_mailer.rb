@@ -84,6 +84,17 @@ class UserMailer < ApplicationMailer
     mail to: @to, subject: subject
   end
 
+  # ALERTA al equipo: una cuenta NUEVA se registró con el teléfono de una cuenta
+  # EXISTENTE ya verificada por WhatsApp (posible duplicado o suplantación).
+  def send_duplicate_phone_alert
+    @new_user = params[:new_user]
+    @existing = params[:existing]
+    addresses = ENV.fetch('NOTIFICATE_TO', '').split(',').map(&:strip).reject(&:blank?)
+    addresses = ['clientes@acasamx.com'] if addresses.empty?
+
+    mail to: addresses, subject: "⚠ Teléfono duplicado: registro nuevo usa el número de la cuenta ##{@existing&.number} — acasa"
+  end
+
   # Notificación de nueva orden a la lista NOTIFICATE_TO (variable de entorno).
   # SIN direcciones de la agencia: sólo lo que esté configurado (o el buzón propio).
   def send_new_order_notification

@@ -1907,10 +1907,19 @@ async function openOrderVerify(id){
       ${rchkHtml(rphone,null)}${rf.phone_work&&rtail(rf.phone_work)!==rtail(rphone)?rchkHtml(rf.phone_work,['trabajo']):''}
     </div>`;
   }).join('') : '') + `<div style="flex-basis:100%;margin-top:4px"><button class="btn" id="refAdd" style="background:#eef0f6;color:var(--navy);padding:6px 12px;font-size:12.5px">＋ Agregar referencia</button>${refFormHtml(null)}</div>`;
+  // 🚨 TELÉFONOS repetidos en la base: banner arriba de la orden (ROJO si el
+  // nombre registrado no coincide con quien lo dio aquí).
+  const PALERTS=o.phone_alerts||[];
+  const paRed=PALERTS.some(x=>x.level==='red');
+  const paHtml=PALERTS.length?`<div style="border:2px solid ${paRed?'#c62828':'#f5b301'};background:${paRed?'#fdecec':'#fff7e6'};border-radius:12px;padding:12px 14px;margin-bottom:12px">
+    <div style="font-weight:800;color:${paRed?'#b00020':'#8a5a00'};font-size:13.5px;margin-bottom:6px">🚨 Teléfonos ya registrados en la base — revisar antes de aprobar</div>
+    ${PALERTS.map(x=>`<div style="font-size:12.5px;margin:3px 0;${x.level==='red'?'color:#b00020;font-weight:700':'color:#6a5200'}">${x.level==='red'?'🔴':'🟡'} ${esc(x.who)} · ${esc(x.phone||'')} — ${x.matches.map(m=>esc(m.type+': '+(m.name||'—')+(m.detail?(' · '+m.detail):''))+(m.name_mismatch?' <b>❌ EL NOMBRE NO COINCIDE</b>':' (mismo nombre)')).join(' &nbsp;|&nbsp; ')}</div>`).join('')}
+  </div>`:'';
   d.innerHTML=`
     <div style="margin-bottom:14px"><a href="#" id="ovBack" style="color:var(--brand-d);font-weight:700">&larr; Volver a órdenes</a></div>
     <div class="head"><h1 style="font-size:20px">${esc(headNum)} — ${esc([o.user_name,o.user_last_name].filter(Boolean).join(' '))}</h1><div class="sp"></div>${fulfillPill({fulfillment_status:(allDelivered?'entregado':(approved?'por_entregar':'pendiente'))})}</div>
     ${stepper}
+    ${paHtml}
     <div class="sec" style="padding:16px">
       <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:8px">
         ${vField('Pedido',pick(o,['contract_order_ref'],null))}${vField('Contrato',o.contract_number)}${vField('Pago x periodo',pick(o,['contract_weekly_payment'],null)!=null?money(pick(o,['contract_weekly_payment'],null)):(o.weekly_payment!=null?money(o.weekly_payment):null))}${vField('Artículos',grp.length)}

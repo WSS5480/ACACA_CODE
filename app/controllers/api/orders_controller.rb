@@ -119,6 +119,11 @@ class Api::OrdersController < ApplicationController
     # Alertas de dirección: el CP debe corresponder a la ciudad/estado capturados (datos reales).
     response[:data][:address_alerts] = address_alerts_for(@order, buyer: buyer, beneficiary: beneficiary)
 
+    # 🚨 Alertas de TELÉFONO REPETIDO: cualquier número de esta compra (cliente,
+    # comprador, beneficiario, referencias, domicilio, trabajo) que ya exista en
+    # la base — ROJO si el nombre registrado NO coincide (posible fraude).
+    response[:data][:phone_alerts] = phone_alerts_for(@order, buyer: buyer, beneficiary: beneficiary, referrals: referrals)
+
     # COMUNICACIONES POR REFERENCIA: estado y respuestas de la entrevista de
     # CADA referencia / contacto de domicilio / trabajo — se muestran BAJO cada
     # persona en la verificación (no en un área general).
@@ -345,6 +350,86 @@ class Api::OrdersController < ApplicationController
   end
 
   # Compara CP vs ciudad/estado del comprador (EUA) y del beneficiario (MX) contra datos reales.
+  # 🚨 TELÉFONOS REPETIDOS EN LA BASE: revisa cada número de la compra contra
+  # clientes, compradores, referencias, beneficiarios y contactos de domicilio
+  # de OTRAS compras. Nivel 'red' cuando el nombre registrado no coincide.
+  def phone_alerts_for(order, buyer: nil, beneficiary: nil, referrals: [])
+    return [] unless order
+
+    sibling_ids = order.contract_id.present? ? Order.where(contract_id: order.contract_id).pluck(:id) : [order.id]
+    tailof = ->(p) { d = p.to_s.gsub(/\D/, ''); d.length >= 10 ? d[-10..] : nil }
+    norm = ->(n) { n.to_s.downcase.unicode_normalize(:nfd).gsub(/[^a-z\s]/, '').split }
+    same_name = lambda do |a, b|
+      ta = norm.call(a)
+      tb = norm.call(b)
+      return false if ta.empty? || tb.empty?
+
+      (ta & tb).size >= [2, [ta.size, tb.size].min].min
+    end
+
+    # Los teléfonos de ESTA compra, con quién los dio.
+    entries = []
+    entries << { who: 'Cliente', name: [order.user&.name, order.user&.last_name].compact.join(' '), phone: order.user&.phone, own_user_id: order.user_id }
+    if buyer
+      bname = [buyer.name, buyer.last_name].compact.join(' ')
+      entries << { who: 'Comprador', name: bname, phone: buyer.phone, own_user_id: order.user_id }
+      entries << { who: 'Trabajo del comprador', name: bname, phone: (buyer.respond_to?(:phone_work) ? buyer.phone_work : nil) }
+      if buyer.respond_to?(:home_contact_phone)
+        entries << { who: 'Contacto de domicilio', name: buyer.home_contact_name, phone: buyer.home_contact_phone }
+      end
+    end
+    entries << { who: 'Beneficiario', name: [beneficiary&.name, beneficiary&.last_name].compact.join(' '), phone: beneficiary&.phone }
+    Array(referrals).each do |rf|
+      rn = [rf.name, rf.last_name].compact.join(' ')
+      entries << { who: "Referencia #{rn}".strip, name: rn, phone: rf.phone, own_ref_id: rf.id }
+      entries << { who: "Tel. trabajo de #{rn}".strip, name: rn, phone: (rf.respond_to?(:phone_work) ? rf.phone_work : nil), own_ref_id: rf.id }
+    end
+    entries = entries.filter_map { |e| t = tailof.call(e[:phone]); t ? e.merge(tail: t) : nil }
+    return [] if entries.empty?
+
+    tails = entries.map { |e| e[:tail] }.uniq
+    rx = "(#{tails.join('|')})$"
+    q = ->(col) { ["regexp_replace(coalesce(#{col},''), '[^0-9]', '', 'g') ~ ?", rx] }
+
+    # Todo lo que existe en la base con esos números (con dueño y contexto).
+    found = Hash.new { |h, k| h[k] = [] }
+    User.where(q.call('phone')).find_each do |u|
+      found[tailof.call(u.phone)] << { type: 'Cuenta de cliente', name: [u.name, u.last_name].compact.join(' ').presence || u.email,
+                                       detail: "##{u.respond_to?(:number) ? u.number : u.id}", user_id: u.id }
+    end
+    Buyer.where.not(order_id: sibling_ids).where(q.call('phone')).find_each do |b|
+      found[tailof.call(b.phone)] << { type: 'Comprador de otra compra', name: [b.name, b.last_name].compact.join(' '), detail: "orden ##{b.order_id}" }
+    end
+    Buyer.where.not(order_id: sibling_ids).where(q.call('home_contact_phone')).find_each do |b|
+      found[tailof.call(b.home_contact_phone)] << { type: 'Contacto de domicilio de otra compra', name: b.home_contact_name.to_s, detail: "orden ##{b.order_id}" }
+    end
+    Referral.where.not(order_id: sibling_ids).where(q.call('phone')).find_each do |r|
+      found[tailof.call(r.phone)] << { type: 'Referencia de otra compra', name: [r.name, r.last_name].compact.join(' '), detail: "orden ##{r.order_id}" }
+    end
+    Beneficiary.where(q.call('phone')).find_each do |bn|
+      next if beneficiary && bn.id == beneficiary.id
+
+      found[tailof.call(bn.phone)] << { type: 'Beneficiario', name: [bn.name, bn.last_name].compact.join(' '), detail: nil }
+    end
+
+    alerts = []
+    entries.each do |e|
+      matches = (found[e[:tail]] || []).reject do |m|
+        # No alertar por la PROPIA cuenta del cliente en sus propios teléfonos.
+        m[:user_id].present? && m[:user_id] == e[:own_user_id]
+      end
+      next if matches.empty?
+
+      ms = matches.map { |m| m.except(:user_id).merge(name_mismatch: !same_name.call(e[:name], m[:name])) }
+      alerts << { who: e[:who], phone: e[:phone], name: e[:name],
+                  level: ms.any? { |m| m[:name_mismatch] } ? 'red' : 'yellow', matches: ms }
+    end
+    alerts
+  rescue StandardError => e
+    Rails.logger.warn "[phone_alerts] #{e.message}"
+    []
+  end
+
   def address_alerts_for(order, buyer: nil, beneficiary: nil)
     alerts = []
     b_rec = buyer || (order.respond_to?(:buyer) ? order.buyer : nil)

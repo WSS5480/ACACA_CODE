@@ -8,10 +8,15 @@ class ScheduledTick
   def self.run
     out = {}
 
-    # 1) Verificaciones de referencias por WhatsApp (respeta 8am-9pm local).
-    if defined?(ReferencePing) && ReferencePing.table_exists?
-      out[:reference_pings] = ReferencePing.run_due!
-    end
+    # 1) Verificación de referencias: el envío AUTOMÁTICO de plantillas está
+    #    APAGADO a propósito — el "paquete de reenvío" hace que las referencias
+    #    nos escriban ELLAS (ventana abierta, conversación libre). Las plantillas
+    #    ref_* quedan solo para contacto MANUAL desde el selector 📋 cuando una
+    #    referencia nunca responde. La cola reference_pings sigue registrando a
+    #    quién falta verificar.
+    # if defined?(ReferencePing) && ReferencePing.table_exists?
+    #   out[:reference_pings] = ReferencePing.run_due!
+    # end
 
     # 2) Recordatorio del día ANTERIOR de cada compromiso de pago:
     #    se dispara en la mañana de Monterrey (9-10 am); reminded_at evita duplicados.

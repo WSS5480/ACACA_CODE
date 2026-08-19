@@ -25,6 +25,7 @@ module Api
         body = msg.dig('text', 'body').to_s
         WhatsappVerification.process_incoming(from: from, body: body)
         archive_message(msg, from, body)
+        mark_reference_responded(from)
       end
       incoming_statuses.each { |st| apply_status(st) }
       head :ok
@@ -62,6 +63,25 @@ module Api
       end
     rescue StandardError => e
       Rails.logger.error "[WhatsappWebhook] archive: #{e.class}: #{e.message}"
+    end
+
+    # Si quien escribe es una referencia/domicilio/trabajo PENDIENTE de verificar,
+    # su registro pasa a 'respondio' (ya no requiere contacto manual) y se anota
+    # en el historial del cliente.
+    def mark_reference_responded(from)
+      return unless defined?(ReferencePing) && ReferencePing.table_exists?
+
+      tail = from.to_s.gsub(/[^0-9]/, '')[-10..]
+      return if tail.blank?
+
+      ReferencePing.pending.where('phone LIKE ?', "%#{tail}").find_each do |p|
+        p.update_columns(status: 'respondio', sent_at: Time.current, error: nil)
+        ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
+                           person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
+                           body: "✅ #{p.ref_name} (#{p.target_kind}) nos escribió por WhatsApp: verificación en curso")
+      end
+    rescue StandardError => e
+      Rails.logger.warn "[WhatsappWebhook] ref_responded: #{e.message}"
     end
 
     def match_user(from)

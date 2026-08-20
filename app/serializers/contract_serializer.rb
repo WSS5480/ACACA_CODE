@@ -112,6 +112,23 @@ class ContractSerializer
     c.orders.first&.id
   end
 
+  # PASOS del pedido (barra de progreso del cliente): secciones verificadas 0-5
+  # y aprobación, para pintar Verificación y Aprobación por separado.
+  attribute :verified_sections do |c|
+    o = c.orders.detect { |x| x.respond_to?(:buyer) && x.buyer.present? } || c.orders.first
+    if o
+      %i[beneficiary_verified buyer_verified residency_verified employment_verified references_verified]
+        .count { |f| o.respond_to?(f) && o.public_send(f) }
+    else
+      0
+    end
+  rescue StandardError
+    0
+  end
+  attribute :approved do |c|
+    c.orders.any? && c.orders.all? { |o| o.respond_to?(:admin_approved) && o.admin_approved }
+  end
+
   # pendiente (falta aprobar en Ordenes) -> por_entregar -> entregado
   attribute :fulfillment do |c|
     orders = c.orders.to_a

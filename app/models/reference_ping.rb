@@ -57,42 +57,58 @@ class ReferencePing < ApplicationRecord
 
     ref = contract.respond_to?(:order_ref) ? contract.order_ref : "PED-#{contract.id}"
     marker = "🤖 Paquete de reenvío (#{ref})"
-    return if ContactLog.where(user_id: user.id).where('body LIKE ?', "%#{marker}%").exists?
+    # Dedupe POR CONTACTO: si el cliente ACTUALIZA una referencia (teléfono
+    # nuevo) después del primer paquete, solo el contacto NUEVO recibe su
+    # mensaje de reenvío — los ya enviados no se repiten.
+    prior_logs = ContactLog.where(user_id: user.id).where('body LIKE ?', "%#{marker}%").pluck(:body)
+    first_pack = prior_logs.empty?
+    sent_tails = prior_logs.flat_map { |t| t.scan(/\[(\d{10})\]/).flatten }
 
     cust = [user.name, user.last_name].compact.join(' ').strip.presence || 'cliente Ácasa'
     order = contract.orders.detect { |o| o.respond_to?(:referrals) && o.referrals.any? } || contract.orders.first
     return unless order
 
+    tailof = ->(p) { d = p.to_s.gsub(/\D/, ''); d.length >= 10 ? d[-10..] : nil }
     link = 'https://www.acasamx.com/wa' # enlace corto y humano: abre nuestro WhatsApp
     # Textos EDITABLES en Configuración → Respuestas WhatsApp.
-    msgs = []
+    msgs = [] # [texto, tail]
     order.referrals.each do |rf|
+      t = tailof.call(rf.phone)
+      next if t.blank? || sent_tails.include?(t)
+
       rname = [rf.name, rf.last_name].compact.join(' ').strip.presence || 'amig@'
-      msgs << WaAutoText.render('fwd_referencia', referencia: rname.split.first, cliente: cust, enlace: link)
+      msgs << [WaAutoText.render('fwd_referencia', referencia: rname.split.first, cliente: cust, enlace: link), t]
     end
     b = order.respond_to?(:buyer) ? order.buyer : nil
     if b && b.respond_to?(:home_contact_phone) && b.home_contact_phone.present?
-      hname = b.home_contact_name.to_s.strip.presence || 'hola'
-      msgs << WaAutoText.render('fwd_domicilio', referencia: hname.split.first, cliente: cust, enlace: link)
+      t = tailof.call(b.home_contact_phone)
+      if t.present? && !sent_tails.include?(t)
+        hname = b.home_contact_name.to_s.strip.presence || 'hola'
+        msgs << [WaAutoText.render('fwd_domicilio', referencia: hname.split.first, cliente: cust, enlace: link), t]
+      end
     end
     if b && b.respond_to?(:phone_work) && b.phone_work.present?
-      msgs << WaAutoText.render('fwd_trabajo', cliente: cust, enlace: link)
+      t = tailof.call(b.phone_work)
+      msgs << [WaAutoText.render('fwd_trabajo', cliente: cust, enlace: link), t] if t.present? && !sent_tails.include?(t)
     end
     return if msgs.empty?
 
-    intro = WaAutoText.render('fwd_intro', nombre: user.name.to_s.split.first)
+    intro = first_pack ? WaAutoText.render('fwd_intro', nombre: user.name.to_s.split.first) : nil
     ok = 0
-    ([intro] + msgs).each do |t|
+    ok_tails = []
+    ([intro].compact.map { |x| [x, nil] } + msgs).each do |(t, tail)|
       r = WhatsappOutbound.deliver(phone: user.phone, text: t, user: user)
       break unless r[:ok] # ventana cerrada: no insistir (se reintenta al próximo guardado de datos)
 
       ok += 1
+      ok_tails << tail if tail
     end
-    if ok.positive?
+    if ok.positive? && ok_tails.any?
       ContactLog.create!(user_id: user.id, person_type: 'buyer', person_name: cust, phone: user.phone,
                          author_name: 'Automático',
-                         body: "#{marker}: #{ok}/#{msgs.size + 1} mensajes enviados al cliente para " \
-                               'reenviar a sus referencias, domicilio y trabajo')
+                         body: "#{marker}: #{ok} mensaje(s) al cliente para reenviar " \
+                               "#{first_pack ? 'a sus referencias, domicilio y trabajo' : '(contactos NUEVOS o actualizados)'} " \
+                               "#{ok_tails.map { |t| "[#{t}]" }.join(' ')}")
     end
   rescue StandardError => e
     Rails.logger.error "[ReferencePing] forward_pack: #{e.message}"

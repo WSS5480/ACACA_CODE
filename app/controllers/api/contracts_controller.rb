@@ -476,23 +476,33 @@ module Api
     # completa) del cliente con comprador y referencias capturados.
     # fresh = la aprobación tiene menos de 6 meses (no se vuelve a pedir nada).
     def reusable_datos_source(contract)
-      candidates = Order.where(user_id: contract.user_id, admin_approved: true)
-                        .where.not(contract_id: contract.id)
-                        .order(approved_at: :desc, id: :desc).limit(25).to_a
-      candidates.each do |cand|
+      # Fuente para PREPOBLAR: primero la última compra APROBADA (verificada);
+      # si no hay, CUALQUIER compra anterior con datos capturados — el cliente
+      # nunca vuelve a teclear lo que ya nos dio. "fresh" (auto-copia sin
+      # preguntar) sólo aplica a datos VERIFICADOS hace menos de 6 meses; los
+      # no verificados siempre se muestran para CONFIRMAR/actualizar.
+      approved = Order.where(user_id: contract.user_id, admin_approved: true)
+                      .where.not(contract_id: contract.id)
+                      .order(approved_at: :desc, id: :desc).limit(25).to_a
+      others = Order.where(user_id: contract.user_id)
+                    .where.not(contract_id: contract.id)
+                    .where(admin_approved: [false, nil])
+                    .order(id: :desc).limit(25).to_a
+      (approved + others).each do |cand|
         group = cand.contract_id.present? ? Order.where(contract_id: cand.contract_id).order(:id).to_a : [cand]
         data_order = group.find { |o| o.respond_to?(:buyer) && o.buyer.present? } ||
                      group.find { |o| o.referrals.exists? }
         next unless data_order
         next unless data_order.buyer.present? || data_order.referrals.exists?
 
-        verified_at = cand.approved_at || cand.updated_at
+        was_approved = cand.respond_to?(:admin_approved) && cand.admin_approved
+        verified_at = was_approved ? (cand.approved_at || cand.updated_at) : nil
         return {
           data_order: data_order,
           buyer: data_order.buyer,
           referrals: data_order.referrals.to_a,
           verified_at: verified_at,
-          fresh: verified_at.present? && verified_at >= 6.months.ago
+          fresh: was_approved && verified_at.present? && verified_at >= 6.months.ago
         }
       end
       nil

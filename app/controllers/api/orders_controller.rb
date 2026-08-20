@@ -415,19 +415,40 @@ class Api::OrdersController < ApplicationController
       found[tailof.call(u.phone)] << { type: 'Cuenta de cliente', name: [u.name, u.last_name].compact.join(' ').presence || u.email,
                                        detail: "##{u.respond_to?(:number) ? u.number : u.id}", user_id: u.id }
     end
+    # Dueño de la CUENTA donde apareció ese número (para saber DE QUIÉN es la
+    # otra cuenta, no solo el nombre del contacto).
+    owner_of = lambda do |order_id|
+      u = Order.find_by(id: order_id)&.user
+      u ? [u.name, u.last_name].compact.join(' ').strip.presence || u.email : nil
+    end
     Buyer.where.not(order_id: sibling_ids).where(q.call('phone')).find_each do |b|
-      found[tailof.call(b.phone)] << { type: 'Comprador de otra compra', name: [b.name, b.last_name].compact.join(' '), detail: "orden ##{b.order_id}" }
+      own = owner_of.call(b.order_id)
+      found[tailof.call(b.phone)] << { type: 'Comprador de otra compra', name: [b.name, b.last_name].compact.join(' '),
+                                       detail: [own ? "cuenta de #{own}" : nil, "orden ##{b.order_id}"].compact.join(' · ') }
     end
     Buyer.where.not(order_id: sibling_ids).where(q.call('home_contact_phone')).find_each do |b|
-      found[tailof.call(b.home_contact_phone)] << { type: 'Contacto de domicilio de otra compra', name: b.home_contact_name.to_s, detail: "orden ##{b.order_id}" }
+      own = owner_of.call(b.order_id)
+      found[tailof.call(b.home_contact_phone)] << { type: 'Contacto de domicilio de otra compra', name: b.home_contact_name.to_s,
+                                                    detail: [own ? "cuenta de #{own}" : nil, "orden ##{b.order_id}"].compact.join(' · ') }
     end
+    # ⚠ Número usado como REFERENCIA en OTRA cuenta: se avisa con el nombre del
+    # dueño de esa cuenta (mismo círculo de referencias entre solicitantes).
     Referral.where.not(order_id: sibling_ids).where(q.call('phone')).find_each do |r|
-      found[tailof.call(r.phone)] << { type: 'Referencia de otra compra', name: [r.name, r.last_name].compact.join(' '), detail: "orden ##{r.order_id}" }
+      own = owner_of.call(r.order_id)
+      found[tailof.call(r.phone)] << { type: 'Referencia de OTRA cuenta', name: [r.name, r.last_name].compact.join(' '),
+                                       detail: [own ? "cuenta de #{own}" : nil, "orden ##{r.order_id}"].compact.join(' · ') }
+    end
+    Referral.where.not(order_id: sibling_ids).where(q.call('phone_work')).find_each do |r|
+      own = owner_of.call(r.order_id)
+      found[tailof.call(r.phone_work)] << { type: 'Tel. de trabajo de referencia en OTRA cuenta', name: [r.name, r.last_name].compact.join(' '),
+                                            detail: [own ? "cuenta de #{own}" : nil, "orden ##{r.order_id}"].compact.join(' · ') }
     end
     Beneficiary.where(q.call('phone')).find_each do |bn|
       next if beneficiary && bn.id == beneficiary.id
 
-      found[tailof.call(bn.phone)] << { type: 'Quien recibe', name: [bn.name, bn.last_name].compact.join(' '), detail: nil }
+      bown = bn.user ? [bn.user.name, bn.user.last_name].compact.join(' ').strip : nil
+      found[tailof.call(bn.phone)] << { type: 'Quien recibe', name: [bn.name, bn.last_name].compact.join(' '),
+                                        detail: (bown ? "cuenta de #{bown}" : nil) }
     end
 
     alerts = []

@@ -122,6 +122,8 @@ Rails.application.routes.draw do
       post 'set_next_due', on: :member      # staff: mover el próximo vencimiento (PRUEBAS de cobranza)
       post 'confirm_datos', on: :member     # cliente que regresa: reutilizar/confirmar sus datos verificados
       post 'set_status', on: :member        # staff: devuelto / castigado / reactivar (bitácora)
+      post 'set_frequency', on: :member     # cliente/staff: semanal | quincenal | mensual (recalcula calendario)
+      post 'autopay_all', on: :collection   # cliente: pago automático de TODA la cuenta
     end
 
     resources :beneficiaries, controller: 'api/beneficiaries'
@@ -150,6 +152,7 @@ Rails.application.routes.draw do
     post 'stripe/finalize',        to: 'api/stripe#finalize'
     get  'stripe/payment_methods', to: 'api/stripe#payment_methods'
     post 'stripe/setup_intent',    to: 'api/stripe#setup_intent'          # guardar tarjeta sin pagar (Perfil)
+    post 'stripe/multi_payment_intent', to: 'api/stripe#multi_payment_intent' # un pago que cubre varios contratos
     delete 'stripe/payment_methods/:id', to: 'api/stripe#detach_payment_method'
     get  'stripe/config',          to: 'api/stripe#publishable_config'
     post 'stripe/webhook',         to: 'api/stripe#webhook'

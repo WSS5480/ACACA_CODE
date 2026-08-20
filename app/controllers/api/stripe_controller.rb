@@ -35,6 +35,46 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    # POST /api/stripe/multi_payment_intent { allocations: [{contract_id, amount}] }
+    # UN SOLO pago que cubre VARIOS contratos del cliente: cada monto se aplica
+    # a su contrato al confirmar (finalize/webhook). Montos en USD + IVA.
+    def multi_payment_intent
+      allocs = Array(params[:allocations]).map do |a|
+        { contract_id: a[:contract_id].to_i, amount: a[:amount].to_f.round(2) }
+      end.select { |a| a[:contract_id].positive? && a[:amount].positive? }
+      return render(json: { error: 'Indica al menos un monto' }, status: :unprocessable_entity) if allocs.empty?
+
+      contracts = Contract.where(id: allocs.map { |a| a[:contract_id] }).index_by(&:id)
+      allocs.each do |a|
+        c = contracts[a[:contract_id]]
+        return render(json: { error: 'Contrato no encontrado' }, status: :not_found) unless c
+        if @current_user.role&.name == 'cliente' && c.user_id != @current_user.id
+          return render(json: { error: 'No autorizado' }, status: :forbidden)
+        end
+      end
+
+      base_sum = allocs.sum { |a| a[:amount] }.round(2)
+      tax = ((base_sum * Product.tax_rate) / 100.0).round(2)
+      total_cents = ((base_sum + tax) * 100).round
+      customer_id = ensure_stripe_customer!(@current_user)
+
+      nums = allocs.map { |a| contracts[a[:contract_id]].contract_number.presence || contracts[a[:contract_id]].order_ref }
+      pi = StripeClient.request(:post, '/v1/payment_intents', {
+        amount: total_cents,
+        currency: 'usd',
+        customer: customer_id,
+        setup_future_usage: 'off_session',
+        automatic_payment_methods: { enabled: true },
+        description: "Pago combinado: #{nums.join(', ')}",
+        metadata: { user_id: @current_user.id, kind: 'multi', tax_amount: tax,
+                    allocations: allocs.map { |a| { c: a[:contract_id], a: a[:amount] } }.to_json }
+      })
+      render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'],
+                     base_total: base_sum, tax: tax, total: (base_sum + tax).round(2) }, status: :ok
+    rescue StripeClient::Error => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     # POST /api/stripe/setup_intent  -> guardar una TARJETA sin pagar (Perfil):
     # queda lista para pagos automáticos y cobros futuros (off-session).
     def setup_intent
@@ -192,6 +232,38 @@ module Api
       return nil if pi_id.blank?
       existing = Payment.find_by(stripe_payment_intent_id: pi_id)
       return existing if existing
+
+      # Pago COMBINADO (varios contratos en un solo cargo): cada asignación se
+      # aplica a su contrato; el dedupe por payment_intent cubre el conjunto.
+      if pi.dig('metadata', 'kind').to_s == 'multi'
+        allocs = begin
+          JSON.parse(pi.dig('metadata', 'allocations').to_s)
+        rescue StandardError
+          []
+        end
+        first_payment = nil
+        total = (pi['amount'].to_i / 100.0).round(2)
+        allocs.each do |al|
+          c = Contract.find_by(id: al['c'])
+          next unless c
+
+          amt = al['a'].to_f.round(2)
+          next unless amt.positive?
+
+          pmt = c.payments.new(amount: amt, method: 'stripe',
+                               note: "Stripe #{pi_id} | pago combinado (total cobrado $#{'%.2f' % total})",
+                               stripe_payment_intent_id: pi_id)
+          pmt.save!
+          first_payment ||= pmt
+          actor = (defined?(@current_user) && @current_user) || c.user
+          num = c.contract_number.presence || c.order_ref
+          client_name = [c.user&.name, c.user&.last_name].compact.join(' ').strip
+          AuditLog.record!(actor: actor, action: 'payment_online', target: c,
+                           label: client_name.present? ? "#{num} · #{client_name}" : num.to_s,
+                           details: "Stripe $#{format('%.2f', amt)} (pago combinado, total $#{format('%.2f', total)}) · #{pi_id}")
+        end
+        return first_payment
+      end
 
       contract = Contract.find_by(id: pi.dig('metadata', 'contract_id'))
       return nil unless contract

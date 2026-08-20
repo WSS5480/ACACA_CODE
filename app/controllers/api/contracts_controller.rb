@@ -171,6 +171,9 @@ module Api
           user: user, status: 'active',
           total_amount: total, downpayment: down, financed_amount: financed,
           weekly_payment: weekly, weeks: weeks, frequency: freq,
+          # Pago automático de la CUENTA: los contratos nuevos nacen con el
+          # mismo ajuste que el cliente eligió en su Perfil.
+          autopay: (User.column_names.include?('autopay') && user.autopay ? true : false),
           start_date: (params[:start_date].present? ? ((Date.parse(params[:start_date].to_s) rescue Date.current)) : Date.current)
         )
         products.each do |prod|
@@ -252,6 +255,65 @@ module Api
 
       contract.update!(autopay: enabled, autopay_last_error: nil)
       render json: { ok: true, autopay: contract.autopay }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Contrato no encontrado' }, status: :not_found
+    end
+
+    # POST /api/contracts/autopay_all { enabled }  (cliente, desde su Perfil)
+    # PAGO AUTOMÁTICO de TODA la cuenta: activa/desactiva el cobro automático de
+    # TODOS los contratos activos según los términos de cada uno, y deja el
+    # ajuste en la cuenta para que los contratos NUEVOS nazcan igual.
+    def autopay_all
+      return render(json: { error: 'Solo el cliente puede ajustar su pago automático' }, status: :forbidden) unless client?
+
+      enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
+      if enabled
+        cid = @current_user.stripe_customer_id
+        has_card = false
+        if cid.present? && StripeClient.configured?
+          pms = begin
+            StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' })
+          rescue StandardError
+            { 'data' => [] }
+          end
+          has_card = (pms['data'] || []).any?
+        end
+        return render(json: { error: 'Guarda primero una tarjeta (Perfil → Tarjeta para pagos automáticos).' }, status: :unprocessable_entity) unless has_card
+      end
+
+      scope = Contract.where(user_id: @current_user.id, status: 'active')
+      scope.update_all(autopay: enabled, autopay_last_error: nil)
+      @current_user.update_column(:autopay, enabled) if User.column_names.include?('autopay')
+      AuditLog.record!(actor: @current_user, action: 'autopay_all_changed', target: @current_user,
+                       label: [@current_user.name, @current_user.last_name].compact.join(' '),
+                       details: "Pago automático de TODA la cuenta: #{enabled ? 'ACTIVADO' : 'desactivado'} (#{scope.count} contrato(s))")
+      render json: { ok: true, autopay: enabled, contracts: scope.count }, status: :ok
+    end
+
+    # POST /api/contracts/:id/set_frequency { frequency: weekly|biweekly|monthly }
+    # Cambia la FRECUENCIA de pago del contrato (semanal, quincenal o mensual):
+    # el pago por periodo se escala y el calendario pendiente se reconstruye
+    # manteniendo el saldo. Cliente (su contrato) o staff.
+    def set_frequency
+      contract = Contract.find(params[:id])
+      unless staff? || (client? && contract.user_id == @current_user.id)
+        return render(json: { error: 'No autorizado' }, status: :forbidden)
+      end
+
+      f = params[:frequency].to_s
+      return render(json: { error: 'Frecuencia inválida' }, status: :unprocessable_entity) unless %w[weekly biweekly monthly].include?(f)
+      return render(json: { error: 'Este contrato ya está liquidado' }, status: :unprocessable_entity) if contract.balance <= 0
+
+      old = contract.freq
+      return render(json: { ok: true, frequency: f }, status: :ok) if old == f
+
+      contract.update!(frequency: f)
+      contract.rebuild_pending_schedule!
+      AuditLog.record!(actor: @current_user, action: 'contract_frequency_changed', target: contract,
+                       label: audit_contract_label(contract),
+                       details: "Frecuencia de pago: #{old} → #{f} · pago por periodo $#{format('%.2f', contract.period_payment)} · #{contract.contract_installments.where.not(status: 'paid').count} cuota(s) pendientes")
+      render json: { ok: true, frequency: f, period_payment: contract.period_payment,
+                     next_due_date: contract.next_due_date }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     end

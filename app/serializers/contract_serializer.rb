@@ -37,6 +37,11 @@ class ContractSerializer
   attribute :past_due_amount do |c|
     c.past_due_amount
   end
+  # Pago por periodo EXACTO según la frecuencia (semanal x1, quincenal x2, mensual x4.333).
+  attribute :period_payment do |c|
+    c.respond_to?(:period_payment) ? c.period_payment : c.weekly_payment
+  end
+
   attribute :next_due_date do |c|
     c.next_due_date
   end

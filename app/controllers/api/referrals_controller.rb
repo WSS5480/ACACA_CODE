@@ -31,7 +31,7 @@ class Api::ReferralsController < ApplicationController
     end
 
     if @referral.save
-      enqueue_reference_pings(@referral.order)
+      enqueue_reference_pings(@referral.order) unless quiet_save?
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :created
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
@@ -41,11 +41,16 @@ class Api::ReferralsController < ApplicationController
   # PATCH/PUT /api/referrals/:id
   def update
     if @referral.update(referral_params.except(:order_id))
-      enqueue_reference_pings(@referral.order)
+      enqueue_reference_pings(@referral.order) unless quiet_save?
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :ok
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  # quiet=1 (edición desde el PERFIL): guardar SIN disparar los WhatsApps.
+  def quiet_save?
+    ActiveModel::Type::Boolean.new.cast(params[:quiet])
   end
 
   # Al COMPLETARSE los datos de la compra se encolan solas las verificaciones

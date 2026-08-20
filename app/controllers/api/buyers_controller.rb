@@ -37,7 +37,7 @@ class Api::BuyersController < ApplicationController
     )
 
     if @buyer.save
-      enqueue_reference_pings(@buyer.order_id)
+      enqueue_reference_pings(@buyer.order_id) unless quiet_save?
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :created
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
@@ -47,7 +47,7 @@ class Api::BuyersController < ApplicationController
   # PATCH/PUT /api/buyers/:id
   def update
     if @buyer.update(buyer_params.except(:order_id))
-      enqueue_reference_pings(@buyer.order_id)
+      enqueue_reference_pings(@buyer.order_id) unless quiet_save?
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :ok
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
@@ -89,6 +89,12 @@ class Api::BuyersController < ApplicationController
     return if @buyer.order&.user_id == @current_user.id
 
     render json: { error: 'No autorizado para acceder a este comprador' }, status: :forbidden
+  end
+
+  # quiet=1 (edición desde el PERFIL): guardar SIN disparar los WhatsApps de
+  # verificación — esos solo salen al hacer/completar un pedido.
+  def quiet_save?
+    ActiveModel::Type::Boolean.new.cast(params[:quiet])
   end
 
   # Al COMPLETARSE los datos se encolan las verificaciones de referencias.

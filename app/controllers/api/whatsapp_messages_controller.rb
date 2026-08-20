@@ -174,7 +174,7 @@ module Api
         list << { name: [b.name, b.last_name].compact.join(' ').strip, phone: b.phone, type: 'Comprador', person_type: 'comprador' }
       end
       Beneficiary.where.not(phone: [nil, '']).find_each do |b|
-        list << { name: [b.name, b.last_name].compact.join(' ').strip, phone: b.phone, type: 'Beneficiario', person_type: 'beneficiario', user_id: b.user_id }
+        list << { name: [b.name, b.last_name].compact.join(' ').strip, phone: b.phone, type: 'Quien recibe', person_type: 'beneficiario', user_id: b.user_id }
       end
       Referral.where.not(phone: [nil, '']).find_each do |r|
         list << { name: [r.name, r.last_name].compact.join(' ').strip, phone: r.phone, type: 'Referencia', person_type: 'referencia' }
@@ -327,7 +327,7 @@ module Api
       buyers = Buyer.where.not(phone: [nil, '']).to_a
       bens = Beneficiary.where.not(phone: [nil, '']).to_a
       refs = Referral.where.not(phone: [nil, '']).to_a
-      labels = { 'cliente' => 'Cliente', 'comprador' => 'Comprador', 'beneficiario' => 'Beneficiario',
+      labels = { 'cliente' => 'Cliente', 'comprador' => 'Comprador', 'beneficiario' => 'Quien recibe',
                  'referencia' => 'Referencia', 'equipo' => 'Equipo' }
 
       groups.each_value do |g|

@@ -328,7 +328,7 @@
         <select class="sel" id="waFilter">
           <option value="">Todos</option><option value="unread">No leídos</option>
           <option value="cliente">Clientes</option><option value="comprador">Compradores</option>
-          <option value="beneficiario">Beneficiarios</option><option value="referencia">Referencias</option>
+          <option value="quien recibe">Beneficiarios</option><option value="referencia">Referencias</option>
           <option value="none">Sin cuenta</option>
         </select>
         <div class="search" style="max-width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="waSearch" placeholder="Nombre o teléfono…"></div>
@@ -571,7 +571,7 @@
           <div class="rk-f"><label>Meses en el domicilio</label><input type="number" id="addr" value="12" min="0"></div>
           <div class="rk-f"><label>Meses en el empleo</label><input type="number" id="job" value="12" min="0"></div>
           <div class="rk-f"><label>Ingreso semanal (USD)</label><input type="number" id="income" value="400" min="0"></div>
-          <div class="rk-f"><label>Parentesco con beneficiario</label><select id="rel">
+          <div class="rk-f"><label>Parentesco con quien recibe</label><select id="rel">
             <option value="conyuge">Cónyuge</option><option value="hijo">Hijo / Hija</option><option value="padre">Padre / Madre</option>
             <option value="hermano" selected>Hermano / Hermana</option><option value="otro">Otro</option><option value="">Sin especificar</option>
           </select></div>
@@ -1802,7 +1802,7 @@ async function openOrderVerify(id){
   const docGen=!!pick(o,['contract_document_generated'],false), docSigned=!!pick(o,['contract_signed'],false);
   // SEMÁFORO del pipeline: ROJO = sin empezar · AMARILLO = en proceso · VERDE = completado.
   const nVer=[o.beneficiary_verified,o.buyer_verified,o.residency_verified,o.employment_verified,o.references_verified].filter(Boolean).length;
-  const NSEC=5; // beneficiario · comprador · residencia · empleo · referencias
+  const NSEC=5; // quien recibe · comprador · residencia · empleo · referencias
   const anyDelivered=grp.some(x=>pick(x,['delivered_at'],null));
   const SEM={red:'#c62828',yellow:'#f2b010',green:'#2e7d32'};
   const stVer = nVer===0?'red':(nVer<NSEC?'yellow':'green');
@@ -1926,7 +1926,7 @@ async function openOrderVerify(id){
       </div>
       ${itemsHtml}
     </div>
-    ${vSection('beneficiary','Beneficiario (recibe en México)',benInner,o.beneficiary_verified,o.beneficiary_comment)}
+    ${vSection('beneficiary','Quien recibe (en México)',benInner,o.beneficiary_verified,o.beneficiary_comment)}
     ${vSection('buyer','Comprador',buyInner,o.buyer_verified,o.buyer_comment)}
     ${vSection('residency','Residencia — domicilio (¿renta o es dueño?)',resInner,o.residency_verified,o.residency_comment)}
     ${vSection('employment','Empleo — trabajo e ingresos',empInner,o.employment_verified,o.employment_comment)}
@@ -1953,7 +1953,7 @@ async function openOrderVerify(id){
     pend.forEach((it,i)=>setTimeout(()=>window.open('https://www.amazon.com.mx/dp/'+encodeURIComponent(pick(it,['product_asin'],'')),'_blank'),i*350));
     $('ovMsg').textContent='Abriendo '+pend.length+' artículo(s) en Amazon… (si el navegador bloquea ventanas, permite los pop-ups o usa los botones por artículo).';
   };
-  bindConvBtns(d); // botones de conversación junto a cada nombre (beneficiario, comprador, referencias)
+  bindConvBtns(d); // botones de conversación junto a cada nombre (quien recibe, comprador, referencias)
   // Editar / agregar / eliminar referencias durante la verificación (copia de ESTA orden).
   d.querySelectorAll('.refedit').forEach(b=>b.onclick=()=>{ const f=$('refform-'+b.dataset.rid); if(f) f.style.display=f.style.display==='none'?'':'none'; });
   const raBtn=$('refAdd'); if(raBtn) raBtn.onclick=()=>{ const f=$('refform-new'); if(f) f.style.display=f.style.display==='none'?'':'none'; };
@@ -2005,7 +2005,7 @@ async function openOrderVerify(id){
   };
   $('ovApprove').onclick=async()=>{
     const b=collect();
-    if(!(b.beneficiary_verified&&b.buyer_verified&&b.residency_verified&&b.employment_verified&&b.references_verified)){ $('ovMsg').textContent='Verifica las CINCO secciones (beneficiario, comprador, residencia, empleo y referencias) antes de aprobar.'; return; }
+    if(!(b.beneficiary_verified&&b.buyer_verified&&b.residency_verified&&b.employment_verified&&b.references_verified)){ $('ovMsg').textContent='Verifica las CINCO secciones (quien recibe, comprador, residencia, empleo y referencias) antes de aprobar.'; return; }
     if(docGen&&!docSigned){ if(!confirm('El cliente AÚN NO FIRMA su contrato. ¿Aprobar para compra de todos modos?')) return; }
     if(!confirm('¿Aprobar esta orden para compra en Amazon?')) return;
     b.admin_approved=true; $('ovMsg').textContent='Aprobando…';
@@ -2022,18 +2022,18 @@ async function openOrderVerify(id){
   };
   // Entrega POR ARTÍCULO (cada artículo de la compra llega por separado).
   d.querySelectorAll('.ovdeliver1').forEach(b=>b.onclick=async()=>{
-    if(!confirm('¿Confirmar que este artículo fue ENTREGADO al beneficiario?')) return;
+    if(!confirm('¿Confirmar que este artículo fue ENTREGADO al quien recibe?')) return;
     const r2=await api('POST','/api/orders/'+encodeURIComponent(b.dataset.oid)+'/confirm_delivery',{});
     if(r2.ok){ await loadOrders('all'); openOrderVerify(id); } else { $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo confirmar.'; }
   });
 }
 
 /* ---------------- Conversaciones por persona: bitácora + WhatsApp ---------------- */
-// Popup único para CUALQUIER persona (cliente, comprador, beneficiario o referencia):
+// Popup único para CUALQUIER persona (cliente, comprador, quien recibe o referencia):
 // muestra el hilo de WhatsApp + las notas de la bitácora intercaladas, deja registrar
 // una nota de conversación (llamada, acuerdo) y enviar/recibir WhatsApp.
 let CONV=null, CONV_TIMER=null, CONV_REG=[];
-const CONV_LABEL={customer:'Cliente',buyer:'Comprador',beneficiary:'Beneficiario',reference:'Referencia',guarantor:'Aval'};
+const CONV_LABEL={customer:'Cliente',buyer:'Comprador',beneficiary:'Quien recibe',reference:'Referencia',guarantor:'Aval'};
 function convBtnHtml(p){ CONV_REG.push(p); return `<button class="convbtn" data-ci="${CONV_REG.length-1}" title="Conversación / WhatsApp" onclick="event.stopPropagation()" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;vertical-align:middle;margin-left:8px">&#9990;</button>`; }
 function bindConvBtns(root){ (root||document).querySelectorAll('.convbtn').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); convOpen(CONV_REG[+b.dataset.ci]);}); }
 function waChatOpen(uid, name){ convOpen({user_id:uid, name:name, person_type:'customer'}); } // compatibilidad con botones existentes
@@ -2209,7 +2209,7 @@ async function openClientSheet(uid){
         + qaTxt('¿Meses en el domicilio actual?', buy.months_address)
         + qaTxt('¿Dónde trabaja?', buy.job)
         + qaTxt('¿Ingreso semanal (USD)?', buy.weekly_income!=null?money(buy.weekly_income):null)
-        + qaTxt('¿Parentesco con el beneficiario?', buy.relationship_with_beneficiary)
+        + qaTxt('¿Parentesco con el quien recibe?', buy.relationship_with_beneficiary)
         + qaTxt('Teléfono', buy.phone) + qaTxt('Teléfono del trabajo', buy.phone_work) + qaTxt('Email', buy.email)
         + qaTxt('Domicilio (EUA)', joinAddr([buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code]))
         + qaTxt('Dirección de entrega (México)', joinAddr([buy.delivery_address1,buy.delivery_address2,buy.delivery_city,buy.delivery_state,buy.delivery_zip_code]))
@@ -2222,7 +2222,7 @@ async function openClientSheet(uid){
     }
     if(ben){
       const bn=[ben.name,ben.last_name].filter(Boolean).join(' ')||'—';
-      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Beneficiario ${ben.phone?convBtnHtml({phone:ben.phone, name:bn, user_id:u.id, order_id:o.id, person_type:'beneficiary'}):''}</div>`
+      inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Quien recibe ${ben.phone?convBtnHtml({phone:ben.phone, name:bn, user_id:u.id, order_id:o.id, person_type:'beneficiary'}):''}</div>`
         + qaTxt('Nombre', bn) + qaTxt('Teléfono', ben.phone) + qaTxt('Email', ben.email)
         + qaTxt('Parentesco', ben.relationship)
         + qaTxt('Dirección', joinAddr([ben.address1,ben.address2,ben.city,ben.state,ben.zip_code]));
@@ -2242,7 +2242,7 @@ async function openClientSheet(uid){
     }
     const vRow=(lbl,ok,com)=>qaRow(lbl, `<span class="pill ${ok?'p-appr':'p-pend'}">${ok?'Verificado':'Pendiente'}</span>`+(com?(' <span style="font-weight:500">'+esc(com)+'</span>'):''));
     inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Verificación — comentarios y respuestas</div>`
-      + vRow('Beneficiario', v.beneficiary_verified, v.beneficiary_comment)
+      + vRow('Quien recibe', v.beneficiary_verified, v.beneficiary_comment)
       + vRow('Comprador', v.buyer_verified, v.buyer_comment)
       + vRow('Referencias', v.references_verified, v.references_comment);
     return fichaSec('Orden #'+esc(String(o.id))+' — '+esc(o.product_title||''), inner,
@@ -2847,7 +2847,7 @@ async function loadWaInbox(){
 }
 function waTag(t){
   const m={cliente:['Cliente','#e8f0fe','#1a56db'],comprador:['Comprador','#e8f0fe','#1a56db'],
-           beneficiario:['Beneficiario','#e0f2fe','#0369a1'],referencia:['Referencia','#f3e8ff','#7e22ce'],
+           beneficiario:['Quien recibe','#e0f2fe','#0369a1'],referencia:['Referencia','#f3e8ff','#7e22ce'],
            equipo:['Equipo','#eef0f6','#5b6270']};
   const x=m[t];
   return x?`<span style="font-size:10px;font-weight:800;border-radius:6px;padding:1px 6px;background:${x[1]};color:${x[2]};text-transform:uppercase">${x[0]}</span>`

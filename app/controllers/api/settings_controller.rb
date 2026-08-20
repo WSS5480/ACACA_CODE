@@ -225,7 +225,7 @@ class Api::SettingsController < ApplicationController
       'Identificación oficial, comprobante de domicilio y de ingresos',
       '2 referencias en México (nombre, teléfono y tel. de trabajo)',
       '2 referencias en Estados Unidos (nombre, teléfono y tel. de trabajo)',
-      'Beneficiario que recibe en México: nombre, teléfono y dirección'
+      'Quien recibe en México: nombre, teléfono y dirección'
     ]
   }.freeze
 

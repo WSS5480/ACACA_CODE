@@ -378,7 +378,7 @@ class Api::OrdersController < ApplicationController
         entries << { who: 'Contacto de domicilio', name: buyer.home_contact_name, phone: buyer.home_contact_phone }
       end
     end
-    entries << { who: 'Beneficiario', name: [beneficiary&.name, beneficiary&.last_name].compact.join(' '), phone: beneficiary&.phone }
+    entries << { who: 'Quien recibe', name: [beneficiary&.name, beneficiary&.last_name].compact.join(' '), phone: beneficiary&.phone }
     Array(referrals).each do |rf|
       rn = [rf.name, rf.last_name].compact.join(' ')
       entries << { who: "Referencia #{rn}".strip, name: rn, phone: rf.phone, own_ref_id: rf.id }
@@ -409,7 +409,7 @@ class Api::OrdersController < ApplicationController
     Beneficiary.where(q.call('phone')).find_each do |bn|
       next if beneficiary && bn.id == beneficiary.id
 
-      found[tailof.call(bn.phone)] << { type: 'Beneficiario', name: [bn.name, bn.last_name].compact.join(' '), detail: nil }
+      found[tailof.call(bn.phone)] << { type: 'Quien recibe', name: [bn.name, bn.last_name].compact.join(' '), detail: nil }
     end
 
     alerts = []

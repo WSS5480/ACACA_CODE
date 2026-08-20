@@ -128,18 +128,36 @@ class Api::OrdersController < ApplicationController
     # CADA referencia / contacto de domicilio / trabajo — se muestran BAJO cada
     # persona en la verificación (no en un área general).
     if defined?(ReferencePing) && ReferencePing.table_exists? && @order.contract_id.present?
-      response[:data][:reference_checks] = ReferencePing.where(contract_id: @order.contract_id).order(:id).map do |p|
+      ping_row = lambda do |p, prior|
         ans = begin
           JSON.parse(p.answers.to_s)
         rescue StandardError
           []
         end
+        cref = if prior && p.contract
+                 p.contract.contract_number.presence || (p.contract.respond_to?(:order_ref) ? p.contract.order_ref : "PED-#{p.contract_id}")
+               end
         { kind: p.target_kind, phone: p.phone, name: p.ref_name, status: p.status,
           survey_state: (p.respond_to?(:survey_state) ? p.survey_state : nil),
           recommends: (p.respond_to?(:recommends) ? p.recommends : nil),
           time_known: (p.respond_to?(:time_known) ? p.time_known : nil),
-          answers: (ans.is_a?(Array) ? ans : []), sent_at: p.sent_at }
+          answers: (ans.is_a?(Array) ? ans : []), sent_at: p.sent_at,
+          answered_at: p.updated_at, prior: prior, contract_ref: cref }
       end
+      current = ReferencePing.where(contract_id: @order.contract_id).order(:id).to_a
+      # Verificaciones de compras ANTERIORES del mismo teléfono: el verificador
+      # ve que YA se hizo, con respuestas y fecha (no se repite el trabajo).
+      tails = current.filter_map { |p| p.phone.to_s.gsub(/\D/, '')[-10..] }.uniq
+      prior = if tails.any? && ReferencePing.column_names.include?('survey_state')
+                ReferencePing.where.not(contract_id: @order.contract_id)
+                             .where(survey_state: %w[done red_flag deferred])
+                             .where("right(regexp_replace(coalesce(phone,''), '[^0-9]', '', 'g'), 10) IN (?)", tails)
+                             .includes(:contract).order(:id).to_a
+              else
+                []
+              end
+      response[:data][:reference_checks] = current.map { |p| ping_row.call(p, false) } +
+                                           prior.map { |p| ping_row.call(p, true) }
     end
 
     render json: response, status: :ok

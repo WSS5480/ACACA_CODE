@@ -1837,16 +1837,23 @@ async function openOrderVerify(id){
     </div>`;
   }).join('');
   // Nombre con botón de conversación (bitácora + WhatsApp) por persona.
-  const vPerson=(label,who,conv)=>`<div style="min-width:150px"><div class="muted" style="font-size:11.5px">${esc(label)}</div><div style="font-weight:600;font-size:13.5px">${who?esc(who):'—'}${(conv&&conv.phone)?convBtnHtml(conv):''}</div></div>`;
+  const vPerson=(label,who,conv,tone)=>`<div style="min-width:150px"><div class="muted" style="font-size:11.5px">${esc(label)}</div><div style="font-weight:600;font-size:13.5px${tone==='bad'?';color:#b00020;font-weight:800':(tone==='good'?';color:#1c8a43;font-weight:800':'')}">${tone==='bad'?'🔴 ':(tone==='good'?'🟢 ':'')}${who?esc(who):'—'}${(conv&&conv.phone)?convBtnHtml(conv):''}</div></div>`;
   // COMUNICACIONES por referencia: estado de la verificación y respuestas de la
   // entrevista de ESA persona, mostradas BAJO cada referencia/domicilio/trabajo.
   const RCHK=o.reference_checks||[];
   const rtail=p=>String(p||'').replace(/\D/g,'').slice(-10);
+  const rchkListFor=(phone)=>{ const t=rtail(phone); return t?RCHK.filter(c=>rtail(c.phone)===t):[]; };
+  const rchkNeg=(phone)=>rchkListFor(phone).some(c=>((c.answers||[]).some(a=>a.neg))||c.recommends==='no'||c.survey_state==='red_flag');
+  const rchkPos=(phone)=>{ const l=rchkListFor(phone); return l.length>0&&l.some(c=>c.survey_state==='done')&&!rchkNeg(phone); };
+  const rchkTone=(phone)=>rchkNeg(phone)?'bad':(rchkPos(phone)?'good':null);
   const rchkHtml=(phone,kinds)=>{
     const t=rtail(phone); if(!t) return '';
-    const list=RCHK.filter(c=>rtail(c.phone)===t&&(!kinds||kinds.includes(c.kind)));
+    let list=RCHK.filter(c=>rtail(c.phone)===t&&(!kinds||kinds.includes(c.kind)||c.prior));
     if(!list.length) return '';
+    list=[...list].sort((a,b)=>(a.prior?1:0)-(b.prior?1:0));
     return list.map(c=>{
+      const neg=((c.answers||[]).some(a=>a.neg))||c.recommends==='no'||c.survey_state==='red_flag';
+      const okDone=c.survey_state==='done'&&!neg;
       const st=c.survey_state==='done'?'<span class="pill p-appr">✅ Entrevista completa</span>'
         :c.survey_state==='red_flag'?'<span class="pill p-canc">🚩 Dice NO conocer al cliente</span>'
         :c.survey_state==='deferred'?'<span class="pill p-pend">⏰ Pidió que le escribamos después</span>'
@@ -1855,9 +1862,14 @@ async function openOrderVerify(id){
         :c.status==='sent'?'<span class="pill p-pend">📤 Mensaje enviado</span>'
         :'<span class="pill p-other">⏳ Sin contacto aún</span>';
       const rec=c.recommends==='si'?'<span class="pill p-appr">Recomienda ✓</span>':(c.recommends==='no'?'<span class="pill p-canc">⚠ NO recomienda</span>':'');
-      const ans=(c.answers||[]).map(a=>`<div style="font-size:12px;margin:2px 0;color:#3c4043"><span class="muted">${esc(a.q)}</span> → <b>${esc(a.a)}</b>${a.neg?' ⚠️':''}</div>`).join('');
-      return `<div style="flex-basis:100%;width:100%;background:#f4f9f5;border:1px dashed #bfe3c8;border-radius:9px;padding:8px 11px;margin-top:4px">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px"><b style="color:var(--navy)">Verificación ${esc({personal:'de la referencia',domicilio:'del domicilio',trabajo:'del trabajo'}[c.kind]||c.kind)}</b> ${st} ${rec}</div>
+      const when=c.answered_at?fdatetime(c.answered_at):(c.sent_at?fdatetime(c.sent_at):'');
+      const ans=(c.answers||[]).map(a=>`<div style="font-size:12px;margin:2px 0;color:#3c4043"><span class="muted">${esc(a.q)}</span> → <b${a.neg?' style="color:#b00020"':''}>${esc(a.a)}</b>${a.neg?' ⚠️':''}</div>`).join('');
+      const box=neg?'background:#fdecec;border:1px dashed #f3b8b8':(okDone?'background:#f0faf2;border:1px dashed #bfe3c8':'background:#f7f8fb;border:1px dashed #d9dde8');
+      const head=c.prior
+        ?`<b style="color:#1a56db">✔ YA VERIFICADA en ${esc(c.contract_ref||'una compra anterior')}${when?(' · '+esc(when)):''}</b>`
+        :`<b style="color:var(--navy)">Verificación ${esc({personal:'de la referencia',domicilio:'del domicilio',trabajo:'del trabajo'}[c.kind]||c.kind)}</b>${when&&(c.survey_state==='done'||c.survey_state==='red_flag')?` <span class="muted" style="font-weight:400">· ${esc(when)}</span>`:''}`;
+      return `<div style="flex-basis:100%;width:100%;${box};border-radius:9px;padding:8px 11px;margin-top:4px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px">${head} ${st} ${rec}</div>
         ${ans?`<div style="margin-top:5px">${ans}</div>`:''}
       </div>`;
     }).join('');
@@ -1867,9 +1879,9 @@ async function openOrderVerify(id){
   const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
   const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
   // RESIDENCIA: domicilio + contacto del domicilio (¿renta o es dueño?) + comprobante.
-  const resInner = buy ? [vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Tipo de vivienda',{owner:'Propia',tenant:'Rentada'}[buy.housing_type]||buy.housing_type),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Contacto de domicilio',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. domicilio',null))].join('') + (buy.home_contact_phone?rchkHtml(buy.home_contact_phone,['domicilio']):'') : '';
+  const resInner = buy ? [vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Tipo de vivienda',{owner:'Propia',tenant:'Rentada'}[buy.housing_type]||buy.housing_type),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'},rchkTone(buy.home_contact_phone)):vField('Contacto de domicilio',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. domicilio',null))].join('') + (buy.home_contact_phone?rchkHtml(buy.home_contact_phone,['domicilio']):'') : '';
   // EMPLEO: trabajo + teléfono del trabajo + ingreso + comprobante.
-  const empInner = buy ? [vField('¿En qué trabaja?',buy.job),(buy.phone_work?vPerson('Tel. del trabajo',buy.phone_work,{phone:buy.phone_work,name:(buyName||'Comprador')+' (trabajo)',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}):vField('Tel. del trabajo',null)),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. ingresos',null))].join('') + (buy.phone_work?rchkHtml(buy.phone_work,['trabajo']):'') : '';
+  const empInner = buy ? [vField('¿En qué trabaja?',buy.job),(buy.phone_work?vPerson('Tel. del trabajo',buy.phone_work,{phone:buy.phone_work,name:(buyName||'Comprador')+' (trabajo)',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'},rchkTone(buy.phone_work)):vField('Tel. del trabajo',null)),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. ingresos',null))].join('') + (buy.phone_work?rchkHtml(buy.phone_work,['trabajo']):'') : '';
   // Referencias: editables y ampliables DURANTE la verificación. Cada orden
   // guarda su propia copia: editar aquí no toca órdenes anteriores.
   const refDataOrderId = (refs.length && refs[0].order_id) ? refs[0].order_id : o.id;
@@ -1901,7 +1913,7 @@ async function openOrderVerify(id){
     const rn=[rf.name,rf.last_name].filter(Boolean).join(' ');
     const rphone=rf.phone||((rf.phone_code||'')+(rf.phone_number||''))||null;
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-basis:100%">
-      ${vPerson(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`, rn+(rphone?(' · '+rphone):''), {phone:rphone,name:rn||('Referencia '+(i+1)),user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'})}
+      ${vPerson(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`, rn+(rphone?(' · '+rphone):''), {phone:rphone,name:rn||('Referencia '+(i+1)),user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}, rchkTone(rphone))}
       <button class="refedit" data-rid="${esc(String(rf.id))}" style="border:0;background:#eef0f6;color:var(--navy);padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer" title="Editar esta referencia">✎ Editar</button>
       ${refFormHtml(rf)}
       ${rchkHtml(rphone,null)}${rf.phone_work&&rtail(rf.phone_work)!==rtail(rphone)?rchkHtml(rf.phone_work,['trabajo']):''}

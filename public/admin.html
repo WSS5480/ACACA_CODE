@@ -1840,7 +1840,7 @@ async function openOrderVerify(id){
   const vPerson=(label,who,conv,tone)=>`<div style="min-width:150px"><div class="muted" style="font-size:11.5px">${esc(label)}</div><div style="font-weight:600;font-size:13.5px${tone==='bad'?';color:#b00020;font-weight:800':(tone==='good'?';color:#1c8a43;font-weight:800':'')}">${tone==='bad'?'🔴 ':(tone==='good'?'🟢 ':'')}${who?esc(who):'—'}${(conv&&conv.phone)?convBtnHtml(conv):''}</div></div>`;
   // COMUNICACIONES por referencia: estado de la verificación y respuestas de la
   // entrevista de ESA persona, mostradas BAJO cada referencia/domicilio/trabajo.
-  const RCHK=o.reference_checks||[];
+  const RCHK=raw.reference_checks||[]; // viven junto a beneficiary/buyer en el nivel data
   const rtail=p=>String(p||'').replace(/\D/g,'').slice(-10);
   const rchkListFor=(phone)=>{ const t=rtail(phone); return t?RCHK.filter(c=>rtail(c.phone)===t):[]; };
   const rchkNeg=(phone)=>rchkListFor(phone).some(c=>((c.answers||[]).some(a=>a.neg))||c.recommends==='no'||c.survey_state==='red_flag');
@@ -1921,7 +1921,7 @@ async function openOrderVerify(id){
   }).join('') : '') + `<div style="flex-basis:100%;margin-top:4px"><button class="btn" id="refAdd" style="background:#eef0f6;color:var(--navy);padding:6px 12px;font-size:12.5px">＋ Agregar referencia</button>${refFormHtml(null)}</div>`;
   // 🚨 TELÉFONOS repetidos en la base: banner arriba de la orden (ROJO si el
   // nombre registrado no coincide con quien lo dio aquí).
-  const PALERTS=o.phone_alerts||[];
+  const PALERTS=raw.phone_alerts||[];
   const paRed=PALERTS.some(x=>x.level==='red');
   const paHtml=PALERTS.length?`<div style="border:2px solid ${paRed?'#c62828':'#f5b301'};background:${paRed?'#fdecec':'#fff7e6'};border-radius:12px;padding:12px 14px;margin-bottom:12px">
     <div style="font-weight:800;color:${paRed?'#b00020':'#8a5a00'};font-size:13.5px;margin-bottom:6px">🚨 Teléfonos ya registrados en la base — revisar antes de aprobar</div>

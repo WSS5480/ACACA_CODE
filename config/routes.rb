@@ -149,6 +149,8 @@ Rails.application.routes.draw do
     post 'stripe/charge_saved',    to: 'api/stripe#charge_saved'
     post 'stripe/finalize',        to: 'api/stripe#finalize'
     get  'stripe/payment_methods', to: 'api/stripe#payment_methods'
+    post 'stripe/setup_intent',    to: 'api/stripe#setup_intent'          # guardar tarjeta sin pagar (Perfil)
+    delete 'stripe/payment_methods/:id', to: 'api/stripe#detach_payment_method'
     get  'stripe/config',          to: 'api/stripe#publishable_config'
     post 'stripe/webhook',         to: 'api/stripe#webhook'
 

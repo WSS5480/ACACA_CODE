@@ -35,6 +35,37 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    # POST /api/stripe/setup_intent  -> guardar una TARJETA sin pagar (Perfil):
+    # queda lista para pagos automáticos y cobros futuros (off-session).
+    def setup_intent
+      customer_id = ensure_stripe_customer!(@current_user)
+      si = StripeClient.request(:post, '/v1/setup_intents', {
+        customer: customer_id,
+        automatic_payment_methods: { enabled: true },
+        usage: 'off_session',
+        metadata: { user_id: @current_user.id, source: 'perfil' }
+      })
+      render json: { client_secret: si['client_secret'] }, status: :ok
+    rescue StripeClient::Error => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    # DELETE /api/stripe/payment_methods/:id -> quitar una tarjeta guardada
+    def detach_payment_method
+      cid = @current_user.stripe_customer_id
+      return render(json: { error: 'Sin tarjetas guardadas' }, status: :not_found) if cid.blank?
+
+      pm = StripeClient.request(:get, "/v1/payment_methods/#{params[:id]}")
+      unless pm.is_a?(Hash) && pm['customer'] == cid
+        return render(json: { error: 'Tarjeta no encontrada' }, status: :not_found)
+      end
+
+      StripeClient.request(:post, "/v1/payment_methods/#{params[:id]}/detach", {})
+      render json: { ok: true }, status: :ok
+    rescue StripeClient::Error => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     # GET /api/stripe/payment_methods  -> tarjetas guardadas del cliente
     def payment_methods
       cid = @current_user.stripe_customer_id

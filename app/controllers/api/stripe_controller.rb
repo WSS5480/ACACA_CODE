@@ -236,6 +236,11 @@ module Api
       # Pago COMBINADO (varios contratos en un solo cargo): cada asignación se
       # aplica a su contrato; el dedupe por payment_intent cubre el conjunto.
       if pi.dig('metadata', 'kind').to_s == 'multi'
+        # Dedupe del CONJUNTO: los pagos combinados llevan sufijo -c<contrato>
+        # (la tabla exige un id de Stripe ÚNICO por renglón).
+        existing_multi = Payment.where('stripe_payment_intent_id LIKE ?', "#{pi_id}%").order(:id).first
+        return existing_multi if existing_multi
+
         allocs = begin
           JSON.parse(pi.dig('metadata', 'allocations').to_s)
         rescue StandardError
@@ -252,7 +257,7 @@ module Api
 
           pmt = c.payments.new(amount: amt, method: 'stripe',
                                note: "Stripe #{pi_id} | pago combinado (total cobrado $#{'%.2f' % total})",
-                               stripe_payment_intent_id: pi_id)
+                               stripe_payment_intent_id: "#{pi_id}-c#{c.id}")
           pmt.save!
           first_payment ||= pmt
           actor = (defined?(@current_user) && @current_user) || c.user

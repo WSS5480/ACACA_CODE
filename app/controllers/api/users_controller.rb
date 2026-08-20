@@ -141,6 +141,20 @@ class Api::UsersController < ApplicationController
       @user.role = new_role if new_role
     end
 
+    # Cambio de CORREO desde el Perfil: se aplica directo (sin reconfirmación por
+    # email — la cuenta se verifica por WhatsApp) y queda en la Bitácora.
+    new_email = params.dig(:user, :email).to_s.strip
+    if new_email.present? && new_email.downcase != @user.email.to_s.downcase
+      @user.skip_reconfirmation! if @user.respond_to?(:skip_reconfirmation!)
+      begin
+        AuditLog.record!(actor: @current_user, action: 'email_changed', target: @user,
+                         label: [@user.name, @user.last_name].compact.join(' ').strip.presence || @user.email,
+                         details: "#{@user.email} → #{new_email}")
+      rescue StandardError
+        nil
+      end
+    end
+
     if @user.update(user_params)
       render json: UserSerializer.new(@user).serializable_hash, status: :ok
     else

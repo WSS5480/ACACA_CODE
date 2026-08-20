@@ -37,6 +37,7 @@ class AuditLog < ApplicationRecord
     'wa_responses_updated' => 'Editó respuestas automáticas de WhatsApp',
     'auto_send_failed'     => '⚠ Falló un envío automático (alerta interna)',
     'autopay_all_changed'  => 'Cambió pago automático de toda la cuenta',
+    'email_changed'        => 'Cambió el correo de la cuenta',
     'contract_frequency_changed' => 'Cambió frecuencia de pago del contrato',
     'ticket_created'       => 'Abrió ticket de soporte',
     'ticket_updated'       => 'Actualizó ticket de soporte',

@@ -2593,6 +2593,7 @@ async function loadCrmLeads(){
       <td class="right">
         <button class="leadwa" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" title="WhatsApp / registrar llamada" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">&#9990;</button>
         <button class="leadmail" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" data-phone="${esc(u.phone||'')}" data-email="${esc(u.email||'')}" data-conf="${u.confirmed?'1':''}" title="Enviar correo" style="border:0;background:#1b2a4a;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✉</button>
+        ${(!u.confirmed && ['master','admin'].includes(MYROLE))?`<button class="leadconf" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="OVERRIDE: verificar la cuenta manualmente sin WhatsApp (queda en la Bitácora)" style="border:0;background:#0a7d32;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;margin-left:6px">✔</button>`:''}
         <button class="leadfree" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="Liberar del CRM (la cuenta NO se borra)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🔓</button>
         ${['master','admin'].includes(MYROLE)?`<button class="leaddel" data-uid="${esc(String(u.id))}" data-name="${esc(u.name||'')}" title="ELIMINAR la cuenta por completo (queda en la Bitácora)" style="border:0;background:none;cursor:pointer;font-size:15px;margin-left:6px">🗑</button>`:''}
       </td></tr>`;
@@ -2612,6 +2613,11 @@ async function loadCrmLeads(){
     if(!confirm('¿ELIMINAR la cuenta de '+(b.dataset.name||'este cliente')+' POR COMPLETO?\n\nSe borra todo su rastro (cuenta, historial y WhatsApp). Solo queda el registro en la Bitácora. Esta acción NO se puede deshacer.')) return;
     const r2=await api('DELETE','/api/users/'+encodeURIComponent(b.dataset.uid));
     if(r2.ok){ loadCrmLeads(); } else alert((r2.data&&r2.data.error)||'No se pudo eliminar la cuenta.');
+  });
+  body.querySelectorAll('.leadconf').forEach(b=>b.onclick=async()=>{
+    if(!confirm('OVERRIDE: ¿verificar la cuenta de '+(b.dataset.name||'este cliente')+' MANUALMENTE?\n\nNormalmente la cuenta se activa cuando el cliente nos escribe por WhatsApp. Este override la activa SIN esa verificación y queda registrado en la Bitácora a tu nombre.')) return;
+    const r2=await api('POST','/api/users/'+encodeURIComponent(b.dataset.uid)+'/confirm_account');
+    if(r2.ok){ loadCrmLeads(); } else alert((r2.data&&r2.data.error)||'No se pudo verificar la cuenta.');
   });
 }
 if($('crmRefresh')) $('crmRefresh').onclick=loadCrm;

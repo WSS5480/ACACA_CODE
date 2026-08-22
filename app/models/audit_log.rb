@@ -42,7 +42,8 @@ class AuditLog < ApplicationRecord
     'ticket_created'       => 'Abrió ticket de soporte',
     'ticket_updated'       => 'Actualizó ticket de soporte',
     'ticket_resolved'      => '✅ Resolvió ticket de soporte',
-    'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada'
+    'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada',
+    'account_confirmed_manual' => '✔ Verificó cuenta manualmente (saltó WhatsApp)'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

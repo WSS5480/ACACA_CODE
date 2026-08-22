@@ -75,7 +75,19 @@ module TokenAuthenticatable
       @current_user = User.find(payload['sub'])
       Rails.logger.debug "✅ User found: #{@current_user.id} (#{@current_user.email})"
       Rails.logger.debug "🔐 User role: #{@current_user.role&.name} (#{@current_user.role&.name})"
-      
+
+      # CANDADO DE VERIFICACIÓN: un CLIENTE sin verificar su WhatsApp no puede
+      # usar la API con ningún token (ni viejo ni nuevo). El único override es
+      # que un miembro del staff confirme la cuenta manualmente (Bitácora).
+      if @current_user.role&.name == 'cliente' && !@current_user.confirmed?
+        Rails.logger.warn "⛔ Cliente #{@current_user.id} sin verificación de WhatsApp intentó usar la API"
+        return render json: {
+          error: 'Tu cuenta aún no está verificada. Envíanos un WhatsApp para activarla.',
+          code: 'wa_unverified',
+          whatsapp_verify_url: (@current_user.whatsapp_verify_url rescue nil)
+        }, status: :forbidden
+      end
+
     rescue JWT::DecodeError => e
       Rails.logger.error "❌ JWT Decode Error: #{e.message}"
       render json: { error: 'Invalid token', response: 'Invalid token' }, status: :unauthorized

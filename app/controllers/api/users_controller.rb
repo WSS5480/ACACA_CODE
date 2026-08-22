@@ -8,7 +8,7 @@ class Api::UsersController < ApplicationController
   skip_before_action :authenticate_entity!
   skip_before_action :authenticate_client_or_user!
   # Nivel 2: Solo JWT para index, create, destroy
-  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit, :send_password_setup, :full_info]
+  before_action :authenticate_entity!, only: [:index, :create, :destroy, :set_credit, :send_password_setup, :full_info, :confirm_account]
   # Nivel 3: Cliente o JWT para show, update, current_user
   before_action :authenticate_client_or_user!, only: [:show, :update, :current_user]
   # Otros callbacks
@@ -365,6 +365,24 @@ class Api::UsersController < ApplicationController
                      label: [user.name, user.last_name].compact.join(' ').strip.presence || user.email,
                      details: "Línea de crédito: $#{format('%.2f', old_amt)} → $#{format('%.2f', cr.amount)}")
     render json: { ok: true, credit_amount: cr.amount, credit_limit: (cr.respond_to?(:credit_limit) ? cr.credit_limit : cr.amount) }, status: :ok
+  end
+
+  # POST /api/users/:id/confirm_account
+  # OVERRIDE MANUAL (solo master/admin): activa la cuenta de un cliente que NO
+  # verificó su WhatsApp. Queda registrado en la Bitácora quién lo hizo.
+  def confirm_account
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless %w[master admin].include?(@current_user&.role&.name)
+
+    user = User.find_by(id: params[:id])
+    return render(json: { error: 'Usuario no encontrado' }, status: :not_found) unless user
+    return render(json: { error: 'Solo aplica a cuentas de clientes' }, status: :unprocessable_entity) unless user.role&.name == 'cliente'
+    return render(json: { ok: true, confirmed: true, message: 'La cuenta ya estaba verificada' }, status: :ok) if user.confirmed?
+
+    user.update_column(:confirmed_at, Time.current)
+    AuditLog.record!(actor: @current_user, action: 'account_confirmed_manual', target: user,
+                     label: [user.name, user.last_name].compact.join(' ').strip.presence || user.email,
+                     details: "Verificación de WhatsApp saltada manualmente (tel. #{user.phone})")
+    render json: { ok: true, confirmed: true }, status: :ok
   end
 
   private

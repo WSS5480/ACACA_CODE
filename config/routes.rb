@@ -91,6 +91,7 @@ Rails.application.routes.draw do
     resources :users, controller: 'api/users' do
       post 'client_register', on: :collection
       post 'set_credit', on: :member
+      post 'confirm_account', on: :member # override manual de la verificación por WhatsApp (solo master/admin)
       post 'send_password_setup', on: :member
       get 'full_info', on: :member
     end

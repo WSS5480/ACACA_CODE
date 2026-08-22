@@ -54,6 +54,21 @@ class Users::SessionsController < Devise::SessionsController
       params[:user].delete(:number)
     end
 
+    # CANDADO DE VERIFICACIÓN: un CLIENTE con contraseña correcta pero sin
+    # verificar su WhatsApp NO puede iniciar sesión. Mensaje claro + enlace de
+    # WhatsApp para que lo haga en un toque. (El staff no pasa por esto.)
+    if params.dig(:user, :email).present?
+      pre = User.find_by('lower(email) = ?', params[:user][:email].to_s.strip.downcase)
+      if pre && pre.role&.name == 'cliente' && !pre.confirmed? && pre.valid_password?(params.dig(:user, :password).to_s)
+        return render json: {
+          code: 'wa_unverified',
+          message: 'Tu cuenta aún no está verificada. Envíanos un WhatsApp para activarla (es un solo toque) y vuelve a iniciar sesión.',
+          error: 'Cuenta no verificada por WhatsApp',
+          whatsapp_verify_url: (pre.whatsapp_verify_url rescue nil)
+        }, status: :forbidden
+      end
+    end
+
     # Continuar con el flujo normal de Devise (email + password)
     self.resource = warden.authenticate!(auth_options)
     set_flash_message!(:notice, :signed_in)

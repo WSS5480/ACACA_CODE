@@ -140,13 +140,15 @@ module Api
       return render(json: { error: "El enganche minimo es $#{min_down} (10% del precio de contado)" }, status: :unprocessable_entity) if down + 0.01 < min_down
       return render(json: { error: 'El enganche no puede ser mayor al precio de contado' }, status: :unprocessable_entity) if down > total
 
-      # PRINCIPAL = contado - enganche (esto es lo que consume credito).
+      # PRINCIPAL = contado - enganche.
       # FINANCIADO (a pagar) = principal x 1.25 (cargo financiero).
+      # El credito cubre el FINANCIADO completo (con cargo incluido): todo lo
+      # que rebase el credito debe irse al enganche.
       principal = (total - down).round(2)
       financed = (principal * Product.finance_factor).round(2)
 
       available = user.credit&.amount.to_f
-      return render(json: { error: 'El cliente no tiene suficiente credito disponible' }, status: :unprocessable_entity) if principal > available + 0.01
+      return render(json: { error: "El monto a financiar ($#{financed}) supera el credito disponible ($#{available.round(2)}); sube el enganche" }, status: :unprocessable_entity) if financed > available + 0.01
 
       freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
       waiver_pct = ActiveModel::Type::Boolean.new.cast(params[:waiver]) ? Product.waiver_rate : nil
@@ -189,8 +191,8 @@ module Api
             status: 'approved'
           )
         end
-        if user.credit.present? && principal > 0
-          user.credit.update!(amount: (user.credit.amount - principal).round(2))
+        if user.credit.present? && financed > 0
+          user.credit.update!(amount: (user.credit.amount - financed).round(2))
         end
         contract.build_amortization!
       end
@@ -499,9 +501,10 @@ module Api
       end
 
       user = contract.user
-      # Crédito a restaurar: en un pedido SIN pagar se consumió el PRINCIPAL (contado - enganche);
-      # en un contrato pagado (herramienta de staff) se restaura el saldo pendiente.
-      restore = unpaid ? [(contract.total_amount.to_f - contract.downpayment.to_f).round(2), 0].max : contract.balance
+      # Crédito a restaurar: en un pedido SIN pagar se consumió el FINANCIADO
+      # completo (con cargo financiero); en un contrato pagado (herramienta de
+      # staff) se restaura el saldo pendiente.
+      restore = unpaid ? [contract.financed_amount.to_f.round(2), 0].max : contract.balance
       ActiveRecord::Base.transaction do
         if user&.credit && restore > 0
           cr = user.credit

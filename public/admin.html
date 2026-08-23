@@ -510,7 +510,8 @@
             <label style="font-size:13px;font-weight:600;cursor:pointer;color:#137333" title="Selecciona SOLO los verificados con Delivered ✓ (entregados por Amazon)"><input type="checkbox" id="rfSelDel"> Delivered ✓</label>
             <span class="muted" id="rfStageHint" style="font-size:12px">Paso 1: Verificar</span>
             <div class="sp" style="flex:1"></div>
-            <button class="btn" id="rfImport" style="background:var(--good)" disabled>Verificar y descargar</button>
+            <button class="btn" id="rfVerifyBtn" style="background:#eef0f6;color:var(--navy)" title="OPCIONAL: verifica Sold/Delivered/Foto de los resultados (1 crédito c/u, GRATIS al descargar después — queda en caché 6 h). Útil para luego seleccionar solo Sold ✓ + Delivered ✓.">Verificar</button>
+            <button class="btn" id="rfImport" style="background:var(--good)" disabled>Descargar seleccionados</button>
             <button class="btn" id="rfClear" style="background:#fff;border:1px solid var(--line);color:var(--mut)" title="Vacía la lista de resultados. No borra tu catálogo ni la verificación.">Limpiar resultados</button>
           </div>
           <div id="rfGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:440px;overflow-y:auto"></div>
@@ -3999,6 +4000,7 @@ async function rfSearch(){
   renderRf();
 }
 $('rfBest').onchange=()=>rfApplyBestMode($('rfBest').checked);
+if($('rfVerifyBtn')) $('rfVerifyBtn').onclick=async()=>{ $('rfVerifyBtn').disabled=true; try{ await rfVerify(); } finally { $('rfVerifyBtn').disabled=false; rfUpdate(); } };
 $('rfAll').onchange=()=>{ if($('rfSelSold'))$('rfSelSold').checked=false; if($('rfSelDel'))$('rfSelDel').checked=false; document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=$('rfAll').checked; }); rfUpdate(); };
 // SELECCIÓN POR VEREDICTO: Sold ✓ y/o Delivered ✓ (intersección si ambas).
 // Solo aplica a productos ya verificados; los "?" quedan sin seleccionar.

@@ -3570,8 +3570,9 @@ function renderCat(){
     const checked=(id in catAvail);
     const amzTag = !checked ? ''
       : gone ? '<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>'
+      : catAvail[id]===null ? '<div style="font-size:10px;font-weight:700;color:#8a8f9c">? No se pudo verificar (Amazon bloqueó la consulta)</div>'
       : fotoBad ? '<div style="font-size:10px;font-weight:700;color:#b45309">⚠ Amazon cambió la FOTO principal</div>'
-      : '<div style="font-size:10px;font-weight:700;color:#137333">✓ Amazon OK · foto OK</div>';
+      : '<div style="font-size:10px;font-weight:700;color:#137333">✓ Amazon OK'+(catPhoto[id]===true?' · foto OK':'')+'</div>';
     return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':(fotoBad?' style="background:#fff4e0"':'')}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>

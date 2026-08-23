@@ -49,11 +49,13 @@ class AmazonPageCheck
         }
       else
         # 503/CAPTCHA/bloqueo => no se pudo determinar; no marcar en rojo.
+        Rails.logger.info "[amazon_check] #{asin}: HTTP #{res.code} (bloqueo/robot) en #{current}"
         return { available: nil, code: res.code.to_i, reason: "respuesta #{res.code}", photo_match: nil }
       end
     end
     { available: nil, code: 0, reason: 'demasiadas redirecciones', photo_match: nil }
   rescue StandardError => e
+    Rails.logger.info "[amazon_check] #{asin}: error #{e.class}: #{e.message}"
     { available: nil, code: 0, reason: e.message, photo_match: nil }
   end
 

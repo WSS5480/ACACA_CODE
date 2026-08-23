@@ -172,8 +172,9 @@ class Api::ProductsController < ApplicationController
     detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, params[:amazon_domain].presence || 'amazon.com.mx')
     return render json: { error: 'No se pudo obtener el detalle de Amazon' }, status: :unprocessable_entity if detail.blank?
 
-    links = Array(detail['images']).map { |img| img['link'] }.compact
-    links = [detail.dig('main_image', 'link')].compact if links.blank?
+    # LA PRINCIPAL PRIMERO (main_image) + el resto, sin duplicados por ID.
+    links = ([detail.dig('main_image', 'link')] + Array(detail['images']).map { |img| img['link'] }).compact
+    links = links.uniq { |u| File.basename(URI.parse(u).path).to_s.split('.').first rescue u }
     return render json: { error: 'Amazon no devolvió fotos para este ASIN' }, status: :unprocessable_entity if links.blank?
 
     ManageJson::DownloadProductImagesJob.new.perform(product.id, links)

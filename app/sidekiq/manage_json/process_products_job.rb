@@ -242,10 +242,17 @@ class ManageJson::ProcessProductsJob
   end
 
   def enqueue_image_download(product, item)
-    images = item.dig('result', 'product', 'images') || []
-    return if images.blank?
+    prod = item.dig('result', 'product') || {}
+    images = prod['images'] || []
 
-    image_urls = images.map { |img| img['link'] }.compact
+    # LA FOTO PRINCIPAL PRIMERO: Rainforest manda la principal del ASIN en
+    # main_image (aparte del arreglo images, que a veces NO la incluye o no
+    # la trae primera). Se antepone SIEMPRE y se quitan duplicados por ID de
+    # imagen de Amazon — así nuestra foto #1 es la misma que ve el cliente
+    # en Amazon, sin costo extra.
+    main_link = prod.dig('main_image', 'link')
+    image_urls = ([main_link] + images.map { |img| img['link'] }).compact
+    image_urls = image_urls.uniq { |u| File.basename(URI.parse(u).path).to_s.split('.').first rescue u }
     return if image_urls.blank?
 
     # Descarga de imagenes INLINE (sin worker de Sidekiq): las fotos se bajan durante la importacion

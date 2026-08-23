@@ -501,6 +501,14 @@ module Api
       end
 
       user = contract.user
+
+      # REEMBOLSO (opcional, solo staff, contrato CON pagos): la interfaz
+      # pregunta y manda refund=1 (SÍ, a la forma de pago original) o refund=0.
+      refund_notes = []
+      if staff? && !unpaid && ActiveModel::Type::Boolean.new.cast(params[:refund])
+        refund_notes = refund_contract_payments!(contract)
+      end
+
       # Crédito a restaurar: en un pedido SIN pagar se consumió el FINANCIADO
       # completo (con cargo financiero); en un contrato pagado (herramienta de
       # staff) se restaura el saldo pendiente.
@@ -527,8 +535,9 @@ module Api
                        label: audit_contract_label(contract),
                        details: "#{unpaid ? 'Pedido SIN pagar cancelado (artículos eliminados)' : 'Contrato eliminado'}" \
                                 " · cliente: #{[user&.name, user&.last_name].compact.join(' ')}" \
-                                " · crédito restaurado: $#{format('%.2f', restore)}")
-      render json: { ok: true }, status: :ok
+                                " · crédito restaurado: $#{format('%.2f', restore)}" \
+                                "#{refund_notes.any? ? " · reembolsos: #{refund_notes.join(' | ')}" : ''}")
+      render json: { ok: true, refunds: refund_notes }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found
     rescue StandardError => e
@@ -536,6 +545,40 @@ module Api
     end
 
     private
+
+    # REEMBOLSO a la FORMA DE PAGO ORIGINAL: todos los pagos del contrato hechos
+    # con tarjeta (Stripe) se reembolsan a esa misma tarjeta. Un cargo COMPARTIDO
+    # entre varios contratos (pago múltiple) se reembolsa SOLO por la parte de
+    # este contrato + su IVA proporcional. Los pagos manuales (efectivo/depósito)
+    # se listan para reembolsarlos a mano. Devuelve notas para la Bitácora.
+    def refund_contract_payments!(contract)
+      notes = []
+      contract.payments.order(:id).each do |p|
+        pi_raw = p.respond_to?(:stripe_payment_intent_id) ? p.stripe_payment_intent_id.to_s : ''
+        if pi_raw.blank?
+          notes << "manual $#{format('%.2f', p.amount)} (#{p.method.presence || 'sin método'}): reembolsar a mano"
+          next
+        end
+        multi = pi_raw.match(/\A(pi_[A-Za-z0-9]+)-c\d+\z/)
+        pi_id = multi ? multi[1] : pi_raw
+        begin
+          if multi
+            cents = ((p.amount.to_f * (1 + Product.tax_rate / 100.0)) * 100).round
+            StripeClient.request(:post, '/v1/refunds', { payment_intent: pi_id, amount: cents })
+            note = "Stripe $#{format('%.2f', cents / 100.0)} (parcial de #{pi_id})"
+          else
+            StripeClient.request(:post, '/v1/refunds', { payment_intent: pi_id })
+            note = "Stripe reembolso COMPLETO de #{pi_id} ($#{format('%.2f', p.amount)} + cargos)"
+          end
+          notes << note
+          AuditLog.record!(actor: @current_user, action: 'payment_refunded', target: contract,
+                           label: audit_contract_label(contract), details: note)
+        rescue StandardError => e
+          notes << "⚠ #{pi_id}: #{e.message}"
+        end
+      end
+      notes
+    end
 
     # Fuente para REUTILIZAR datos: la última orden APROBADA (verificación
     # completa) del cliente con comprador y referencias capturados.

@@ -2027,9 +2027,22 @@ async function openOrderVerify(id){
   // 🗑 ELIMINAR pedido completo (solo master/admin): contrato + artículos.
   const delbtn=$('ovDel'); if(delbtn) delbtn.onclick=async()=>{
     if(!confirm('¿ELIMINAR este pedido POR COMPLETO?\n\nSe borran el contrato y sus artículos, y el crédito consumido se le restaura al cliente. Queda registrado en la Bitácora. Esta acción NO se puede deshacer.')) return;
-    delbtn.disabled=true; $('ovMsg').textContent='Eliminando pedido…';
-    const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(pick(o,['contract_id'],''))+'?purge=1');
-    if(r2.ok){ d.style.display='none'; if(wrap) wrap.style.display=''; loadOrders('all'); }
+    const cid=pick(o,['contract_id'],'');
+    delbtn.disabled=true; $('ovMsg').textContent='Revisando pagos…';
+    // ¿Tiene pagos? Entonces preguntar por el REEMBOLSO antes de eliminar.
+    let refund='0';
+    const cr=await api('GET','/api/contracts/'+encodeURIComponent(cid));
+    const paid=Number((cr.data&&cr.data.data&&cr.data.data.total_paid)||0);
+    if(paid>0){
+      refund=confirm('Este pedido tiene PAGOS por $'+paid.toFixed(2)+'.\n\n¿Procesar REEMBOLSO a la forma de pago ORIGINAL?\n\n· Aceptar = SÍ, reembolsar (los pagos con tarjeta regresan a la misma tarjeta vía Stripe; los pagos manuales se listan para devolverlos a mano)\n· Cancelar = NO reembolsar, solo eliminar')?'1':'0';
+    }
+    $('ovMsg').textContent=refund==='1'?'Reembolsando y eliminando…':'Eliminando pedido…';
+    const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(cid)+'?purge=1&refund='+refund);
+    if(r2.ok){
+      const notes=(r2.data&&r2.data.refunds)||[];
+      if(notes.length) alert('Resultado del reembolso:\n\n· '+notes.join('\n· '));
+      d.style.display='none'; if(wrap) wrap.style.display=''; loadOrders('all');
+    }
     else { delbtn.disabled=false; $('ovMsg').textContent=(r2.data&&r2.data.error)||'No se pudo eliminar el pedido.'; }
   };
   // Entrega POR ARTÍCULO (cada artículo de la compra llega por separado).

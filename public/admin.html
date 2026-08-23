@@ -3758,7 +3758,10 @@ async function rfVerify(){
     document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=true; });
     rfUpdate();
   }
-  const pending=all.filter(a=>!(rfVer[a] && !rfVer[a].error));
+  // Re-verificar también los resultados VIEJOS guardados en el navegador que
+  // aún no traen la comparación de FOTO (photo_match) — así aparece la 3ª
+  // insignia sin borrar la verificación previa (el detalle sigue en caché).
+  const pending=all.filter(a=>!(rfVer[a] && !rfVer[a].error && ('photo_match' in rfVer[a])));
   const cached=all.length-pending.length;
   if(!pending.length){
     all.forEach(a=>rfSetBadge(a,rfVer[a]));

@@ -520,7 +520,7 @@
           <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="catSearch" placeholder="Buscar producto o ASIN…"></div>
           <select class="sel" id="cfCat" title="Categoría"><option value="">Categoría</option></select>
           <select class="sel" id="cfSub" title="Subcategoría"><option value="">Subcategoría</option></select>
-          <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="Revisa si cada producto sigue publicado en Amazon consultando su página. NO usa créditos de Rainforest.">Verificar en Amazon (sin créditos)</button>
+          <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="Verifica cada producto con Rainforest: vendido/entregado por Amazon y si nuestra FOTO principal sigue siendo la del ASIN. 1 crédito por producto (gratis si se verificó hace menos de 6 horas).">Verificar catálogo (Rainforest)</button>
           <span class="muted" id="catVerMsg"></span>
           <span class="muted" id="catMsg"></span>
         </div>
@@ -3460,32 +3460,34 @@ async function deleteContract(id){
 function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const ag=$('conAging'); if(ag) ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
 
 /* ---------------- Catalog ---------------- */
-let CAT=[], CATS=[], SEL=new Set(), catAvail={}, catPhoto={};
+let CAT=[], CATS=[], SEL=new Set(), catAvail={}, catPhoto={}, catSeller={};
 // Verifica en Amazon (sin créditos de Rainforest) si cada producto sigue publicado.
 async function verifyCatalogAmazon(){
-  const list=currentList(); if(!list.length){ $('catVerMsg').textContent='No hay productos para verificar.'; return; }
-  if(!confirm('¿Verificar '+list.length+' producto(s) en Amazon?\n\nNo usa créditos de Rainforest. Consulta la página de cada producto, puede tardar.')) return;
+  const list=currentList().filter(p=>pick(p,['asin'],'')); if(!list.length){ $('catVerMsg').textContent='No hay productos (con ASIN) para verificar.'; return; }
+  // RAINFOREST (la consulta directa a la página de Amazon está BLOQUEADA para
+  // servidores): 1 crédito por producto, GRATIS si se verificó hace <6 horas.
+  if(!confirm('¿Verificar '+list.length+' producto(s) con Rainforest?\n\nUsa 1 crédito por producto (GRATIS si ya se consultó hace menos de 6 horas). Revisa: vendido por Amazon, entregado por Amazon y si nuestra FOTO principal sigue siendo la del ASIN.')) return;
   const btn=$('catVerify'); btn.disabled=true;
-  let gone=0, unknown=0, fotos=0, done=0;
+  let mal=0, fotos=0, noamz=0, done=0;
   for(const p of list){
-    const id=String(pick(p,['id'],''));
+    const id=String(pick(p,['id'],'')), asin=String(pick(p,['asin'],''));
     $('catVerMsg').textContent='Verificando '+(done+1)+' de '+list.length+'…';
-    let av=null, ph=null;
-    try{ const r=await api('POST','/api/products/verify_availability',{id}); if(r.ok&&r.data&&r.data.ok&&r.data.results&&r.data.results[0]){ av=r.data.results[0].available; ph=r.data.results[0].photo_match; } }catch(e){}
-    catAvail[id]=av; catPhoto[id]=ph;
-    if(av===false) gone++; else if(av===null) unknown++;
-    if(ph===false) fotos++;
-    const row=$('catBody').querySelector('tr[data-rid="'+id+'"]');
-    if(row){
-      // rojo = ya no está en Amazon; naranja = la FOTO principal cambió en Amazon
-      row.style.background = av===false?'#fde8e8':(ph===false?'#fff4e0':'');
-      row.title = ph===false?'⚠ Amazon cambió la foto principal de este ASIN (posible cambio de modelo). Usa Verificar del scraper o re-descarga las fotos.':'';
+    let v=null;
+    try{ const r=await api('POST','/api/products/check_sellers',{asins:[asin], amazon_domain:'amazon.com.mx'}); if(r.ok&&r.data&&r.data.ok&&r.data.results) v=r.data.results[asin]||null; }catch(e){}
+    if(!v||v.error){ catAvail[id]=null; catPhoto[id]=null; mal++; }
+    else{
+      catAvail[id]=true; catPhoto[id]=(('photo_match' in v)?v.photo_match:null);
+      rfVer[asin]=v; // compartir con el scraper y con TODO el equipo
+      if(v.photo_match===false) fotos++;
+      if(!(v.sold&&v.delivered)) noamz++;
+      catSeller[id]=v;
     }
     done++;
   }
+  rfSaveVer(); // guarda los resultados compartidos en el servidor
   btn.disabled=false;
   renderCat();
-  $('catVerMsg').textContent='Listo: '+gone+' ya no están en Amazon (rojo)'+(fotos?(' · '+fotos+' con FOTO cambiada (naranja)'):'')+(unknown?(' · '+unknown+' no se pudieron verificar'):'')+'.';
+  $('catVerMsg').textContent='Listo: '+(fotos?fotos+' con FOTO cambiada (naranja) · ':'')+(noamz?noamz+' ya NO son vendidos/entregados por Amazon · ':'')+(mal?mal+' sin datos (¿retirados de Amazon?) · ':'')+((list.length-mal))+' verificados.';
 }
 async function loadCatalog(){
   const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
@@ -3568,12 +3570,15 @@ function renderCat(){
     const gone=catAvail[id]===false;
     const fotoBad=catPhoto[id]===false;
     const checked=(id in catAvail);
+    const sv=catSeller[id]||null;
+    const badSeller = sv && !(sv.sold && sv.delivered);
     const amzTag = !checked ? ''
       : gone ? '<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>'
-      : catAvail[id]===null ? '<div style="font-size:10px;font-weight:700;color:#8a8f9c">? No se pudo verificar (Amazon bloqueó la consulta)</div>'
+      : catAvail[id]===null ? '<div style="font-size:10px;font-weight:700;color:#8a8f9c">? Sin datos de Amazon (¿retirado?) — revisar a mano</div>'
       : fotoBad ? '<div style="font-size:10px;font-weight:700;color:#b45309">⚠ Amazon cambió la FOTO principal</div>'
+      : badSeller ? '<div style="font-size:10px;font-weight:700;color:#b45309">⚠ Ya NO es vendido/entregado por Amazon'+(sv.seller?(' · '+esc(sv.seller)):'')+'</div>'
       : '<div style="font-size:10px;font-weight:700;color:#137333">✓ Amazon OK'+(catPhoto[id]===true?' · foto OK':'')+'</div>';
-    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':(fotoBad?' style="background:#fff4e0"':'')}>
+    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':((fotoBad||badSeller)?' style="background:#fff4e0"':'')}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>
       <td style="max-width:210px">${esc(title)}${amzTag}</td>

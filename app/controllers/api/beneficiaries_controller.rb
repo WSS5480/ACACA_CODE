@@ -91,7 +91,8 @@ class Api::BeneficiariesController < ApplicationController
       :address2,
       :zip_code,
       :state,
-      :city
+      :city,
+      :kinship
     )
   end
 end

@@ -37,6 +37,7 @@ class Api::BuyersController < ApplicationController
     )
 
     if @buyer.save
+      backfill_kinship!(@buyer)
       enqueue_reference_pings(@buyer.order_id) unless quiet_save?
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :created
     else
@@ -47,6 +48,7 @@ class Api::BuyersController < ApplicationController
   # PATCH/PUT /api/buyers/:id
   def update
     if @buyer.update(buyer_params.except(:order_id))
+      backfill_kinship!(@buyer)
       enqueue_reference_pings(@buyer.order_id) unless quiet_save?
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :ok
     else
@@ -104,6 +106,18 @@ class Api::BuyersController < ApplicationController
     ReferencePing.enqueue_for!(contract) if contract
   rescue StandardError => e
     Rails.logger.warn "[buyers] pings: #{e.message}"
+  end
+
+  # El parentesco ahora se pregunta en QUIEN RECIBE (kinship del beneficiario).
+  # Se copia al comprador para que Ordenes, el contrato y el motor de riesgo
+  # sigan leyendo buyer.relationship_with_beneficiary como siempre.
+  def backfill_kinship!(buyer)
+    return if buyer.relationship_with_beneficiary.present?
+    order = buyer.order || Order.find_by(id: buyer.order_id)
+    kin = order&.beneficiary&.respond_to?(:kinship) ? order.beneficiary&.kinship : nil
+    buyer.update_column(:relationship_with_beneficiary, kin) if kin.present?
+  rescue StandardError => e
+    Rails.logger.warn "[buyers] backfill_kinship fallo: #{e.message}"
   end
 
   def buyer_params

@@ -440,7 +440,7 @@ class Api::UsersController < ApplicationController
         name: ben.name, last_name: ben.last_name, phone: ben.phone, email: ben.email,
         address1: ben.address1, address2: ben.address2, zip_code: ben.zip_code,
         state: ben.state, city: ben.city,
-        relationship: (ben.respond_to?(:relationship) ? ben.relationship : nil)
+        relationship: (ben.respond_to?(:kinship) ? ben.kinship : nil)
       },
       guarantor: gua && {
         name: gua.name, last_name: gua.last_name, phone: gua.phone, email: gua.email,

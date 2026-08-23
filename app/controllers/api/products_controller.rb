@@ -266,10 +266,21 @@ class Api::ProductsController < ApplicationController
     scope = bulk_scope
     return render json: { error: 'Nada que actualizar.' }, status: :bad_request if scope.nil?
 
-    status = params[:status].to_s
-    return render json: { error: 'Estatus invalido.' }, status: :unprocessable_entity unless %w[active inactive].include?(status)
+    updates = {}
+    if params[:status].present?
+      return render json: { error: 'Estatus invalido.' }, status: :unprocessable_entity unless %w[active inactive].include?(params[:status].to_s)
+      updates[:status] = params[:status].to_s
+    end
+    # APLICAR AL GRUPO (admin): turns y/o factor sobre los ids filtrados.
+    updates[:turns] = params[:turns].to_f.round(2) if params[:turns].present? && params[:turns].to_f.positive?
+    updates[:decimal_factor] = params[:decimal_factor].to_f.round(2) if params[:decimal_factor].present? && params[:decimal_factor].to_f.positive?
+    return render json: { error: 'Nada que actualizar.' }, status: :bad_request if updates.empty?
 
-    count = scope.update_all(status: status)
+    count = scope.update_all(updates.merge(updated_at: Time.current))
+    # Si cambió turns/factor, recalcular el "Desde $X /sem" de cada producto.
+    if updates.key?(:turns) || updates.key?(:decimal_factor)
+      scope.find_each { |p| p.update_column(:min_weekly_payment, p.recalculated_min_weekly_payment) }
+    end
     render json: { ok: true, updated: count }, status: :ok
   end
 

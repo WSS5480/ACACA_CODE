@@ -3460,7 +3460,7 @@ async function deleteContract(id){
 function openContractsList(){ const d=$('conDetail'); if(d){ d.style.display='none'; d.innerHTML=''; } const ag=$('conAging'); if(ag) ag.style.display='none'; const w=$('conTableWrap'); if(w) w.style.display=''; loadContracts(CONFILTER); }
 
 /* ---------------- Catalog ---------------- */
-let CAT=[], CATS=[], SEL=new Set(), catAvail={};
+let CAT=[], CATS=[], SEL=new Set(), catAvail={}, catPhoto={};
 // Verifica en Amazon (sin créditos de Rainforest) si cada producto sigue publicado.
 async function verifyCatalogAmazon(){
   const list=currentList(); if(!list.length){ $('catVerMsg').textContent='No hay productos para verificar.'; return; }
@@ -3472,7 +3472,7 @@ async function verifyCatalogAmazon(){
     $('catVerMsg').textContent='Verificando '+(done+1)+' de '+list.length+'…';
     let av=null, ph=null;
     try{ const r=await api('POST','/api/products/verify_availability',{id}); if(r.ok&&r.data&&r.data.ok&&r.data.results&&r.data.results[0]){ av=r.data.results[0].available; ph=r.data.results[0].photo_match; } }catch(e){}
-    catAvail[id]=av;
+    catAvail[id]=av; catPhoto[id]=ph;
     if(av===false) gone++; else if(av===null) unknown++;
     if(ph===false) fotos++;
     const row=$('catBody').querySelector('tr[data-rid="'+id+'"]');
@@ -3566,10 +3566,16 @@ function renderCat(){
     const img=(pick(p,['image_urls'],[])||[])[0]||'';
     const price=pick(p,['price'],''), disc=pick(p,['price_with_discount'],''), turns=pick(p,['turns'],''), fac=pick(p,['decimal_factor'],''), st=String(pick(p,['status'],'active'));
     const gone=catAvail[id]===false;
-    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':''}>
+    const fotoBad=catPhoto[id]===false;
+    const checked=(id in catAvail);
+    const amzTag = !checked ? ''
+      : gone ? '<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>'
+      : fotoBad ? '<div style="font-size:10px;font-weight:700;color:#b45309">⚠ Amazon cambió la FOTO principal</div>'
+      : '<div style="font-size:10px;font-weight:700;color:#137333">✓ Amazon OK · foto OK</div>';
+    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':(fotoBad?' style="background:#fff4e0"':'')}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>
-      <td style="max-width:210px">${esc(title)}${gone?'<div style="font-size:10px;font-weight:700;color:#b91c1c">⚠ Ya no está en Amazon</div>':''}</td>
+      <td style="max-width:210px">${esc(title)}${amzTag}</td>
       <td class="mono">${esc(asin)}</td>
       <td class="mono" style="max-width:130px;font-size:12.5px;white-space:normal;word-break:break-word">${esc(pick(p,['model_number','model'],'—')||'—')}</td>
       <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>

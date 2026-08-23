@@ -3715,7 +3715,14 @@ function rfSetBadge(asin,v){
         else { paint(pEl,'Foto',false,(r2.data&&r2.data.error)||'No se pudo re-descargar'); }
       };
     }
-    else { pEl.style.display='none'; }
+    else {
+      // ASIN nuevo (aún no está en nuestro catálogo): no hay foto nuestra que
+      // comparar — insignia neutra para que se entienda por qué no hay ✓/✗.
+      pEl.style.display='inline-block';
+      pEl.title='Aún no está en nuestro catálogo: no hay foto nuestra para comparar. Al importarlo, sus fotos se descargan de Amazon (quedan idénticas); la comparación aplica al RE-verificarlo después.';
+      pEl.textContent='Foto —';
+      pEl.style.cssText='display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c';
+    }
   }
 }
 function renderRf(){

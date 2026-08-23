@@ -189,7 +189,13 @@ class Api::ProductsController < ApplicationController
     if Product.column_names.include?('sold_by_amazon')
       f = (detail['buybox_winner'] || {})['fulfillment'] || {}
       svc = RainforestImportService.new
-      product.update_columns(sold_by_amazon: svc.send(:sold_by_amazon?, f), delivered_by_amazon: svc.send(:delivered_by_amazon?, f))
+      main_id = (File.basename(URI.parse(detail.dig('main_image', 'link').to_s).path).to_s.split('.').first rescue nil)
+      our_id  = product.images.attached? ? product.images.first.filename.to_s.split('.').first : nil
+      product.update_columns(
+        sold_by_amazon: svc.send(:sold_by_amazon?, f),
+        delivered_by_amazon: svc.send(:delivered_by_amazon?, f),
+        main_photo_ok: (main_id.present? && our_id.present? && main_id == our_id)
+      )
     end
 
     render json: { ok: true, old_price: old_usd, new_price: usd }, status: :ok

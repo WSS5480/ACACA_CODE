@@ -3569,7 +3569,7 @@ function renderCat(){
     const fotoBad=false, gone=false, badSeller=(sAmz===false||dAmz===false);
     return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':((fotoBad||badSeller)?' style="background:#fff4e0"':'')}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
-      <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}${catBadges(asin)}</td>
+      <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}</td>
       <td style="max-width:210px">${esc(title)}${amzTag}</td>
       <td class="mono">${esc(asin)}</td>
       <td class="mono" style="max-width:130px;font-size:12.5px;white-space:normal;word-break:break-word">${esc(pick(p,['model_number','model'],'—')||'—')}</td>

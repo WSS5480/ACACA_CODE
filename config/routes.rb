@@ -84,6 +84,7 @@ Rails.application.routes.draw do
       get 'download_csv', on: :collection
       post 'update_csv', on: :collection
       post 'refresh_images', on: :collection # re-descargar fotos desde Amazon (foto principal cambiada)
+      post 'refresh_price', on: :member       # actualizacion MANUAL de precio (semanal)
       get 'rf_verifications', on: :collection  # verificaciones del scraper COMPARTIDAS (equipo)
       put 'rf_verifications', to: 'api/products#update_rf_verifications', on: :collection
       get 'track_csv_job/:job_id', action: :track_csv_job, on: :collection

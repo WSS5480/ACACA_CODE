@@ -6,6 +6,17 @@ class ProductSerializer
              :dimensions, :model_number, :external_id, :status, :turns, :decimal_factor,
              :original_price, :created_at, :updated_at
 
+  # Respuestas guardadas AL DESCARGAR (sin verificaciones posteriores):
+  attribute :sold_by_amazon do |p|
+    p.respond_to?(:sold_by_amazon) ? p.sold_by_amazon : nil
+  end
+  attribute :delivered_by_amazon do |p|
+    p.respond_to?(:delivered_by_amazon) ? p.delivered_by_amazon : nil
+  end
+  attribute :main_photo_ok do |p|
+    p.respond_to?(:main_photo_ok) ? p.main_photo_ok : nil
+  end
+
   attribute :min_weekly_payment do |product|
     product.recalculated_min_weekly_payment
   end

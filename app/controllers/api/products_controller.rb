@@ -160,6 +160,43 @@ class Api::ProductsController < ApplicationController
     render json: { ok: true, count: stored.size }, status: :ok
   end
 
+  # POST /api/products/:id/refresh_price
+  # ACTUALIZACIÓN MANUAL de precio (uso semanal): trae el precio ACTUAL del
+  # ASIN vía Rainforest (1 crédito, gratis si está en caché <6h), actualiza el
+  # precio en pesos y en dólares (tipo de cambio del día), el "Desde $X /sem"
+  # y de paso refresca los flags (vendido/entregado por Amazon).
+  def refresh_price
+    product = Product.find_by(id: params[:id])
+    return render json: { error: 'Producto no encontrado' }, status: :not_found unless product
+    return render json: { error: 'Sin ASIN' }, status: :unprocessable_entity if product.asin.blank?
+
+    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, params[:amazon_domain].presence || 'amazon.com.mx')
+    return render json: { ok: false, error: 'Sin datos de Amazon (¿retirado?)' }, status: :ok if detail.blank?
+
+    price = (detail['buybox_winner'] || {})['price'] || {}
+    value = price['value']
+    return render json: { ok: false, error: 'Amazon no devolvió precio' }, status: :ok if value.blank?
+
+    rate = ExchangeRate.current_rate.to_f
+    return render json: { error: 'Se requiere un tipo de cambio válido' }, status: :unprocessable_entity if rate <= 0
+
+    usd = price['currency'].to_s.casecmp('mxn').zero? ? (value.to_f / rate).round(2) : value.to_f.round(2)
+    old_usd = product.price
+    product.update!(original_price: (price['currency'].to_s.casecmp('mxn').zero? ? value.to_f.round(2) : product.original_price), price: usd)
+    product.update_column(:min_weekly_payment, product.recalculated_min_weekly_payment)
+
+    # De paso, refrescar los flags con los datos ya pagados.
+    if Product.column_names.include?('sold_by_amazon')
+      f = (detail['buybox_winner'] || {})['fulfillment'] || {}
+      svc = RainforestImportService.new
+      product.update_columns(sold_by_amazon: svc.send(:sold_by_amazon?, f), delivered_by_amazon: svc.send(:delivered_by_amazon?, f))
+    end
+
+    render json: { ok: true, old_price: old_usd, new_price: usd }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   # POST /api/products/refresh_images  { id | asin }
   # RE-DESCARGA las fotos del producto desde Amazon (cuando la foto principal
   # cambió). Usa el detalle de Rainforest (con caché: si se acaba de verificar

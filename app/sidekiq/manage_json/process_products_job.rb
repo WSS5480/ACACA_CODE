@@ -58,6 +58,7 @@ class ManageJson::ProcessProductsJob
         process_categories(product, item)
         process_specifications(product, item)
         enqueue_image_download(product, item)
+        record_amazon_flags(product, item)
       rescue StandardError => e
         errors << { asin: product_data[:asin], error: e.message }
         Rails.logger.error "Error procesando producto #{product_data[:asin]}: #{e.message}"
@@ -262,6 +263,32 @@ class ManageJson::ProcessProductsJob
     rescue StandardError => img_err
       Rails.logger.error "[images] producto #{product.id}: #{img_err.message}"
     end
+  end
+
+  # LAS RESPUESTAS QUEDAN GUARDADAS AL DESCARGAR (sin verificaciones después):
+  # ¿vendido por Amazon? ¿entregado por Amazon? ¿tenemos la FOTO principal?
+  def record_amazon_flags(product, item)
+    return unless Product.column_names.include?('sold_by_amazon')
+
+    prod = item.dig('result', 'product') || {}
+    f = (prod['buybox_winner'] || {})['fulfillment'] || {}
+    # Misma lógica probada del importador (RainforestImportService).
+    svc = RainforestImportService.new
+    sold  = svc.send(:sold_by_amazon?, f)
+    deliv = svc.send(:delivered_by_amazon?, f)
+
+    main_id = begin
+      link = prod.dig('main_image', 'link').to_s
+      link.present? ? File.basename(URI.parse(link).path).to_s.split('.').first : nil
+    rescue StandardError
+      nil
+    end
+    our_id = product.images.attached? ? product.images.first.filename.to_s.split('.').first : nil
+    photo_ok = main_id.present? && our_id.present? && main_id == our_id
+
+    product.update_columns(sold_by_amazon: sold, delivered_by_amazon: deliv, main_photo_ok: photo_ok)
+  rescue StandardError => e
+    Rails.logger.warn "[flags] producto #{product.id}: #{e.message}"
   end
 
   def format_feature_bullets(bullets)

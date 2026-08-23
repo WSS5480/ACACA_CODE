@@ -30,13 +30,20 @@ class ScheduledTick
       end
     end
 
-    # 3) Tipo de cambio USD->MXN una vez al día (mediodía de Monterrey).
+    # 3) Tipo de cambio USD->MXN una vez al día (mediodía de Monterrey) y
+    #    REPRECIACIÓN del catálogo completo + pedidos sin pago inicial.
     if t.hour == 12 && defined?(ExchangeRates::FetchRateJob)
       begin
         ExchangeRates::FetchRateJob.new.perform
         out[:exchange_rate] = 'ok'
       rescue StandardError => e
         out[:exchange_rate] = e.message
+      end
+      begin
+        out[:fx_reprice] = FxReprice.run! if defined?(FxReprice)
+      rescue StandardError => e
+        out[:fx_reprice] = e.message
+        WaAlert.notify('Repreciación diaria por tipo de cambio', e.message) if defined?(WaAlert)
       end
     end
 

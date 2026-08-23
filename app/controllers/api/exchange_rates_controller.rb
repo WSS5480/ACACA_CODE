@@ -27,10 +27,14 @@ class Api::ExchangeRatesController < ApplicationController
     before = ExchangeRate.current_rate
     ExchangeRates::FetchRateJob.new.perform
     latest = ExchangeRate.order(created_at: :desc).first
+    # Aplicar el tipo de cambio del día de inmediato: catálogo completo y
+    # pedidos sin pago inicial (mismo proceso que corre solo cada día).
+    reprice = (FxReprice.run! if defined?(FxReprice)) rescue nil
     render json: {
       usd_to_mxn: (latest&.usd_to_mxn || before),
       updated: latest.present? && latest.usd_to_mxn.to_d != before.to_d,
-      fetched_at: latest&.created_at
+      fetched_at: latest&.created_at,
+      reprice: reprice
     }, status: :ok
   rescue StandardError => e
     render json: { error: e.message, usd_to_mxn: ExchangeRate.current_rate }, status: :ok

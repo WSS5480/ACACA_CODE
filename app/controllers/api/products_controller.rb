@@ -134,6 +134,32 @@ class Api::ProductsController < ApplicationController
   # POST /api/products/verify_availability  { id | ids: [...] }
   # Revisa si cada producto SIGUE publicado en Amazon consultando su página directamente
   # (NO usa Rainforest, NO gasta créditos). available=false => ya no está (marcar en rojo).
+  # GET/PUT /api/products/rf_verifications
+  # Resultados de "Verificar vendedor" COMPARTIDOS para todo el equipo (antes
+  # vivían solo en el navegador de cada quien). Se guardan en AppSetting como
+  # JSON {asin => {sold, delivered, seller, photo_match, ...}}.
+  def rf_verifications
+    raw = AppSetting.get('rf_verifications', '{}')
+    render json: { ok: true, results: (JSON.parse(raw) rescue {}) }, status: :ok
+  end
+
+  def update_rf_verifications
+    incoming = params[:results].respond_to?(:to_unsafe_h) ? params[:results].to_unsafe_h : nil
+    return render json: { error: 'results requerido' }, status: :bad_request unless incoming.is_a?(Hash)
+
+    stored = (JSON.parse(AppSetting.get('rf_verifications', '{}')) rescue {})
+    incoming.each do |asin, v|
+      next unless v.is_a?(Hash)
+      keep = v.slice('sold', 'delivered', 'seller', 'photo_match', 'amazon_main_image', 'error')
+      keep['at'] = v['at'].presence || Time.current.iso8601
+      stored[asin.to_s.strip] = keep
+    end
+    # Tope de tamaño: conservar las 5000 verificaciones más recientes.
+    stored = stored.sort_by { |_a, v| v['at'].to_s }.last(5000).to_h if stored.size > 5000
+    AppSetting.set('rf_verifications', stored.to_json)
+    render json: { ok: true, count: stored.size }, status: :ok
+  end
+
   # POST /api/products/refresh_images  { id | asin }
   # RE-DESCARGA las fotos del producto desde Amazon (cuando la foto principal
   # cambió). Usa el detalle de Rainforest (con caché: si se acaba de verificar

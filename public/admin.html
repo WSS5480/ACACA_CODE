@@ -3654,7 +3654,24 @@ let RF=[], rfVer={};
 // Persistencia en el navegador para que un refresh NO borre la verificación (y no gastes créditos de nuevo).
 try{ rfVer=JSON.parse(localStorage.getItem('acasa_rfver')||'{}')||{}; }catch(e){ rfVer={}; }
 try{ RF=JSON.parse(localStorage.getItem('acasa_rf')||'[]')||[]; }catch(e){ RF=[]; }
-function rfSaveVer(){ try{ localStorage.setItem('acasa_rfver', JSON.stringify(rfVer)); }catch(e){} }
+function rfSaveVer(){
+  try{ localStorage.setItem('acasa_rfver', JSON.stringify(rfVer)); }catch(e){}
+  // COMPARTIDO: también al servidor, para que TODO el equipo vea los mismos resultados.
+  api('PUT','/api/products/rf_verifications',{results:rfVer});
+}
+let rfVerLoaded=false;
+async function rfLoadVer(){
+  if(rfVerLoaded) return;
+  const r=await api('GET','/api/products/rf_verifications');
+  if(r.ok&&r.data&&r.data.ok){
+    const local=rfVer;
+    rfVer=Object.assign({}, r.data.results||{}, local);
+    rfVerLoaded=true;
+    // Migración suave: subir lo que este navegador tenga y el servidor no.
+    const missing={}; Object.keys(local).forEach(a=>{ if(!(r.data.results||{})[a]) missing[a]=local[a]; });
+    if(Object.keys(missing).length) api('PUT','/api/products/rf_verifications',{results:missing});
+  }
+}
 function rfSaveRF(){ try{ localStorage.setItem('acasa_rf', JSON.stringify(RF)); }catch(e){} }
 // Barra de progreso (igual que la de descarga): indeterminada al scrapear, por-producto al verificar.
 function rfBarIndet(){ const b=$('rfBar'),f=$('rfBarFill'); b.style.display=''; f.style.transition='none'; f.classList.add('rfbar-indet'); }
@@ -3754,6 +3771,8 @@ function renderRf(){
   $('rfResults').style.display='';
   $('rfGrid').querySelectorAll('.rfChk').forEach(cb=>cb.addEventListener('change',rfUpdate));
   RF.forEach(p=>{ if(rfVer[p.asin]) rfSetBadge(p.asin, rfVer[p.asin]); });
+  // Traer del SERVIDOR las verificaciones del equipo y repintar insignias.
+  rfLoadVer().then(()=>{ RF.forEach(p=>{ if(rfVer[p.asin]) rfSetBadge(p.asin, rfVer[p.asin]); }); });
   $('rfAll').checked=false; rfUpdate();
   rfSaveRF();
 }

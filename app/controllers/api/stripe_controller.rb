@@ -21,15 +21,19 @@ module Api
       # el cobro sea el staff desde Gestión de cuenta.
       customer_id = ensure_stripe_customer!(contract.user || @current_user)
 
-      pi = StripeClient.request(:post, '/v1/payment_intents', {
+      # save_card (checkbox del cliente, PREMARCADO): si viene en false, la
+      # tarjeta NO se guarda en la cuenta para pagos futuros.
+      save_card = params[:save_card].nil? ? true : ActiveModel::Type::Boolean.new.cast(params[:save_card])
+      pi_params = {
         amount: total_cents,
         currency: 'usd',
         customer: customer_id,
-        setup_future_usage: 'off_session',
         automatic_payment_methods: { enabled: true },
         description: "Contrato #{contract.contract_number.presence || contract.order_ref}",
         metadata: { contract_id: contract.id, user_id: @current_user.id, base_amount: base, waiver_fee: fee, tax_amount: tax, kind: params[:kind].to_s, apply_to: params[:apply_to].to_s }
-      })
+      }
+      pi_params[:setup_future_usage] = 'off_session' if save_card
+      pi = StripeClient.request(:post, '/v1/payment_intents', pi_params)
       render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'] }, status: :ok
     rescue StripeClient::Error => e
       render json: { error: e.message }, status: :unprocessable_entity

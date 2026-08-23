@@ -47,13 +47,15 @@ class ScheduledTick
       end
     end
 
-    # 4) RONDA DEL CATÁLOGO (gratis): un lote de productos por tick contra su
-    #    página de Amazon — disponibilidad + foto principal. Da la vuelta sola.
-    begin
-      out[:catalog_patrol] = CatalogPatrol.run! if defined?(CatalogPatrol)
-    rescue StandardError => e
-      out[:catalog_patrol] = e.message
-    end
+    # 4) RONDA DEL CATÁLOGO: APAGADA por decisión de negocio — la verificación
+    #    con Rainforest se hace UNA sola vez al scrapear (1 crédito por artículo)
+    #    y Amazon bloquea las consultas gratuitas desde el servidor. El servicio
+    #    CatalogPatrol queda listo por si algún día se quiere reactivar.
+    # begin
+    #   out[:catalog_patrol] = CatalogPatrol.run! if defined?(CatalogPatrol)
+    # rescue StandardError => e
+    #   out[:catalog_patrol] = e.message
+    # end
 
     Rails.logger.info "[ScheduledTick] #{out.inspect}"
     puts out.inspect

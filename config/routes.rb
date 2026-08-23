@@ -83,6 +83,7 @@ Rails.application.routes.draw do
       delete 'reset', on: :collection
       get 'download_csv', on: :collection
       post 'update_csv', on: :collection
+      post 'refresh_images', on: :collection # re-descargar fotos desde Amazon (foto principal cambiada)
       get 'track_csv_job/:job_id', action: :track_csv_job, on: :collection
     end
 

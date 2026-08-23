@@ -47,6 +47,14 @@ class ScheduledTick
       end
     end
 
+    # 4) RONDA DEL CATÁLOGO (gratis): un lote de productos por tick contra su
+    #    página de Amazon — disponibilidad + foto principal. Da la vuelta sola.
+    begin
+      out[:catalog_patrol] = CatalogPatrol.run! if defined?(CatalogPatrol)
+    rescue StandardError => e
+      out[:catalog_patrol] = e.message
+    end
+
     Rails.logger.info "[ScheduledTick] #{out.inspect}"
     puts out.inspect
     out

@@ -3466,21 +3466,26 @@ async function verifyCatalogAmazon(){
   const list=currentList(); if(!list.length){ $('catVerMsg').textContent='No hay productos para verificar.'; return; }
   if(!confirm('¿Verificar '+list.length+' producto(s) en Amazon?\n\nNo usa créditos de Rainforest. Consulta la página de cada producto, puede tardar.')) return;
   const btn=$('catVerify'); btn.disabled=true;
-  let gone=0, unknown=0, done=0;
+  let gone=0, unknown=0, fotos=0, done=0;
   for(const p of list){
     const id=String(pick(p,['id'],''));
     $('catVerMsg').textContent='Verificando '+(done+1)+' de '+list.length+'…';
-    let av=null;
-    try{ const r=await api('POST','/api/products/verify_availability',{id}); if(r.ok&&r.data&&r.data.ok&&r.data.results&&r.data.results[0]) av=r.data.results[0].available; }catch(e){}
+    let av=null, ph=null;
+    try{ const r=await api('POST','/api/products/verify_availability',{id}); if(r.ok&&r.data&&r.data.ok&&r.data.results&&r.data.results[0]){ av=r.data.results[0].available; ph=r.data.results[0].photo_match; } }catch(e){}
     catAvail[id]=av;
     if(av===false) gone++; else if(av===null) unknown++;
+    if(ph===false) fotos++;
     const row=$('catBody').querySelector('tr[data-rid="'+id+'"]');
-    if(row){ row.style.background = av===false?'#fde8e8':''; }
+    if(row){
+      // rojo = ya no está en Amazon; naranja = la FOTO principal cambió en Amazon
+      row.style.background = av===false?'#fde8e8':(ph===false?'#fff4e0':'');
+      row.title = ph===false?'⚠ Amazon cambió la foto principal de este ASIN (posible cambio de modelo). Usa Verificar del scraper o re-descarga las fotos.':'';
+    }
     done++;
   }
   btn.disabled=false;
   renderCat();
-  $('catVerMsg').textContent='Listo: '+gone+' ya no están en Amazon (rojo)'+(unknown?(' · '+unknown+' no se pudieron verificar'):'')+'.';
+  $('catVerMsg').textContent='Listo: '+gone+' ya no están en Amazon (rojo)'+(fotos?(' · '+fotos+' con FOTO cambiada (naranja)'):'')+(unknown?(' · '+unknown+' no se pudieron verificar'):'')+'.';
 }
 async function loadCatalog(){
   const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
@@ -3691,7 +3696,18 @@ function rfSetBadge(asin,v){
   // FOTO: solo aplica a ASINs que YA están en nuestro catálogo (photo_match true/false; null = no aplica).
   if(pEl){
     if(v.photo_match===true){ pEl.style.display='inline-block'; paint(pEl,'Foto',true,'Nuestra foto principal coincide con la de Amazon'); }
-    else if(v.photo_match===false){ pEl.style.display='inline-block'; paint(pEl,'Foto',false,'⚠ Amazon CAMBIÓ la foto principal del listado: revisar el producto (posible cambio de modelo).'+(v.amazon_main_image?' Foto actual: '+v.amazon_main_image:'')); }
+    else if(v.photo_match===false){
+      pEl.style.display='inline-block';
+      paint(pEl,'Foto',false,'⚠ Amazon CAMBIÓ la foto principal. CLIC para RE-DESCARGAR nuestras fotos desde Amazon.'+(v.amazon_main_image?' Foto actual: '+v.amazon_main_image:''));
+      pEl.style.cursor='pointer';
+      pEl.onclick=async()=>{
+        if(!confirm('¿RE-DESCARGAR las fotos de este producto desde Amazon?\n\nSe reemplazan nuestras fotos por las actuales del listado (usa el detalle ya verificado, normalmente sin costo extra).')) return;
+        pEl.textContent='Foto …';
+        const r2=await api('POST','/api/products/refresh_images',{asin:asin});
+        if(r2.ok&&r2.data&&r2.data.ok){ paint(pEl,'Foto',true,'Fotos re-descargadas ('+r2.data.photos+')'); pEl.onclick=null; pEl.style.cursor=''; if(rfVer[asin]) rfVer[asin].photo_match=true; rfSaveVer&&rfSaveVer(); }
+        else { paint(pEl,'Foto',false,(r2.data&&r2.data.error)||'No se pudo re-descargar'); }
+      };
+    }
     else { pEl.style.display='none'; }
   }
 }

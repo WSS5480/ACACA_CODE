@@ -134,6 +134,28 @@ class Api::ProductsController < ApplicationController
   # POST /api/products/verify_availability  { id | ids: [...] }
   # Revisa si cada producto SIGUE publicado en Amazon consultando su página directamente
   # (NO usa Rainforest, NO gasta créditos). available=false => ya no está (marcar en rojo).
+  # POST /api/products/refresh_images  { id | asin }
+  # RE-DESCARGA las fotos del producto desde Amazon (cuando la foto principal
+  # cambió). Usa el detalle de Rainforest (con caché: si se acaba de verificar
+  # el vendedor, NO gasta otro crédito).
+  def refresh_images
+    product = params[:id].present? ? Product.find_by(id: params[:id]) : Product.find_by(asin: params[:asin].to_s.strip)
+    return render json: { error: 'Producto no encontrado' }, status: :not_found unless product
+    return render json: { error: 'El producto no tiene ASIN' }, status: :unprocessable_entity if product.asin.blank?
+
+    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, params[:amazon_domain].presence || 'amazon.com.mx')
+    return render json: { error: 'No se pudo obtener el detalle de Amazon' }, status: :unprocessable_entity if detail.blank?
+
+    links = Array(detail['images']).map { |img| img['link'] }.compact
+    links = [detail.dig('main_image', 'link')].compact if links.blank?
+    return render json: { error: 'Amazon no devolvió fotos para este ASIN' }, status: :unprocessable_entity if links.blank?
+
+    ManageJson::DownloadProductImagesJob.new.perform(product.id, links)
+    render json: { ok: true, photos: [links.size, 7].min }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def verify_availability
     ids = params[:ids].present? ? Array(params[:ids]) : (params[:id].present? ? [params[:id]] : nil)
     return render json: { error: 'Falta id o ids.' }, status: :bad_request if ids.blank?
@@ -241,40 +263,9 @@ class Api::ProductsController < ApplicationController
   # Consulta la página de Amazon del producto SIN Rainforest (sin créditos).
   # Devuelve { available:, code:, reason: }. available=nil => no se pudo determinar (no marcar).
   def check_amazon_availability(product)
-    asin = product.asin.to_s.strip
-    url = product.original_link.presence || (asin.present? ? "https://www.amazon.com.mx/dp/#{asin}" : nil)
-    return { available: nil, code: 0, reason: 'sin link/asin' } if url.blank?
-
-    current = url
-    3.times do
-      uri = URI.parse(current)
-      req = Net::HTTP::Get.new(uri)
-      req['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
-      req['Accept-Language'] = 'es-MX,es;q=0.9'
-      res = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', open_timeout: 8, read_timeout: 12) { |http| http.request(req) }
-
-      case res
-      when Net::HTTPNotFound
-        return { available: false, code: 404, reason: '404 no encontrado' }
-      when Net::HTTPRedirection
-        current = URI.join(current, res['location'].to_s).to_s
-        next
-      when Net::HTTPSuccess
-        low = res.body.to_s.downcase
-        gone_markers = ['página no encontrada', 'pagina no encontrada', 'no está disponible', 'no esta disponible',
-                        'currently unavailable', 'no disponible actualmente', 'dogs of amazon', 'perritos de amazon']
-        gone = gone_markers.any? { |m| low.include?(m) }
-        asin_present = asin.blank? || low.include?(asin.downcase)
-        available = !gone && asin_present
-        return { available: available, code: res.code.to_i, reason: (gone ? 'marcado no disponible' : (asin_present ? 'ok' : 'asin ausente en la página')) }
-      else
-        # 503/CAPTCHA/bloqueo => no se pudo determinar; no marcar en rojo.
-        return { available: nil, code: res.code.to_i, reason: "respuesta #{res.code}" }
-      end
-    end
-    { available: nil, code: 0, reason: 'demasiados redirecciones' }
-  rescue StandardError => e
-    { available: nil, code: 0, reason: e.message }
+    # Lógica compartida con la ronda automática del catálogo (CatalogPatrol):
+    # disponibilidad + comparación de la foto principal, sin créditos.
+    AmazonPageCheck.call(product)
   end
 
   def valid_csv_file?(file)

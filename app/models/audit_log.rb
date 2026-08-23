@@ -44,7 +44,8 @@ class AuditLog < ApplicationRecord
     'ticket_resolved'      => '✅ Resolvió ticket de soporte',
     'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada',
     'account_confirmed_manual' => '✔ Verificó cuenta manualmente (saltó WhatsApp)',
-    'payment_refunded'     => '↩ Reembolsó pago a la forma de pago original'
+    'payment_refunded'     => '↩ Reembolsó pago a la forma de pago original',
+    'catalog_issue'        => '⚠ Ronda del catálogo: producto con problema en Amazon'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

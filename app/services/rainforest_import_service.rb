@@ -173,12 +173,38 @@ class RainforestImportService
       results[asin] = {
         sold: sold_by_amazon?(f),
         delivered: delivered_by_amazon?(f),
-        seller: f.dig('third_party_seller', 'name')
+        seller: f.dig('third_party_seller', 'name'),
+        # FOTO: si el ASIN ya está en nuestro catálogo, comparar NUESTRA foto
+        # principal contra la foto principal ACTUAL de Amazon (por el ID de
+        # imagen de Amazon, estable ante cambios de tamaño). false = Amazon
+        # cambió la foto del listado y la nuestra ya no coincide.
+        photo_match: photo_matches_ours?(asin, product_data),
+        amazon_main_image: product_data.dig('main_image', 'link')
       }
     end
     { ok: true, results: results }
   rescue StandardError => e
     { ok: false, error: e.message }
+  end
+
+  # ¿La foto principal que tenemos guardada coincide con la principal actual
+  # del ASIN en Amazon? nil = no se puede saber (no está en catálogo, no tiene
+  # fotos, o Amazon no mandó main_image). Compara el ID de imagen de Amazon
+  # (el nombre base antes del primer punto), que no cambia con los tamaños.
+  def photo_matches_ours?(asin, product_data)
+    main_link = product_data.dig('main_image', 'link').to_s
+    return nil if main_link.blank?
+    local = Product.find_by(asin: asin)
+    return nil unless local&.images&.attached?
+
+    amazon_id = File.basename(URI.parse(main_link).path).to_s.split('.').first.to_s
+    our_id    = local.images.first.filename.to_s.split('.').first.to_s
+    return nil if amazon_id.blank? || our_id.blank?
+
+    amazon_id == our_id
+  rescue StandardError => e
+    Rails.logger.warn("[rainforest] comparación de foto #{asin}: #{e.message}")
+    nil
   end
 
   private

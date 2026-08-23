@@ -3676,6 +3676,7 @@ function rfSetBadge(asin,v){
   const esc2=(window.CSS&&CSS.escape)?CSS.escape(asin):asin;
   const sEl=$('rfGrid').querySelector('.rfb-sold[data-asin="'+esc2+'"]');
   const dEl=$('rfGrid').querySelector('.rfb-del[data-asin="'+esc2+'"]');
+  const pEl=$('rfGrid').querySelector('.rfb-photo[data-asin="'+esc2+'"]');
   const base='display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;';
   const paint=(el,label,state,tip)=>{
     if(!el) return; el.title=tip||'';
@@ -3687,6 +3688,12 @@ function rfSetBadge(asin,v){
   if(v.error){ paint(sEl,'Sold',null,'No se pudo verificar'); paint(dEl,'Delivered',null,'No se pudo verificar'); if(sEl){sEl.textContent='error';sEl.style.cssText=base+'background:#fde8e8;color:#b91c1c';} return; }
   paint(sEl,'Sold', !!v.sold, v.sold?'Vendido por Amazon':('No vendido por Amazon'+(v.seller?' · '+v.seller:'')));
   paint(dEl,'Delivered', !!v.delivered, v.delivered?'Entregado por Amazon':'No entregado por Amazon');
+  // FOTO: solo aplica a ASINs que YA están en nuestro catálogo (photo_match true/false; null = no aplica).
+  if(pEl){
+    if(v.photo_match===true){ pEl.style.display='inline-block'; paint(pEl,'Foto',true,'Nuestra foto principal coincide con la de Amazon'); }
+    else if(v.photo_match===false){ pEl.style.display='inline-block'; paint(pEl,'Foto',false,'⚠ Amazon CAMBIÓ la foto principal del listado: revisar el producto (posible cambio de modelo).'+(v.amazon_main_image?' Foto actual: '+v.amazon_main_image:'')); }
+    else { pEl.style.display='none'; }
+  }
 }
 function renderRf(){
   rfBuildCatSet();
@@ -3705,6 +3712,7 @@ function renderRf(){
       </div>
       <div style="margin:4px 0 2px;display:flex;gap:4px;flex-wrap:wrap">
         <span class="rfb-sold" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Sold ?</span>
+        <span class="rfb-photo" data-asin="${esc(p.asin)}" style="display:none"></span>
         <span class="rfb-del" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Delivered ?</span>
       </div>
       <img src="${esc(p.image||'')}" onerror="this.style.visibility='hidden'" style="width:100%;height:90px;object-fit:contain;margin:6px 0">

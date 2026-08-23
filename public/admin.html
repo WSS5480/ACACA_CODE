@@ -3678,21 +3678,13 @@ let rfCatSet=new Set();
 function rfBuildCatSet(){ try{ rfCatSet=new Set((CAT||[]).map(p=>String(pick(p,['asin'],'')).trim().toUpperCase()).filter(Boolean)); }catch(e){ rfCatSet=new Set(); } }
 function rfInCat(asin){ return rfCatSet.has(String(asin||'').trim().toUpperCase()); }
 // Botón en 2 pasos: 0 = falta verificar, 1 = verificado (ya se puede descargar lo seleccionado).
-let rfStage=0;
+let rfStage=1; // UN SOLO PASO: las respuestas (vendido/entregado/foto) se guardan AL DESCARGAR
 function rfUpdate(){
   const b=$('rfImport'), h=$('rfStageHint');
-  if(rfStage===0){
-    const sel=rfSelected().length;
-    const pend=RF.filter(p=>!rfInCat(p.asin)).length;
-    b.textContent='Verificar y descargar';
-    b.disabled = pend===0;
-    if(h) h.textContent = sel ? ('Paso 1: Verificar '+sel+' seleccionado(s)') : ('Paso 1: Verificar todos ('+pend+')');
-  } else {
-    const n=rfSelected().length;
-    b.textContent = n?('Descargar seleccionados ('+n+')'):'Descargar seleccionados';
-    b.disabled = n===0;
-    if(h) h.textContent='Paso 2: selecciona y descarga';
-  }
+  const n=rfSelected().length;
+  b.textContent = n?('Descargar seleccionados ('+n+')'):'Descargar seleccionados';
+  b.disabled = n===0;
+  if(h) h.textContent='Selecciona y descarga — al descargar quedan guardados: vendido/entregado por Amazon y la foto principal (1 crédito c/u)';
 }
 // Pinta la insignia de vendedor en una tarjeta (en el sitio, sin re-render, para no perder la selección).
 function rfSetBadge(asin,v){
@@ -3738,7 +3730,7 @@ function rfSetBadge(asin,v){
 }
 function renderRf(){
   rfBuildCatSet();
-  rfStage=0;   // resultados nuevos → hay que verificar antes de descargar
+  rfStage=1;   // un solo paso: descargar directamente (las respuestas se guardan al descargar)
   $('rfGrid').innerHTML=RF.map(p=>{
     const inCat=rfInCat(p.asin);
     const slash = inCat
@@ -3853,14 +3845,14 @@ async function rfLoad(){
   $('rfMsg').textContent=RF.length+' productos encontrados. Elige cuáles descargar.';
   renderRf();
 }
-// Botón en 2 pasos: 1er clic verifica (obligatorio), 2º clic descarga lo seleccionado.
+// UN SOLO PASO: descargar. La verificación previa ya no es obligatoria — el
+// download consulta Amazon (mismo crédito) y deja las respuestas en el producto.
 async function rfImport(){
-  if(rfStage===0){ const ok=await rfVerify(); if(ok){ rfStage=1; rfUpdate(); } return; }
   await rfDownload();
 }
 async function rfDownload(){
   const asins=rfSelected(); if(!asins.length){ $('rfMsg').textContent='No hay productos seleccionados (los que ya están en el catálogo no se pueden elegir). Marca algunos y toca Descargar.'; return; }
-  if(!confirm('¿Descargar '+asins.length+' producto(s) al catálogo como borrador?\n\nLos ya verificados NO recobran crédito; los demás usan 1 crédito c/u.')) return;
+  if(!confirm('¿Descargar '+asins.length+' producto(s) al catálogo como borrador?\n\n1 crédito por producto (gratis si se consultó hace <6 h). Al descargar quedan GUARDADAS las respuestas: ¿vendido por Amazon? ¿entregado por Amazon? ¿foto principal correcta? — y las fotos se bajan con la principal primero.')) return;
   $('rfImport').disabled=true;
   const total=asins.length, sold=false, deliv=false;   // sin filtro extra: bajas lo que seleccionaste
   const prog=$('rfProg'), fill=$('rfProgFill');

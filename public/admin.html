@@ -3692,7 +3692,7 @@ function rfSetBadge(asin,v){
   const sEl=$('rfGrid').querySelector('.rfb-sold[data-asin="'+esc2+'"]');
   const dEl=$('rfGrid').querySelector('.rfb-del[data-asin="'+esc2+'"]');
   const pEl=$('rfGrid').querySelector('.rfb-photo[data-asin="'+esc2+'"]');
-  const base='display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;';
+  const base='display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-bottom:2px;';
   const paint=(el,label,state,tip)=>{
     if(!el) return; el.title=tip||'';
     if(state===null||state===undefined){ el.textContent=label+' ?'; el.style.cssText=base+'background:#eef0f6;color:#8a8f9c'; }
@@ -3718,13 +3718,22 @@ function rfSetBadge(asin,v){
         else { paint(pEl,'Foto',false,(r2.data&&r2.data.error)||'No se pudo re-descargar'); }
       };
     }
+    else if(v.main_image_available===true){
+      // ASIN nuevo: Amazon SÍ publica su foto principal — al descargar la
+      // bajamos PRIMERO, así que tendremos la foto correcta garantizada.
+      pEl.style.display='block';
+      paint(pEl,'Foto',true,'Amazon trae la foto principal del ASIN: al descargar se baja PRIMERO y queda como nuestra foto #1.');
+    }
+    else if(v.main_image_available===false){
+      pEl.style.display='block';
+      paint(pEl,'Foto',false,'⚠ Amazon NO publica foto principal para este ASIN.');
+    }
     else {
-      // ASIN nuevo (aún no está en nuestro catálogo): no hay foto nuestra que
-      // comparar — insignia neutra para que se entienda por qué no hay ✓/✗.
-      pEl.style.display='inline-block';
-      pEl.title='Aún no está en nuestro catálogo: no hay foto nuestra para comparar. Al importarlo, sus fotos se descargan de Amazon (quedan idénticas); la comparación aplica al RE-verificarlo después.';
+      // Resultado viejo (antes de esta mejora): sin dato de foto.
+      pEl.style.display='block';
+      pEl.title='Sin dato de foto (verificación anterior). Al descargar, la foto principal se baja primero de todas formas.';
       pEl.textContent='Foto —';
-      pEl.style.cssText='display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c';
+      pEl.style.cssText='display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-bottom:2px;background:#eef0f6;color:#8a8f9c';
     }
   }
 }
@@ -3744,9 +3753,9 @@ function renderRf(){
         <span style="font-size:11px;color:var(--mut)">${p.price_raw?esc(p.price_raw):(p.price_value?('$'+esc(p.price_value)):'—')}</span>
       </div>
       <div style="margin:4px 0 2px;display:flex;gap:4px;flex-wrap:wrap">
-        <span class="rfb-sold" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Sold ?</span>
+        <span class="rfb-sold" data-asin="${esc(p.asin)}" style="display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c;margin-bottom:2px">Sold ?</span>
+        <span class="rfb-del" data-asin="${esc(p.asin)}" style="display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c;margin-bottom:2px">Delivered ?</span>
         <span class="rfb-photo" data-asin="${esc(p.asin)}" style="display:none"></span>
-        <span class="rfb-del" data-asin="${esc(p.asin)}" style="display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c">Delivered ?</span>
       </div>
       <img src="${esc(p.image||'')}" onerror="this.style.visibility='hidden'" style="width:100%;height:90px;object-fit:contain;margin:6px 0">
       <div style="font-size:11.5px;line-height:1.3;height:46px;overflow:hidden">${esc(p.title||p.asin)}</div>

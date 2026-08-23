@@ -150,7 +150,7 @@ class Api::ProductsController < ApplicationController
     stored = (JSON.parse(AppSetting.get('rf_verifications', '{}')) rescue {})
     incoming.each do |asin, v|
       next unless v.is_a?(Hash)
-      keep = v.slice('sold', 'delivered', 'seller', 'photo_match', 'amazon_main_image', 'error')
+      keep = v.slice('sold', 'delivered', 'seller', 'photo_match', 'main_image_available', 'amazon_main_image', 'error')
       keep['at'] = v['at'].presence || Time.current.iso8601
       stored[asin.to_s.strip] = keep
     end

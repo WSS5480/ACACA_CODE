@@ -179,6 +179,9 @@ class RainforestImportService
         # imagen de Amazon, estable ante cambios de tamaño). false = Amazon
         # cambió la foto del listado y la nuestra ya no coincide.
         photo_match: photo_matches_ours?(asin, product_data),
+        # ¿Amazon publica la foto principal del ASIN? (para ASINs nuevos: al
+        # descargar se baja PRIMERO, garantizando nuestra foto #1)
+        main_image_available: product_data.dig('main_image', 'link').present?,
         amazon_main_image: product_data.dig('main_image', 'link')
       }
     end

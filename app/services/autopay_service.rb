@@ -55,7 +55,7 @@ class AutopayService
     if pi['status'] == 'succeeded'
       unless Payment.exists?(stripe_payment_intent_id: pi['id'])
         note = "Autopay Stripe #{pi['id']}"
-        note += " | seguro $#{'%.2f' % fee}" if fee > 0
+        note += " | exención de responsabilidad $#{'%.2f' % fee}" if fee > 0
         contract.payments.create!(amount: due, method: 'autopay', note: note, stripe_payment_intent_id: pi['id'])
       end
       contract.update_column(:autopay_last_error, nil)

@@ -198,7 +198,7 @@
         <div style="overflow-x:auto">
           <table><thead><tr>
             <th>Orden</th><th>Cliente</th><th>Producto</th><th class="right">Precio</th><th>Plazo</th>
-            <th class="right">Crédito</th><th class="right">Waiver %</th><th class="right">Pago x Semana</th>
+            <th class="right">Crédito</th><th class="right">Exención %</th><th class="right">Pago x Semana</th>
           </tr></thead><tbody id="ordBody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
@@ -689,7 +689,7 @@
             <div><div class="muted" style="font-size:12px;margin-bottom:4px">Tasa de interés (%)</div>
               <input id="rtInt" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
               <div class="muted" style="font-size:11px;margin-top:3px" id="rtFactors">factores: — / —</div></div>
-            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Seguro / Waiver (%)</div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Exención de responsabilidad (%)</div>
               <input id="rtWaiver" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
               <div class="muted" style="font-size:11px;margin-top:3px">Exención de responsabilidad por pago</div></div>
             <div><div class="muted" style="font-size:12px;margin-bottom:4px">Moratorios (% anual)</div>
@@ -702,7 +702,7 @@
             <span class="muted" id="rtMsg"></span>
           </div>
           <p class="muted" style="margin:14px 0 0;font-size:12px">Los cambios aplican a compras y cobros NUEVOS. Los contratos ya firmados conservan sus términos; los productos con factor propio en Catálogos conservan el suyo (el nuevo factor de contado es el valor por defecto).</p>
-          <p class="muted" style="margin:8px 0 0;font-size:12px"><b>Tasa anual y CAT se calculan solos, por contrato</b>, con el precio de contado, el monto de interés, el plazo y la cuota de procesamiento vigente — cada contrato generado sale con sus cifras correctas (el CAT incluye la cuota de procesamiento y excluye el seguro opcional).</p>
+          <p class="muted" style="margin:8px 0 0;font-size:12px"><b>Tasa anual y CAT se calculan solos, por contrato</b>, con el precio de contado, el monto de interés, el plazo y la cuota de procesamiento vigente — cada contrato generado sale con sus cifras correctas (el CAT incluye la cuota de procesamiento y excluye la exención de responsabilidad opcional).</p>
         </div>
       </div>
       <div id="secTabContract" style="display:none">

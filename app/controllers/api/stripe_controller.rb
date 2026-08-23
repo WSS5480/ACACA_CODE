@@ -226,7 +226,7 @@ module Api
     end
 
     # Registra el pago del PI (idempotente por stripe_payment_intent_id).
-    # Solo la parte BASE se aplica a la amortizacion; el seguro va en la nota.
+    # Solo la parte BASE se aplica a la amortizacion; la exención de responsabilidad va en la nota.
     def apply_stripe_payment!(pi)
       pi_id = pi['id']
       return nil if pi_id.blank?
@@ -279,7 +279,7 @@ module Api
       base = total if base <= 0
       tax = pi.dig('metadata', 'tax_amount').to_f
       note = "Stripe #{pi_id}"
-      note += " | cargos adicionales (enganche/seguro) $#{'%.2f' % fee}" if fee > 0
+      note += " | cargos adicionales (enganche/exención) $#{'%.2f' % fee}" if fee > 0
       note += " | IVA $#{'%.2f' % tax}" if tax > 0
       note += " | total cobrado $#{'%.2f' % total}"
 

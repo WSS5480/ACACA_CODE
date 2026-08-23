@@ -105,7 +105,7 @@ class ContractDocument
       'tasa_ordinaria' => (@c.respond_to?(:annual_interest_rate) && @c.annual_interest_rate.positive? ? format('%g', @c.annual_interest_rate) : format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0))),
       'tasa_moratoria' => (Product.mora_rate.positive? ? format('%g', Product.mora_rate) : nil),
       'descuento_anticipado' => nil,
-      # CAT calculado del contrato (efectivo; incluye cuota de procesamiento, sin seguro opcional).
+      # CAT calculado del contrato (efectivo; incluye cuota de procesamiento, sin la exención de responsabilidad opcional).
       'cat' => (@c.respond_to?(:computed_cat) && @c.computed_cat.positive? ? format('%g', @c.computed_cat) : nil),
 
       'moneda_mxn' => ' ',
@@ -168,7 +168,7 @@ class ContractDocument
       note += format("\nTasa de interés ordinaria ANUAL equivalente por el plazo contratado: %g%%.", @c.annual_interest_rate)
     end
     if @c.respond_to?(:computed_cat) && @c.computed_cat.positive?
-      note += format("\nCAT: %g%% efectivo anual. Para fines informativos y de comparación. Incluye la cuota de procesamiento; no incluye el seguro opcional (exención de responsabilidad) ni IVA.", @c.computed_cat)
+      note += format("\nCAT: %g%% efectivo anual. Para fines informativos y de comparación. Incluye la cuota de procesamiento; no incluye la exención de responsabilidad opcional ni IVA.", @c.computed_cat)
     end
     note += format("\nIVA aplicado a cada pago: %g%%.", tax) if tax.positive?
     mora = Product.respond_to?(:mora_rate) ? Product.mora_rate : 0.0

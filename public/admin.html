@@ -270,8 +270,8 @@
     <section class="view hide" data-v="creditos">
       <div class="head"><h1>Créditos</h1></div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Cliente</th><th>Correo</th><th class="right">Crédito Disponible</th><th>Versión riesgo</th></tr></thead>
-        <tbody id="creBody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th class="right">Crédito Disponible</th><th>Versión riesgo</th><th class="right"></th></tr></thead>
+        <tbody id="creBody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -2443,11 +2443,15 @@ async function deleteClient(id, name){
 async function loadCredits(){
   loaded.cre=1; const list=await fetchClients();
   const withCredit=list.filter(u=>{const c=pick(u,['credit','available_credit','credit_amount'],0);return Number(c)>0;});
+  const canSet=['master','admin'].includes(MYROLE);
   $('creBody').innerHTML = withCredit.length ? withCredit.map(u=>{
     const c=pick(u,['credit','available_credit','credit_amount'],0);
+    const id=pick(u,['id'],'');
     return `<tr><td>${esc([pick(u,['name','first_name'],''),pick(u,['last_name'],'')].filter(Boolean).join(' ')||'—')}</td><td>${esc(pick(u,['email'],'—'))}</td>
-      <td class="right mono">${money(c)}</td><td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td></tr>`;
-  }).join('') : `<tr><td colspan="4" class="empty">Ningún cliente con crédito disponible todavía</td></tr>`;
+      <td class="right mono">${money(c)}</td><td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
+      <td class="right">${canSet?`<button class="cresetcredit" data-id="${esc(String(id))}" title="Cambiar la línea de crédito de este cliente" style="border:0;background:#fff3ee;color:var(--brand-d);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:13px;font-weight:700">$ Cambiar línea</button>`:''}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="empty">Ningún cliente con crédito disponible todavía</td></tr>`;
+  $('creBody').querySelectorAll('.cresetcredit').forEach(b=>b.onclick=async()=>{ await setClientCredit(b.dataset.id); loaded.cre=0; loadCredits(); });
 }
 
 /* ---------------- Contratos ---------------- */

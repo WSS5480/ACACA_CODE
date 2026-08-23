@@ -506,6 +506,8 @@
           </div>
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap">
             <label style="font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="rfAll"> Seleccionar todo</label>
+            <label style="font-size:13px;font-weight:600;cursor:pointer;color:#137333" title="Selecciona SOLO los verificados con Sold ✓ (vendidos por Amazon)"><input type="checkbox" id="rfSelSold"> Sold ✓</label>
+            <label style="font-size:13px;font-weight:600;cursor:pointer;color:#137333" title="Selecciona SOLO los verificados con Delivered ✓ (entregados por Amazon)"><input type="checkbox" id="rfSelDel"> Delivered ✓</label>
             <span class="muted" id="rfStageHint" style="font-size:12px">Paso 1: Verificar</span>
             <div class="sp" style="flex:1"></div>
             <button class="btn" id="rfImport" style="background:var(--good)" disabled>Verificar y descargar</button>
@@ -3789,7 +3791,7 @@ function renderRf(){
   RF.forEach(p=>{ if(rfVer[p.asin]) rfSetBadge(p.asin, rfVer[p.asin]); });
   // Traer del SERVIDOR las verificaciones del equipo y repintar insignias.
   rfLoadVer().then(()=>{ RF.forEach(p=>{ if(rfVer[p.asin]) rfSetBadge(p.asin, rfVer[p.asin]); }); });
-  $('rfAll').checked=false; rfUpdate();
+  $('rfAll').checked=false; if($('rfSelSold'))$('rfSelSold').checked=false; if($('rfSelDel'))$('rfSelDel').checked=false; rfUpdate();
   rfSaveRF();
 }
 // Verifica los productos mostrados que NO están ya en el catálogo. Devuelve true si quedó verificado.
@@ -3997,7 +3999,25 @@ async function rfSearch(){
   renderRf();
 }
 $('rfBest').onchange=()=>rfApplyBestMode($('rfBest').checked);
-$('rfAll').onchange=()=>{ document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=$('rfAll').checked; }); rfUpdate(); };
+$('rfAll').onchange=()=>{ if($('rfSelSold'))$('rfSelSold').checked=false; if($('rfSelDel'))$('rfSelDel').checked=false; document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=$('rfAll').checked; }); rfUpdate(); };
+// SELECCIÓN POR VEREDICTO: Sold ✓ y/o Delivered ✓ (intersección si ambas).
+// Solo aplica a productos ya verificados; los "?" quedan sin seleccionar.
+function rfSelByVerdict(){
+  const wantSold=$('rfSelSold')&&$('rfSelSold').checked, wantDel=$('rfSelDel')&&$('rfSelDel').checked;
+  if(!wantSold&&!wantDel){ rfUpdate(); return; }
+  $('rfAll').checked=false;
+  let n=0;
+  document.querySelectorAll('.rfChk').forEach(cb=>{
+    if(cb.disabled){ cb.checked=false; return; }
+    const v=rfVer[cb.dataset.asin];
+    const ok=v&&!v.error&&(!wantSold||v.sold===true)&&(!wantDel||v.delivered===true);
+    cb.checked=!!ok; if(ok) n++;
+  });
+  $('rfMsg').textContent='Seleccionados '+n+' producto(s) con '+[wantSold?'Sold ✓':null,wantDel?'Delivered ✓':null].filter(Boolean).join(' y ')+'. Los "?" (sin verificar) no se seleccionan.';
+  rfUpdate();
+}
+if($('rfSelSold')) $('rfSelSold').onchange=rfSelByVerdict;
+if($('rfSelDel')) $('rfSelDel').onchange=rfSelByVerdict;
 $('rfDoSearch').onclick=rfDoSearch; $('rfImport').onclick=rfImport;
 $('rfClear').onclick=rfClear;
 $('rfSCat').onchange=rfFillSubs;

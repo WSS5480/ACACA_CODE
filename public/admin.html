@@ -4939,7 +4939,7 @@ function acPrintWin(title,inner,wide){
   setTimeout(()=>{try{w.print();}catch(e){}},350);
 }
 const AC_KLBL={enganche:'Pago inicial (enganche)',renta:'Pago',contado:'Pago de contado',liquidacion:'Liquidación',epo:'Compra anticipada',reembolso:'Reembolso',contracargo:'Contracargo',ajuste:'Ajuste contable'};
-function acBrand(){return `<div style="text-align:center;margin-bottom:10px"><div style="color:#FF6B35;font-weight:800;font-size:26px">ácasa</div><div style="color:#666;font-size:12px">www.acasamx.com · clientes@acasamx.com</div></div>`;}
+function acBrand(){return `<div style="text-align:center;margin-bottom:10px"><img src="/acasa_logo_mail.png" alt="acasa" style="height:46px;max-width:220px;object-fit:contain"><div style="color:#666;font-size:12px;margin-top:4px">www.acasamx.com · clientes@acasamx.com</div></div>`;}
 function acReceiptHtml(e){
   const mov=['reembolso','contracargo','ajuste'].includes(e.kind);
   const folio=(mov?'MOV-':'REC-')+(e.id);

@@ -282,6 +282,7 @@
         <input type="date" id="acTo" class="sel" style="padding:7px 10px">
         <button class="btn" id="acReload" style="background:var(--brand)">Actualizar</button>
         <button class="btn" id="acCsv" style="background:#eef0f6;color:var(--navy)">⬇ CSV</button>
+        <button class="btn" id="acPrint" style="background:#eef0f6;color:var(--navy)">🖨 Imprimir</button>
       </div>
 
       <div class="cards" id="acCards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
@@ -303,7 +304,7 @@
           <table><thead><tr>
             <th>Fecha</th><th>Categoría</th><th>Contrato</th><th>Cliente</th><th>Método</th>
             <th class="right">Base</th><th class="right">IVA</th><th class="right">Exención</th>
-            <th class="right">Comisión</th><th class="right">Total</th><th>Referencia</th>
+            <th class="right">Comisión</th><th class="right">Total</th><th>Referencia</th><th></th>
           </tr></thead><tbody id="acBody"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
@@ -4776,6 +4777,7 @@ async function loadConta(){
     $('acPeriod').onchange=()=>{acRangeSet($('acPeriod').value); if($('acPeriod').value!=='rango') loadConta();};
     $('acReload').onclick=()=>loadConta();
     $('acCsv').onclick=acExportCsv;
+    $('acPrint').onclick=acPrintRegister;
     $('acKinds').querySelectorAll('button').forEach(b=>b.onclick=()=>{AC.kind=b.dataset.k;$('acKinds').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));acRenderTable();});
     $('axDate').value=acISO(new Date());
     $('axAdd').onclick=acAddExpense;
@@ -4830,13 +4832,18 @@ function acRenderTable(){
       <td class="right">${e.stripe_fee?acM(-Math.abs(e.stripe_fee)):'—'}</td>
       <td class="right" style="font-weight:700">${acM(e.amount)}</td>
       <td class="muted" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.reference||'')} ${esc(e.description||'')}">${esc(e.reference||'')}</td>
+      <td><button class="acPr" data-id="${e.id}" title="Imprimir recibo" style="border:1px solid var(--brand);color:var(--brand);background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🖨</button></td>
     </tr>`;}).join('')+(function(){
       const t=rows.reduce((a,e)=>({b:a.b+(e.base_amount||0),i:a.i+(e.iva_amount||0),x:a.x+(e.extra_amount||0),f:a.f+(e.stripe_fee||0),m:a.m+(e.amount||0)}),{b:0,i:0,x:0,f:0,m:0});
       return `<tr style="font-weight:800;background:#fff7ed;border-top:2px solid #FF6B35">
         <td colspan="5">TOTAL DEL RANGO (neto)</td>
         <td class="right">${acM(t.b)}</td><td class="right">${acM(t.i)}</td><td class="right">${t.x?acM(t.x):'—'}</td>
-        <td class="right">${t.f?acM(-Math.abs(t.f)):'—'}</td><td class="right">${acM(t.m)}</td><td></td></tr>`;
-    })():'<tr><td colspan="11" class="empty">Sin movimientos en el rango.</td></tr>';
+        <td class="right">${t.f?acM(-Math.abs(t.f)):'—'}</td><td class="right">${acM(t.m)}</td><td colspan="2"></td></tr>`;
+    })():'<tr><td colspan="12" class="empty">Sin movimientos en el rango.</td></tr>';
+  $('acBody').querySelectorAll('.acPr').forEach(b=>b.onclick=()=>{
+    const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
+    if(e) acPrintWin(`Recibo`,acReceiptHtml(e),false);
+  });
 }
 function acRenderPnl(){
   const s=AC.summary; if(!s){$('acPnl').textContent='—';return;}
@@ -4922,6 +4929,70 @@ async function acSendPkg(){
   $('acEmailMsg').textContent='Enviando…';
   const r=await api('POST','/api/accounting/send_package',{});
   $('acEmailMsg').textContent=r.ok?`✓ Enviado a ${r.data.sent_to}`:((r.data&&r.data.error)||'No se pudo enviar');
+}
+/* Impresión: recibo individual por movimiento y registro completo del rango. */
+function acPrintWin(title,inner,wide){
+  const w=window.open('','_blank',`width=${wide?900:480},height=720`);
+  if(!w){alert('Permite las ventanas emergentes para imprimir.');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px}@media print{body{margin:8px}}table{border-collapse:collapse}</style></head><body>${inner}</body></html>`);
+  w.document.close();w.focus();
+  setTimeout(()=>{try{w.print();}catch(e){}},350);
+}
+const AC_KLBL={enganche:'Pago inicial (enganche)',renta:'Pago',contado:'Pago de contado',liquidacion:'Liquidación',epo:'Compra anticipada',reembolso:'Reembolso',contracargo:'Contracargo',ajuste:'Ajuste contable'};
+function acBrand(){return `<div style="text-align:center;margin-bottom:10px"><div style="color:#FF6B35;font-weight:800;font-size:26px">ácasa</div><div style="color:#666;font-size:12px">www.acasamx.com · clientes@acasamx.com</div></div>`;}
+function acReceiptHtml(e){
+  const mov=['reembolso','contracargo','ajuste'].includes(e.kind);
+  const folio=(mov?'MOV-':'REC-')+(e.id);
+  const row=(l,v,b)=>`<tr><td style="padding:4px 0;${b?'font-weight:800':''}">${l}</td><td style="text-align:right;padding:4px 0;${b?'font-weight:800':''}">${v}</td></tr>`;
+  const money=v=>{const n=Number(v)||0;return (n<0?'−$':'$')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  const dt=e.happened_at?new Date(e.happened_at).toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):e.entry_date;
+  return `<div style="max-width:360px;margin:0 auto">${acBrand()}
+    <div style="text-align:center;font-weight:800;font-size:15px;border-top:2px solid #FF6B35;border-bottom:2px solid #FF6B35;padding:6px 0;margin-bottom:10px">${mov?'COMPROBANTE DE MOVIMIENTO':'RECIBO DE PAGO'} · Folio ${folio}</div>
+    <table style="width:100%;font-size:13px">
+      ${row('Fecha',dt)}
+      ${row('Cliente',esc(e.client_name||'—'))}
+      ${row('Contrato',esc(e.contract_label||'—'))}
+      ${row('Concepto',AC_KLBL[e.kind]||e.kind)}
+      ${row('Método',(e.method==='stripe'||e.method==='autopay')?'Tarjeta (Stripe)':esc(e.method||'—'))}
+      ${e.reference?row('Referencia',`<span style="font-size:10px">${esc(e.reference)}</span>`):''}
+    </table>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0">
+    <table style="width:100%;font-size:13px">
+      ${row('Abono al contrato',money(e.base_amount))}
+      ${Number(e.extra_amount)?row('Enganche / exención',money(e.extra_amount)):''}
+      ${Number(e.iva_amount)?row('IVA',money(e.iva_amount)):''}
+      ${row(mov?'TOTAL DEL MOVIMIENTO':'TOTAL PAGADO',money(e.amount),true)}
+    </table>
+    <p style="text-align:center;font-size:11px;color:#666;margin-top:14px">${mov?'Comprobante interno de contabilidad.':'Gracias por su pago. Este recibo es su comprobante.'}<br>WhatsApp +52 81 1824 7975</p>
+  </div>`;
+}
+function acPrintRegister(){
+  const rows=(AC.kind?AC.entries.filter(e=>e.kind===AC.kind):AC.entries);
+  const money=v=>{const n=Number(v)||0;return (n<0?'−$':'$')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  const td='padding:4px 7px;border-bottom:1px solid #ddd;font-size:11.5px';
+  const t=rows.reduce((a,e)=>({b:a.b+(e.base_amount||0),i:a.i+(e.iva_amount||0),x:a.x+(e.extra_amount||0),f:a.f+(e.stripe_fee||0),m:a.m+(e.amount||0)}),{b:0,i:0,x:0,f:0,m:0});
+  const body=rows.map(e=>`<tr>
+    <td style="${td}">${esc(e.entry_date||'')}</td><td style="${td}">${(AC_KLBL[e.kind]||e.kind)}</td>
+    <td style="${td}">${esc(e.contract_label||'—')}</td><td style="${td}">${esc(e.client_name||'—')}</td>
+    <td style="${td}">${esc(e.method||'—')}</td>
+    <td style="${td};text-align:right">${money(e.base_amount)}</td><td style="${td};text-align:right">${money(e.iva_amount)}</td>
+    <td style="${td};text-align:right">${Number(e.extra_amount)?money(e.extra_amount):'—'}</td>
+    <td style="${td};text-align:right">${Number(e.stripe_fee)?money(-Math.abs(e.stripe_fee)):'—'}</td>
+    <td style="${td};text-align:right;font-weight:700">${money(e.amount)}</td>
+    <td style="${td};font-size:9.5px;color:#666">${esc(e.reference||'')}</td></tr>`).join('');
+  const inner=`<div>${acBrand()}
+    <div style="text-align:center;font-weight:800;font-size:15px;border-top:2px solid #FF6B35;border-bottom:2px solid #FF6B35;padding:6px 0;margin-bottom:10px">REGISTRO DE TRANSACCIONES · ${$('acFrom').value} a ${$('acTo').value}${AC.kind?' · '+(AC_KLBL[AC.kind]||AC.kind):''}</div>
+    <table style="width:100%"><thead><tr style="text-align:left;color:#666;font-size:10px;text-transform:uppercase">
+      <th style="${td}">Fecha</th><th style="${td}">Concepto</th><th style="${td}">Contrato</th><th style="${td}">Cliente</th><th style="${td}">Método</th>
+      <th style="${td};text-align:right">Base</th><th style="${td};text-align:right">IVA</th><th style="${td};text-align:right">Exención</th>
+      <th style="${td};text-align:right">Comisión</th><th style="${td};text-align:right">Total</th><th style="${td}">Ref.</th></tr></thead>
+    <tbody>${body}
+      <tr style="font-weight:800;background:#fff7ed"><td style="${td}" colspan="5">TOTAL (${rows.length} movimientos)</td>
+      <td style="${td};text-align:right">${money(t.b)}</td><td style="${td};text-align:right">${money(t.i)}</td>
+      <td style="${td};text-align:right">${t.x?money(t.x):'—'}</td><td style="${td};text-align:right">${t.f?money(-Math.abs(t.f)):'—'}</td>
+      <td style="${td};text-align:right">${money(t.m)}</td><td style="${td}"></td></tr></tbody></table>
+    <p style="font-size:10px;color:#666;margin-top:10px">Impreso ${new Date().toLocaleString('es-MX')} · acasa admin</p></div>`;
+  acPrintWin('Registro de transacciones',inner,true);
 }
 function acExportCsv(){
   const rows=(AC.kind?AC.entries.filter(e=>e.kind===AC.kind):AC.entries);

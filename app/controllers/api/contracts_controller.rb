@@ -67,6 +67,22 @@ module Api
                             else
                               contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
                             end
+      # HISTORIAL DE PAGOS con folio para REIMPRIMIR RECIBO (incluye el pago
+      # inicial). balance_after = saldo del financiado después de cada abono.
+      running = 0.0
+      fin_total = contract.financed_amount.to_f
+      data[:payments] = contract.payments.order(:paid_at, :id).map do |p|
+        running = (running + p.amount.to_f).round(2)
+        { id: p.id, paid_at: p.paid_at,
+          amount: p.amount.to_f.round(2),
+          kind: (p.try(:kind).presence || 'renta'),
+          iva_amount: p.try(:iva_amount).to_f.round(2),
+          extra_amount: p.try(:extra_amount).to_f.round(2),
+          total_charged: (p.try(:total_charged).to_f.positive? ? p.total_charged.to_f : p.amount.to_f).round(2),
+          method: p.method,
+          reference: (p.respond_to?(:stripe_payment_intent_id) ? p.stripe_payment_intent_id : nil),
+          balance_after: [(fin_total - running).round(2), 0].max }
+      end
       data[:document] = document_payload(contract)
       # Expediente de la compra: TODO lo que el cliente capturó (comprador, referencias,
       # beneficiario, aval y sus documentos). Visible para el dueño y para el staff.

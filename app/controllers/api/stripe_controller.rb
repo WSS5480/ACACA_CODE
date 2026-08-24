@@ -229,6 +229,26 @@ module Api
       customer['id']
     end
 
+    # COMISIÓN de Stripe del cargo (para conciliar contra el depósito bancario):
+    # se consulta la balance transaction del cargo. Nunca bloquea el pago.
+    def stripe_fee_for(pi)
+      ch_id = pi['latest_charge']
+      ch_id = ch_id['id'] if ch_id.is_a?(Hash)
+      return nil if ch_id.blank?
+
+      ch = StripeClient.request(:get, "/v1/charges/#{ch_id}")
+      bt_id = ch['balance_transaction']
+      bt_id = bt_id['id'] if bt_id.is_a?(Hash)
+      return nil if bt_id.blank?
+
+      bt = StripeClient.request(:get, "/v1/balance_transactions/#{bt_id}")
+      fee = bt['fee'].to_i
+      fee.positive? ? (fee / 100.0).round(2) : nil
+    rescue StandardError => e
+      Rails.logger.warn "stripe_fee_for #{pi['id']}: #{e.message}"
+      nil
+    end
+
     # Registra el pago del PI (idempotente por stripe_payment_intent_id).
     # Solo la parte BASE se aplica a la amortizacion; la exención de responsabilidad va en la nota.
     def apply_stripe_payment!(pi)
@@ -252,6 +272,10 @@ module Api
         end
         first_payment = nil
         total = (pi['amount'].to_i / 100.0).round(2)
+        base_sum = allocs.sum { |al| al['a'].to_f }.round(2)
+        tax_total = pi.dig('metadata', 'tax_amount').to_f
+        tax_total = (total - base_sum).round(2) if tax_total <= 0 && total > base_sum
+        fee_total = stripe_fee_for(pi)
         allocs.each do |al|
           c = Contract.find_by(id: al['c'])
           next unless c
@@ -262,6 +286,13 @@ module Api
           pmt = c.payments.new(amount: amt, method: 'stripe',
                                note: "Stripe #{pi_id} | pago combinado (total cobrado $#{'%.2f' % total})",
                                stripe_payment_intent_id: "#{pi_id}-c#{c.id}")
+          # Desglose contable proporcional (IVA y comisión Stripe repartidos por peso del renglón).
+          if Payment.column_names.include?('iva_amount')
+            share = base_sum.positive? ? (amt / base_sum) : 0
+            pmt.iva_amount = (tax_total * share).round(2)
+            pmt.total_charged = (amt + pmt.iva_amount.to_f).round(2)
+            pmt.stripe_fee = (fee_total * share).round(2) if fee_total
+          end
           pmt.save!
           first_payment ||= pmt
           actor = (defined?(@current_user) && @current_user) || c.user
@@ -288,6 +319,13 @@ module Api
       note += " | total cobrado $#{'%.2f' % total}"
 
       pmt = contract.payments.new(amount: base, method: 'stripe', note: note, stripe_payment_intent_id: pi_id)
+      # Desglose contable: IVA, exención y total cobrado quedan en columnas (no solo en la nota).
+      if Payment.column_names.include?('iva_amount')
+        pmt.iva_amount = tax.round(2)
+        pmt.extra_amount = fee.round(2)
+        pmt.total_charged = total
+        pmt.stripe_fee = stripe_fee_for(pi)
+      end
       # 'saldo' = el excedente paga principal (acorta plazo y ahorra el cargo financiero).
       pmt.apply_mode = pi.dig('metadata', 'apply_to').to_s
       pmt.save!

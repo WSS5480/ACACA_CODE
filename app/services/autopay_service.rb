@@ -56,7 +56,14 @@ class AutopayService
       unless Payment.exists?(stripe_payment_intent_id: pi['id'])
         note = "Autopay Stripe #{pi['id']}"
         note += " | exención de responsabilidad $#{'%.2f' % fee}" if fee > 0
-        contract.payments.create!(amount: due, method: 'autopay', note: note, stripe_payment_intent_id: pi['id'])
+        attrs = { amount: due, method: 'autopay', note: note, stripe_payment_intent_id: pi['id'] }
+        # Desglose contable (autopay no cobra IVA hoy: base + exención).
+        if Payment.column_names.include?('extra_amount')
+          attrs[:extra_amount] = fee
+          attrs[:total_charged] = (due + fee).round(2)
+          attrs[:stripe_fee] = stripe_fee_for(pi)
+        end
+        contract.payments.create!(attrs)
       end
       contract.update_column(:autopay_last_error, nil)
       :charged
@@ -71,5 +78,23 @@ class AutopayService
   rescue StandardError => e
     Rails.logger.error "[Autopay] contrato #{contract.id}: #{e.class} #{e.message}"
     :failed
+  end
+
+  # Comisión de Stripe del cargo (misma consulta que en StripeController). Nunca bloquea.
+  def self.stripe_fee_for(pi)
+    ch_id = pi['latest_charge']
+    ch_id = ch_id['id'] if ch_id.is_a?(Hash)
+    return nil if ch_id.blank?
+
+    ch = StripeClient.request(:get, "/v1/charges/#{ch_id}")
+    bt_id = ch['balance_transaction']
+    bt_id = bt_id['id'] if bt_id.is_a?(Hash)
+    return nil if bt_id.blank?
+
+    bt = StripeClient.request(:get, "/v1/balance_transactions/#{bt_id}")
+    fee = bt['fee'].to_i
+    fee.positive? ? (fee / 100.0).round(2) : nil
+  rescue StandardError
+    nil
   end
 end

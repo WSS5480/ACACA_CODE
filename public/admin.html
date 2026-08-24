@@ -151,6 +151,7 @@
       <div class="sep"></div>
       <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Marketing</a>
       <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
+      <a data-view="conta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Contabilidad</a>
       <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
       <a data-view="waresp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Respuestas WhatsApp</a>
       <a data-view="soporte"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg> Soporte</a>
@@ -265,6 +266,126 @@
         <div id="gwContact" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
       <div id="gwBody"><p class="empty">Cargando…</p></div>
+    </section>
+
+    <!-- ---------- CONTABILIDAD ---------- -->
+    <section class="view hide" data-v="conta">
+      <div class="head"><h1>Contabilidad</h1><div class="sp"></div>
+        <select class="sel" id="acPeriod">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="anio">Este año</option>
+          <option value="rango">Rango…</option>
+        </select>
+        <input type="date" id="acFrom" class="sel" style="padding:7px 10px">
+        <input type="date" id="acTo" class="sel" style="padding:7px 10px">
+        <button class="btn" id="acReload" style="background:var(--brand)">Actualizar</button>
+        <button class="btn" id="acCsv" style="background:#eef0f6;color:var(--navy)">⬇ CSV</button>
+      </div>
+
+      <div class="cards" id="acCards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
+
+      <div class="sec">
+        <div class="stitle">Registro de transacciones <span class="muted" id="acCount" style="font-weight:400;font-size:12px"></span></div>
+        <div class="tabs" id="acKinds">
+          <button data-k="" class="on">Todo</button>
+          <button data-k="enganche">Enganches</button>
+          <button data-k="renta">Renta</button>
+          <button data-k="contado">Contado</button>
+          <button data-k="liquidacion">Liquidación</button>
+          <button data-k="epo">EPO</button>
+          <button data-k="reembolso">Reembolsos</button>
+          <button data-k="contracargo">Contracargos</button>
+          <button data-k="ajuste">Ajustes</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>Fecha</th><th>Categoría</th><th>Contrato</th><th>Cliente</th><th>Método</th>
+            <th class="right">Base</th><th class="right">IVA</th><th class="right">Exención</th>
+            <th class="right">Comisión</th><th class="right">Total</th><th>Referencia</th>
+          </tr></thead><tbody id="acBody"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">Estado de resultados (P&amp;L) del rango</div>
+        <div id="acPnl" class="muted" style="font-size:13px">Cargando…</div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">Gastos</div>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <input type="date" id="axDate" class="sel" style="padding:7px 10px">
+          <select id="axCat" class="sel">
+            <option value="producto">Producto (costo Amazon)</option>
+            <option value="envio">Envío / entrega</option>
+            <option value="comisiones">Comisiones (Stripe/Rainforest/etc.)</option>
+            <option value="publicidad">Publicidad</option>
+            <option value="nomina">Nómina</option>
+            <option value="software">Software / servicios</option>
+            <option value="incobrable">Incobrable</option>
+            <option value="otro">Otro</option>
+          </select>
+          <input id="axAmt" class="sel" type="number" step="0.01" placeholder="Monto $" style="width:110px;padding:7px 10px">
+          <input id="axVendor" class="sel" placeholder="Proveedor" style="width:140px;padding:7px 10px">
+          <input id="axDesc" class="sel" placeholder="Descripción" style="flex:1;min-width:160px;padding:7px 10px">
+          <input id="axContract" class="sel" type="number" placeholder="Contrato # (opcional)" title="Liga el gasto a un contrato (para margen por contrato)" style="width:150px;padding:7px 10px">
+          <button class="btn" id="axAdd" style="background:var(--brand)">+ Agregar gasto</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Contrato</th><th class="right">Monto</th><th></th>
+          </tr></thead><tbody id="axBody"><tr><td colspan="7" class="empty">—</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">Movimiento manual (reembolso en efectivo, contracargo, ajuste)</div>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <select id="amKind" class="sel">
+            <option value="reembolso">Reembolso manual</option>
+            <option value="contracargo">Contracargo (disputa)</option>
+            <option value="ajuste">Ajuste (+/−)</option>
+          </select>
+          <input id="amAmt" class="sel" type="number" step="0.01" placeholder="Monto $ (con IVA)" style="width:140px;padding:7px 10px">
+          <input id="amIva" class="sel" type="number" step="0.01" placeholder="IVA incluido $" style="width:130px;padding:7px 10px">
+          <input id="amFee" class="sel" type="number" step="0.01" placeholder="Cuota disputa $" title="Solo contracargos: la cuota que cobra Stripe por la disputa (se registra como gasto)" style="width:130px;padding:7px 10px">
+          <input id="amContract" class="sel" type="number" placeholder="Contrato #" style="width:110px;padding:7px 10px">
+          <input id="amRef" class="sel" placeholder="Referencia" style="width:140px;padding:7px 10px">
+          <input id="amDesc" class="sel" placeholder="Descripción" style="flex:1;min-width:140px;padding:7px 10px">
+          <button class="btn" id="amAdd" style="background:#c62828">Registrar</button>
+        </div>
+        <div class="muted" style="font-size:11.5px">Reembolsos con tarjeta se registran solos al borrar una orden con reembolso. Aquí se capturan los devueltos en efectivo, los contracargos que notifica Stripe y ajustes contables.</div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">Cortes contables</div>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <input type="date" id="acCloseDate" class="sel" style="padding:7px 10px">
+          <button class="btn" id="acRunDaily" style="background:var(--navy)">🌙 Correr corte diario</button>
+          <input type="month" id="acCloseMonth" class="sel" style="padding:7px 10px">
+          <button class="btn" id="acRunMonthly" style="background:var(--navy)">📅 Correr corte mensual</button>
+          <span class="muted" style="font-size:11.5px">Corren solos: el diario poco después de medianoche y el mensual el día 1 (Monterrey). Un corte cerrado es inmutable.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="overflow-x:auto"><div class="muted" style="font-size:12px;font-weight:700;margin:4px 0">Diarios</div>
+            <table><thead><tr><th>Día</th><th class="right">Depósito neto</th><th class="right">Movs.</th><th>Corrió</th></tr></thead><tbody id="acDailyBody"><tr><td colspan="4" class="empty">—</td></tr></tbody></table></div>
+          <div style="overflow-x:auto"><div class="muted" style="font-size:12px;font-weight:700;margin:4px 0">Mensuales</div>
+            <table><thead><tr><th>Mes</th><th class="right">Depósito neto</th><th class="right">Utilidad</th><th>Cuadre diario</th></tr></thead><tbody id="acMonthlyBody"><tr><td colspan="4" class="empty">—</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">Contador (paquete mensual)</div>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <input id="acEmail" class="sel" type="email" placeholder="correo@contador.com" style="width:240px;padding:7px 10px">
+          <button class="btn" id="acEmailSave" style="background:var(--brand)">Guardar</button>
+          <button class="btn" id="acSendPkg" style="background:#eef0f6;color:var(--navy)">📧 Enviar paquete del mes pasado ahora</button>
+          <span class="muted" id="acEmailMsg" style="font-size:12px"></span>
+        </div>
+        <div class="muted" style="font-size:11.5px">Con el correo configurado, al cerrar cada mes se envían solos 3 CSV: registro de transacciones, gastos y estado de resultados.</div>
+      </div>
     </section>
 
     <section class="view hide" data-v="creditos">
@@ -964,6 +1085,7 @@ function show(view){
   if(view==='dashboard'){ loadDash(); loadOrders('dashboard'); }
   if(view==='clientes' && !loaded.cli){ loadClients(); }
   if(view==='creditos' && !loaded.cre){ loadCredits(); }
+  if(view==='conta'){ loadConta(); }
   if(view==='ordenes' && !loaded.ord){ loadOrders('all'); loaded.ord=1; }
   if(view==='crm'){ loadCrm(); }
   if(view==='whatsapp'){ loadWaInbox(); }
@@ -4623,6 +4745,156 @@ async function newContractForm(){
   ncRenderCart();
 }
 if($('conNewBtn')) $('conNewBtn').onclick=()=>{ show('contratos'); newContractForm(); };
+
+/* ---------------- CONTABILIDAD ---------------- */
+const AC_K={enganche:['ENGANCHE','#FF6B35'],renta:['RENTA','#2563eb'],contado:['CONTADO','#1a9e56'],liquidacion:['LIQUIDACIÓN','#7c3aed'],epo:['EPO','#0d9488'],reembolso:['REEMBOLSO','#c62828'],contracargo:['CONTRACARGO','#b91c1c'],ajuste:['AJUSTE','#6b7280']};
+let AC={entries:[],summary:null,expenses:[],kind:'',inited:false};
+function acChip(k){const m=AC_K[k]||[k,'#6b7280'];return `<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;color:#fff;background:${m[1]}">${m[0]}</span>`;}
+function acM(v){const n=Number(v)||0;const s='$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return n<0?`<span style="color:#c62828;font-weight:700">−${s}</span>`:s;}
+function acISO(d){return d.toISOString().slice(0,10);}
+function acRangeSet(p){
+  const now=new Date(); let f=new Date(now), t=new Date(now);
+  if(p==='semana'){const dow=(now.getDay()+6)%7; f.setDate(now.getDate()-dow);}          // lunes
+  else if(p==='mes'){f=new Date(now.getFullYear(),now.getMonth(),1);}
+  else if(p==='anio'){f=new Date(now.getFullYear(),0,1);}
+  if(p!=='rango'){$('acFrom').value=acISO(f);$('acTo').value=acISO(t);}
+}
+async function loadConta(){
+  if(!AC.inited){
+    AC.inited=true;
+    acRangeSet('mes');
+    const y=new Date();y.setDate(y.getDate()-1);$('acCloseDate').value=acISO(y);
+    const pm=new Date();pm.setMonth(pm.getMonth()-1);$('acCloseMonth').value=pm.toISOString().slice(0,7);
+    $('acPeriod').onchange=()=>{acRangeSet($('acPeriod').value); if($('acPeriod').value!=='rango') loadConta();};
+    $('acReload').onclick=()=>loadConta();
+    $('acCsv').onclick=acExportCsv;
+    $('acKinds').querySelectorAll('button').forEach(b=>b.onclick=()=>{AC.kind=b.dataset.k;$('acKinds').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));acRenderTable();});
+    $('axDate').value=acISO(new Date());
+    $('axAdd').onclick=acAddExpense;
+    $('amAdd').onclick=acAddEntry;
+    $('acRunDaily').onclick=()=>acRunClose('daily',$('acCloseDate').value);
+    $('acRunMonthly').onclick=()=>acRunClose('monthly',($('acCloseMonth').value||'')+'-01');
+    $('acEmailSave').onclick=acSaveEmail;
+    $('acSendPkg').onclick=acSendPkg;
+    api('GET','/api/accounting/settings').then(r=>{if(r.ok&&r.data)$('acEmail').value=r.data.accounting_email||'';});
+  }
+  const q=`from=${$('acFrom').value}&to=${$('acTo').value}`;
+  const [r,rx]=await Promise.all([api('GET',`/api/accounting/register?${q}`),api('GET',`/api/accounting/expenses?${q}`)]);
+  if(r.ok&&r.data){AC.entries=r.data.entries||[];AC.summary=r.data.summary||null;}
+  if(rx.ok&&rx.data){AC.expenses=rx.data.expenses||[];}
+  acRenderCards();acRenderTable();acRenderPnl();acRenderExpenses();loadCloses();
+}
+function acRenderCards(){
+  const s=AC.summary; if(!s){$('acCards').innerHTML='';return;}
+  const k=s.kinds||{};
+  const card=(lbl,val,sub,color)=>`<div class="stat" style="border-top:3px solid ${color}"><div class="l">${lbl}</div><div class="n" style="font-size:18px">${val}</div><div class="muted" style="font-size:11px">${sub||''}</div></div>`;
+  const g=x=>k[x]||{count:0,total:0};
+  $('acCards').innerHTML=
+    card('Renta',acM(g('renta').total),g('renta').count+' pagos','#2563eb')+
+    card('Enganches',acM(g('enganche').total),g('enganche').count+' pagos','#FF6B35')+
+    card('Contado',acM(g('contado').total),g('contado').count+' ventas','#1a9e56')+
+    card('Liquidaciones',acM(g('liquidacion').total),g('liquidacion').count+' pagos','#7c3aed')+
+    card('EPO',g('epo').count?acM(g('epo').total):'—',g('epo').count?g('epo').count+' pagos':'próximamente','#0d9488')+
+    card('Reemb. + Contrac.',acM((g('reembolso').total||0)+(g('contracargo').total||0)),(g('reembolso').count+g('contracargo').count)+' movs.','#c62828')+
+    card('IVA neto',acM(s.iva_net),'incluido en totales','#6b7280')+
+    card('Depósito neto',acM(s.deposit_net),s.entry_count+' movimientos','#0f172a');
+}
+function acRenderTable(){
+  const rows=(AC.kind?AC.entries.filter(e=>e.kind===AC.kind):AC.entries);
+  $('acCount').textContent=`(${rows.length})`;
+  $('acBody').innerHTML=rows.length?rows.map(e=>{
+    const dt=e.happened_at?new Date(e.happened_at):null;
+    const hh=dt?dt.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
+    return `<tr>
+      <td>${esc(e.entry_date||'')} <span class="muted" style="font-size:11px">${hh}</span></td>
+      <td>${acChip(e.kind)}</td>
+      <td>${esc(e.contract_label||'—')}</td>
+      <td>${esc(e.client_name||'—')}</td>
+      <td>${esc(e.method||'—')}</td>
+      <td class="right">${acM(e.base_amount)}</td>
+      <td class="right">${acM(e.iva_amount)}</td>
+      <td class="right">${e.extra_amount?acM(e.extra_amount):'—'}</td>
+      <td class="right">${e.stripe_fee?acM(-Math.abs(e.stripe_fee)):'—'}</td>
+      <td class="right" style="font-weight:700">${acM(e.amount)}</td>
+      <td class="muted" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.reference||'')} ${esc(e.description||'')}">${esc(e.reference||'')}</td>
+    </tr>`;}).join(''):'<tr><td colspan="11" class="empty">Sin movimientos en el rango.</td></tr>';
+}
+function acRenderPnl(){
+  const s=AC.summary; if(!s){$('acPnl').textContent='—';return;}
+  const k=s.kinds||{}; const line=(lbl,val,bold,indent)=>`<div style="display:flex;justify-content:space-between;max-width:520px;padding:3px 0;${bold?'font-weight:800;border-top:2px solid var(--line);margin-top:4px':''};${indent?'padding-left:14px':''}"><span>${lbl}</span><span>${acM(val)}</span></div>`;
+  let h='';
+  const inc=['enganche','renta','contado','liquidacion','epo'];
+  inc.forEach(x=>{const g=k[x]||{base:0,extra:0};const v=(g.base||0)+(g.extra||0); if(v||x!=='epo') h+=line((AC_K[x]||[x])[0].toLowerCase().replace(/^./,c=>c.toUpperCase())+' (sin IVA)',v,false,true);});
+  ['reembolso','contracargo'].forEach(x=>{const g=k[x]||{base:0,extra:0};const v=(g.base||0)+(g.extra||0); if(v) h+=line((AC_K[x]||[x])[0].toLowerCase().replace(/^./,c=>c.toUpperCase()),v,false,true);});
+  if(s.adjust_total) h+=line('Ajustes',s.adjust_total,false,true);
+  h+=line('Ingreso neto (sin IVA)',s.revenue_net,true);
+  if(s.stripe_fees) h+=line('Comisiones Stripe',-Math.abs(s.stripe_fees),false,true);
+  Object.entries(s.expenses||{}).forEach(([cat,amt])=>{h+=line('Gasto · '+cat,-amt,false,true);});
+  h+=line('Utilidad neta',s.net_profit,true);
+  h+=`<div class="muted" style="font-size:11.5px;margin-top:8px">IVA neto cobrado (pasivo, no es ingreso): <b>${acM(s.iva_net)}</b> · Depósito neto del rango (con IVA): <b>${acM(s.deposit_net)}</b></div>`;
+  $('acPnl').innerHTML=h;
+}
+function acRenderExpenses(){
+  $('axBody').innerHTML=AC.expenses.length?AC.expenses.map(e=>`<tr>
+    <td>${esc(e.expense_date)}</td><td>${esc(e.category)}</td><td>${esc(e.description||'—')}</td>
+    <td>${esc(e.vendor||'—')}</td><td>${e.contract_id||'—'}</td><td class="right">${acM(e.amount)}</td>
+    <td><button class="axDel" data-id="${e.id}" title="Eliminar (solo master)" style="border:0;background:none;cursor:pointer;color:#c62828">✕</button></td>
+  </tr>`).join(''):'<tr><td colspan="7" class="empty">Sin gastos en el rango.</td></tr>';
+  $('axBody').querySelectorAll('.axDel').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este gasto? Queda en la bitácora.'))return;
+    const r=await api('DELETE',`/api/accounting/expenses/${b.dataset.id}`);
+    if(r.ok)loadConta(); else alert((r.data&&r.data.error)||'No se pudo eliminar');
+  });
+}
+async function acAddExpense(){
+  const amt=parseFloat($('axAmt').value);
+  if(!amt){alert('Captura el monto');return;}
+  const r=await api('POST','/api/accounting/expenses',{expense_date:$('axDate').value,category:$('axCat').value,amount:amt,vendor:$('axVendor').value.trim(),description:$('axDesc').value.trim(),contract_id:$('axContract').value||null});
+  if(r.ok){$('axAmt').value='';$('axDesc').value='';$('axVendor').value='';$('axContract').value='';loadConta();}
+  else alert((r.data&&r.data.error)||'No se pudo guardar');
+}
+async function acAddEntry(){
+  const amt=parseFloat($('amAmt').value);
+  if(!amt){alert('Captura el monto');return;}
+  const body={kind:$('amKind').value,amount:amt,iva_amount:parseFloat($('amIva').value)||0,dispute_fee:parseFloat($('amFee').value)||0,contract_id:$('amContract').value||null,reference:$('amRef').value.trim(),description:$('amDesc').value.trim()};
+  const r=await api('POST','/api/accounting/entry',body);
+  if(r.ok){['amAmt','amIva','amFee','amContract','amRef','amDesc'].forEach(i=>$(i).value='');loadConta();}
+  else alert((r.data&&r.data.error)||'No se pudo registrar');
+}
+async function loadCloses(){
+  const [d,m]=await Promise.all([api('GET','/api/accounting/closes?period_type=daily'),api('GET','/api/accounting/closes?period_type=monthly')]);
+  const dj=(d.ok&&d.data&&d.data.closes)||[], mj=(m.ok&&m.data&&m.data.closes)||[];
+  $('acDailyBody').innerHTML=dj.length?dj.slice(0,15).map(c=>{const x=c.data||{};return `<tr><td>${esc(c.period_date)}</td><td class="right" style="font-weight:700">${acM(x.deposit_net)}</td><td class="right">${x.entry_count||0}</td><td class="muted" style="font-size:11px">${c.run_at?new Date(c.run_at).toLocaleString('es-MX'):''}</td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">Aún no hay cortes diarios.</td></tr>';
+  $('acMonthlyBody').innerHTML=mj.length?mj.slice(0,12).map(c=>{const x=c.data||{};const diff=Number(x.daily_diff)||0;
+    const badge=Math.abs(diff)<0.01?'<span style="color:#1a9e56;font-weight:700">✓ cuadra</span>':`<span style="color:#c62828;font-weight:700">Δ ${acM(diff)}</span>`;
+    return `<tr><td>${esc(String(c.period_date).slice(0,7))}</td><td class="right" style="font-weight:700">${acM(x.deposit_net)}</td><td class="right">${acM(x.net_profit)}</td><td>${badge} <span class="muted" style="font-size:11px">(${x.daily_closes||0} días)</span></td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">Aún no hay cortes mensuales.</td></tr>';
+}
+async function acRunClose(pt,date){
+  if(!date||date.length<8){alert('Elige la fecha');return;}
+  const r=await api('POST','/api/accounting/run_close',{period_type:pt,date:date});
+  if(r.ok){loadCloses();alert('Corte corrido. (Si ya existía, el corte original se conserva — es inmutable.)');}
+  else alert((r.data&&r.data.error)||'No se pudo correr el corte');
+}
+async function acSaveEmail(){
+  const r=await api('POST','/api/accounting/settings',{accounting_email:$('acEmail').value.trim()});
+  $('acEmailMsg').textContent=r.ok?'✓ Guardado':'No se pudo guardar';
+  setTimeout(()=>{$('acEmailMsg').textContent='';},3000);
+}
+async function acSendPkg(){
+  $('acEmailMsg').textContent='Enviando…';
+  const r=await api('POST','/api/accounting/send_package',{});
+  $('acEmailMsg').textContent=r.ok?`✓ Enviado a ${r.data.sent_to}`:((r.data&&r.data.error)||'No se pudo enviar');
+}
+function acExportCsv(){
+  const rows=(AC.kind?AC.entries.filter(e=>e.kind===AC.kind):AC.entries);
+  const head=['fecha','categoria','contrato','cliente','metodo','base','iva','exencion','comision_stripe','total','tipo_cambio','referencia','descripcion'];
+  const csv=[head.join(',')].concat(rows.map(e=>[e.entry_date,e.kind,e.contract_label||'',e.client_name||'',e.method||'',e.base_amount,e.iva_amount,e.extra_amount,e.stripe_fee,e.amount,e.fx_rate||'',(e.reference||''),(e.description||'')].map(v=>{v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(','))).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`registro_${$('acFrom').value}_a_${$('acTo').value}${AC.kind?'_'+AC.kind:''}.csv`;
+  a.click();URL.revokeObjectURL(a.href);
+}
+
 </script>
 </body>
 </html>

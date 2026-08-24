@@ -45,7 +45,12 @@ class AuditLog < ApplicationRecord
     'duplicate_phone_signup' => '⚠ Registro con teléfono de otra cuenta verificada',
     'account_confirmed_manual' => '✔ Verificó cuenta manualmente (saltó WhatsApp)',
     'payment_refunded'     => '↩ Reembolsó pago a la forma de pago original',
-    'catalog_issue'        => '⚠ Ronda del catálogo: producto con problema en Amazon'
+    'catalog_issue'        => '⚠ Ronda del catálogo: producto con problema en Amazon',
+    'expense_added'        => 'Registró gasto',
+    'expense_deleted'      => 'Eliminó gasto',
+    'accounting_entry_added' => 'Registró movimiento contable (reembolso/contracargo/ajuste)',
+    'accounting_close_run' => 'Corrió corte contable',
+    'accounting_settings_changed' => 'Cambió configuración contable'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

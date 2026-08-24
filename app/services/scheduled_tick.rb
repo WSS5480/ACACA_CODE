@@ -57,6 +57,32 @@ class ScheduledTick
     #   out[:catalog_patrol] = e.message
     # end
 
+    # 5) CIERRE CONTABLE (gratis, pura base de datos): corte DIARIO justo después
+    #    de medianoche (Monterrey) con el día anterior completo; corte MENSUAL el
+    #    día 1 con el mes anterior + paquete CSV al contador (si hay correo
+    #    configurado en Contabilidad). Idempotente: si el corte ya existe, no se toca.
+    if t.hour.zero? && defined?(AccountingClose) && AccountingClose.table_exists?
+      begin
+        y = t.to_date - 1
+        existed = AccountingClose.exists?(period_type: 'daily', period_date: y)
+        AccountingClose.run_daily!(y)
+        out[:eod] = existed ? 'ya existía' : "corte #{y}"
+        if t.day == 1
+          m = t.to_date.prev_month.beginning_of_month
+          existed_m = AccountingClose.exists?(period_type: 'monthly', period_date: m)
+          AccountingClose.run_monthly!(m)
+          out[:eom] = existed_m ? 'ya existía' : "corte mensual #{m.strftime('%Y-%m')}"
+          if !existed_m && AppSetting.get('accounting_email').to_s.present?
+            AccountingMailer.monthly_package(m).deliver_now
+            out[:eom_mail] = 'paquete enviado'
+          end
+        end
+      rescue StandardError => e
+        out[:eod] = e.message
+        WaAlert.notify('Corte contable automático', e.message) if defined?(WaAlert)
+      end
+    end
+
     Rails.logger.info "[ScheduledTick] #{out.inspect}"
     puts out.inspect
     out

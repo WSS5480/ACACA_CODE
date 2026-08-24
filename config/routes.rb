@@ -162,6 +162,20 @@ Rails.application.routes.draw do
     get  'stripe/config',          to: 'api/stripe#publishable_config'
     post 'stripe/webhook',         to: 'api/stripe#webhook'
 
+    # Contabilidad (solo master/admin): registro, estado de resultados, gastos,
+    # movimientos manuales, cortes diario/mensual y paquete para el contador.
+    get    'accounting/register',     to: 'api/accounting#register'
+    get    'accounting/pnl',          to: 'api/accounting#pnl'
+    get    'accounting/closes',       to: 'api/accounting#closes'
+    post   'accounting/run_close',    to: 'api/accounting#run_close'
+    get    'accounting/expenses',     to: 'api/accounting#expenses'
+    post   'accounting/expenses',     to: 'api/accounting#create_expense'
+    delete 'accounting/expenses/:id', to: 'api/accounting#delete_expense'
+    post   'accounting/entry',        to: 'api/accounting#create_entry'
+    get    'accounting/settings',     to: 'api/accounting#settings'
+    post   'accounting/settings',     to: 'api/accounting#update_settings'
+    post   'accounting/send_package', to: 'api/accounting#send_package'
+
     get  'whatsapp/messages', to: 'api/whatsapp_messages#index'
     post 'whatsapp/send',     to: 'api/whatsapp_messages#create'
     # Bandeja de WhatsApp del admin: hilos por persona + no leídos

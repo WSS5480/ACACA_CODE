@@ -370,6 +370,27 @@ module Api
 
       old = contract.status
       contract.update!(status: st)
+      # CONTABILIDAD: castigar la cuenta registra el saldo como gasto por
+      # incobrable; reactivarla revierte ese gasto (renglón negativo).
+      if defined?(Expense) && Expense.table_exists?
+        begin
+          num = contract.contract_number.presence || contract.order_ref
+          if st == 'charged_off' && contract.balance.positive?
+            Expense.create!(expense_date: Date.current, category: 'incobrable', amount: contract.balance,
+                            description: "Castigo de #{num} (saldo al castigar)",
+                            contract_id: contract.id, created_by_id: @current_user&.id)
+          elsif st == 'active' && old == 'charged_off'
+            prev = Expense.where(category: 'incobrable', contract_id: contract.id).sum(:amount).to_f.round(2)
+            if prev.positive?
+              Expense.create!(expense_date: Date.current, category: 'incobrable', amount: -prev,
+                              description: "Reversión de castigo de #{num} (cuenta reactivada)",
+                              contract_id: contract.id, created_by_id: @current_user&.id)
+            end
+          end
+        rescue StandardError => e
+          Rails.logger.error "castigo contable contrato #{contract.id}: #{e.message}"
+        end
+      end
       labels = { 'returned' => 'DEVUELTO (mercancía devuelta)', 'charged_off' => 'CASTIGADO (cuenta incobrable)', 'active' => 'ACTIVO (cuenta reactivada)' }
       AuditLog.record!(actor: @current_user, action: 'contract_status_changed', target: contract,
                        label: audit_contract_label(contract), details: "#{old} → #{st} · #{labels[st]}")
@@ -566,11 +587,19 @@ module Api
             cents = ((p.amount.to_f * (1 + Product.tax_rate / 100.0)) * 100).round
             StripeClient.request(:post, '/v1/refunds', { payment_intent: pi_id, amount: cents })
             note = "Stripe $#{format('%.2f', cents / 100.0)} (parcial de #{pi_id})"
+            refunded_total = (cents / 100.0).round(2)
           else
             StripeClient.request(:post, '/v1/refunds', { payment_intent: pi_id })
             note = "Stripe reembolso COMPLETO de #{pi_id} ($#{format('%.2f', p.amount)} + cargos)"
+            refunded_total = (p.try(:total_charged).to_f.positive? ? p.total_charged : p.amount).to_f.round(2)
           end
           notes << note
+          # Libro contable: el reembolso entra como renglón NEGATIVO y sobrevive
+          # aunque el contrato (y sus pagos) se eliminen enseguida.
+          if defined?(LedgerEntry)
+            LedgerEntry.record_refund!(contract: contract, payment: p, total: refunded_total,
+                                       reference: pi_id, by: @current_user, description: note)
+          end
           AuditLog.record!(actor: @current_user, action: 'payment_refunded', target: contract,
                            label: audit_contract_label(contract), details: note)
         rescue StandardError => e

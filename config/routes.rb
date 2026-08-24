@@ -172,6 +172,8 @@ Rails.application.routes.draw do
     post   'accounting/expenses',     to: 'api/accounting#create_expense'
     delete 'accounting/expenses/:id', to: 'api/accounting#delete_expense'
     post   'accounting/entry',        to: 'api/accounting#create_entry'
+    post   'accounting/void_payment', to: 'api/accounting#void_payment'
+    post   'accounting/modify_payment', to: 'api/accounting#modify_payment'
     get    'accounting/settings',     to: 'api/accounting#settings'
     post   'accounting/settings',     to: 'api/accounting#update_settings'
     post   'accounting/send_package', to: 'api/accounting#send_package'

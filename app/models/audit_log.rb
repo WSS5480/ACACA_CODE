@@ -50,7 +50,9 @@ class AuditLog < ApplicationRecord
     'expense_deleted'      => 'Eliminó gasto',
     'accounting_entry_added' => 'Registró movimiento contable (reembolso/contracargo/ajuste)',
     'accounting_close_run' => 'Corrió corte contable',
-    'accounting_settings_changed' => 'Cambió configuración contable'
+    'accounting_settings_changed' => 'Cambió configuración contable',
+    'payment_voided'       => '↩ Anuló pago (con o sin reembolso)',
+    'payment_modified'     => '✏ Corrigió pago (corrección contable)'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

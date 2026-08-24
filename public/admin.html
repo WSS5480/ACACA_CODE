@@ -4841,7 +4841,7 @@ function acRenderTable(){
       <td class="right">${e.stripe_fee?acM(-Math.abs(e.stripe_fee)):'—'}</td>
       <td class="right" style="font-weight:700">${acM(e.amount)}</td>
       <td class="muted" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.reference||'')} ${esc(e.description||'')}">${esc(e.reference||'')}</td>
-      <td><button class="acPr" data-id="${e.id}" title="Imprimir recibo" style="border:1px solid var(--brand);color:var(--brand);background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🖨</button></td>
+      <td style="white-space:nowrap"><button class="acPr" data-id="${e.id}" title="Imprimir recibo" style="border:1px solid var(--brand);color:var(--brand);background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🖨</button><button class="acVd" data-id="${e.id}" title="${['reembolso','contracargo','ajuste'].includes(e.kind)?'Revertir movimiento (ajuste contrario)':'Anular / reembolsar pago'}" style="border:1px solid #c62828;color:#c62828;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">↩</button>${e.payment_id?`<button class="acMd" data-id="${e.id}" title="Modificar pago (corrección contable)" style="border:1px solid #6b7280;color:#6b7280;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">✏️</button>`:''}</td>
     </tr>`;}).join('')+(function(){
       const t=rows.reduce((a,e)=>({b:a.b+(e.base_amount||0),i:a.i+(e.iva_amount||0),x:a.x+(e.extra_amount||0),f:a.f+(e.stripe_fee||0),m:a.m+(e.amount||0)}),{b:0,i:0,x:0,f:0,m:0});
       return `<tr style="font-weight:800;background:#fff7ed;border-top:2px solid #FF6B35">
@@ -4853,6 +4853,53 @@ function acRenderTable(){
     const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
     if(e) acPrintWin(`Recibo`,acReceiptHtml(e),false);
   });
+  $('acBody').querySelectorAll('.acVd').forEach(b=>b.onclick=()=>{
+    const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
+    if(e) acVoidRow(e);
+  });
+  $('acBody').querySelectorAll('.acMd').forEach(b=>b.onclick=()=>{
+    const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
+    if(e) acModifyRow(e);
+  });
+}
+/* ANULAR/REEMBOLSAR: pagos -> contra-asiento + reconstrucción del contrato
+   (reembolso Stripe opcional). Movimientos manuales -> ajuste contrario.
+   El libro NUNCA se edita: siempre se compensa con un asiento nuevo. */
+async function acVoidRow(e){
+  if(['reembolso','contracargo','ajuste'].includes(e.kind)){
+    if(!confirm(`¿Revertir este movimiento de ${e.kind} por ${Number(e.amount).toFixed(2)}?\n\nSe crea un AJUSTE contrario en el libro (no se borra nada).`))return;
+    const desc=prompt('Motivo del reverso (queda en el libro y la bitácora):','')||'';
+    const r=await api('POST','/api/accounting/entry',{kind:'ajuste',amount:-Number(e.amount),iva_amount:-(Number(e.iva_amount)||0),contract_id:e.contract_id||null,reference:`reverso-mov-${e.id}`,description:`Reverso de ${e.kind} #${e.id}${desc?' · '+desc:''}`});
+    if(r.ok)loadConta(); else alert((r.data&&r.data.error)||'No se pudo revertir');
+    return;
+  }
+  if(!e.payment_id){alert('Este movimiento ya no tiene pago ligado (probablemente ya fue anulado).');return;}
+  if(!confirm(`¿ANULAR el pago de ${e.client_name||'—'} (${e.contract_label||''}) por $${Number(e.amount).toFixed(2)}?\n\n• Se revierte del contrato (saldo, calendario y crédito).\n• Queda contra-asiento en el libro y registro en la bitácora.`))return;
+  let refund=false;
+  if(e.method==='stripe'||e.method==='autopay'){
+    refund=confirm('¿También REEMBOLSAR el dinero a la tarjeta (Stripe)?\n\nAceptar = sí, devolver el dinero al cliente.\nCancelar = solo anular el registro (sin mover dinero).');
+  }
+  const reason=prompt('Motivo de la anulación:','')||'';
+  const r=await api('POST','/api/accounting/void_payment',{payment_id:e.payment_id,refund:refund?1:0,reason});
+  if(r.ok){alert('Pago anulado.'+((r.data&&r.data.refund)?'\n'+r.data.refund:''));loadConta();}
+  else alert((r.data&&r.data.error)||'No se pudo anular');
+}
+/* MODIFICAR: corrección contable (contra-asiento + pago corregido).
+   NO toca el cobro en Stripe — solo corrige el registro y el contrato. */
+async function acModifyRow(e){
+  if(!e.payment_id){alert('Solo los pagos se pueden modificar; los movimientos manuales se revierten con ↩.');return;}
+  const base=parseFloat(prompt('Nuevo ABONO al contrato $ (base):',e.base_amount));
+  if(!base||base<=0)return;
+  const extra=parseFloat(prompt('Nueva exención de responsabilidad $ (0 si no aplica):',e.extra_amount||0));
+  if(Number.isNaN(extra)||extra<0)return;
+  const iva=parseFloat(prompt('Nuevo IVA $ (0 si no aplica):',e.iva_amount||0));
+  if(Number.isNaN(iva)||iva<0)return;
+  const fecha=prompt('Fecha del pago (YYYY-MM-DD):',e.entry_date)||e.entry_date;
+  const reason=prompt('Motivo de la corrección (queda en la bitácora):','')||'';
+  if(!confirm(`Corregir a: abono $${base.toFixed(2)} + exención $${extra.toFixed(2)} + IVA $${iva.toFixed(2)} = TOTAL $${(base+extra+iva).toFixed(2)} el ${fecha}.\n\nOJO: esto NO cambia el cobro en Stripe — es corrección del registro y del contrato.\n¿Continuar?`))return;
+  const r=await api('POST','/api/accounting/modify_payment',{payment_id:e.payment_id,amount:base,extra_amount:extra,iva_amount:iva,paid_at:fecha,reason});
+  if(r.ok){alert('Pago corregido. El original queda compensado en el libro y el corregido tiene folio nuevo.');loadConta();}
+  else alert((r.data&&r.data.error)||'No se pudo corregir');
 }
 function acRenderPnl(){
   const s=AC.summary; if(!s){$('acPnl').textContent='—';return;}

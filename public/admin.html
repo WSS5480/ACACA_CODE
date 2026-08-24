@@ -369,10 +369,18 @@
           <span class="muted" style="font-size:11.5px">Corren solos: el diario poco después de medianoche y el mensual el día 1 (Monterrey). Un corte cerrado es inmutable.</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div style="overflow-x:auto"><div class="muted" style="font-size:12px;font-weight:700;margin:4px 0">Diarios</div>
-            <table><thead><tr><th>Día</th><th class="right">Depósito neto</th><th class="right">Movs.</th><th>Corrió</th></tr></thead><tbody id="acDailyBody"><tr><td colspan="4" class="empty">—</td></tr></tbody></table></div>
-          <div style="overflow-x:auto"><div class="muted" style="font-size:12px;font-weight:700;margin:4px 0">Mensuales</div>
-            <table><thead><tr><th>Mes</th><th class="right">Depósito neto</th><th class="right">Utilidad</th><th>Cuadre diario</th></tr></thead><tbody id="acMonthlyBody"><tr><td colspan="4" class="empty">—</td></tr></tbody></table></div>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa;font-weight:800;font-size:13.5px">🌙 Corte diario (End of Day)<span class="muted" id="acDailyDate" style="margin-left:auto;font-weight:400;font-size:12px"></span></div>
+            <div style="overflow-x:auto"><table><thead><tr><th>Concepto</th><th class="right">Movs.</th><th class="right">Monto</th></tr></thead><tbody id="acDailyLatest"><tr><td colspan="3" class="empty">Aún no hay corte diario.</td></tr></tbody></table></div>
+            <div style="font-size:11.5px;color:#166534;background:#f0fdf4;border-top:1px solid #dcfce7;padding:8px 14px">🔒 Corre solo poco después de medianoche (Monterrey). Cerrado = <b>inmutable</b>; un pago capturado tarde entra al corte del día siguiente.</div>
+            <div style="padding:8px 14px"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:4px">Anteriores</div><table><tbody id="acDailyBody"></tbody></table></div>
+          </div>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa;font-weight:800;font-size:13.5px">📅 Corte mensual (End of Month)<span class="muted" id="acMonthlyDate" style="margin-left:auto;font-weight:400;font-size:12px"></span></div>
+            <div style="overflow-x:auto"><table><thead><tr><th>Concepto</th><th class="right">Movs.</th><th class="right">Monto</th><th class="right">% del mes</th></tr></thead><tbody id="acMonthlyLatest"><tr><td colspan="4" class="empty">Aún no hay corte mensual.</td></tr></tbody></table></div>
+            <div style="font-size:11.5px;color:#166534;background:#f0fdf4;border-top:1px solid #dcfce7;padding:8px 14px">🔒 Corre solo el día 1 con el mes anterior completo. Suma los cortes diarios — si no cuadran, la diferencia se marca en rojo.</div>
+            <div style="padding:8px 14px"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:4px">Anteriores</div><table><tbody id="acMonthlyBody"></tbody></table></div>
+          </div>
         </div>
       </div>
 
@@ -4787,17 +4795,22 @@ async function loadConta(){
 function acRenderCards(){
   const s=AC.summary; if(!s){$('acCards').innerHTML='';return;}
   const k=s.kinds||{};
-  const card=(lbl,val,sub,color)=>`<div class="stat" style="border-top:3px solid ${color}"><div class="l">${lbl}</div><div class="n" style="font-size:18px">${val}</div><div class="muted" style="font-size:11px">${sub||''}</div></div>`;
+  const card=(lbl,val,sub,color)=>`<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;border-top:4px solid ${color}">
+    <div style="font-size:11px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">${lbl}</div>
+    <div style="font-size:21px;font-weight:800;margin-top:4px;color:#111827">${val}</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:2px">${sub||''}</div></div>`;
   const g=x=>k[x]||{count:0,total:0};
+  const pill='<span style="background:#e5e7eb;color:#6b7280;font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:5px;vertical-align:middle;text-transform:none">PRÓXIMAMENTE</span>';
+  const contraT=(g('reembolso').total||0)+(g('contracargo').total||0);
+  const contraN=(g('reembolso').count||0)+(g('contracargo').count||0);
   $('acCards').innerHTML=
-    card('Renta',acM(g('renta').total),g('renta').count+' pagos','#2563eb')+
-    card('Enganches',acM(g('enganche').total),g('enganche').count+' pagos','#FF6B35')+
-    card('Contado',acM(g('contado').total),g('contado').count+' ventas','#1a9e56')+
-    card('Liquidaciones',acM(g('liquidacion').total),g('liquidacion').count+' pagos','#7c3aed')+
-    card('EPO',g('epo').count?acM(g('epo').total):'—',g('epo').count?g('epo').count+' pagos':'próximamente','#0d9488')+
-    card('Reemb. + Contrac.',acM((g('reembolso').total||0)+(g('contracargo').total||0)),(g('reembolso').count+g('contracargo').count)+' movs.','#c62828')+
-    card('IVA neto',acM(s.iva_net),'incluido en totales','#6b7280')+
-    card('Depósito neto',acM(s.deposit_net),s.entry_count+' movimientos','#0f172a');
+    card('Ingreso por renta',acM(g('renta').total),g('renta').count+' pagos','#2563eb')+
+    card('Enganches (pago inicial)',acM(g('enganche').total),g('enganche').count+' órdenes nuevas','#FF6B35')+
+    card('Ventas de contado',acM(g('contado').total),g('contado').count+' ventas pagadas 100%','#1a9e56')+
+    card('Liquidaciones',acM(g('liquidacion').total),g('liquidacion').count+' contratos pagados por completo','#7c3aed')+
+    card('Compra anticipada (EPO)'+(g('epo').count?'':pill),g('epo').count?acM(g('epo').total):'<span style="color:#9ca3af">—</span>',g('epo').count?g('epo').count+' pagos':'se agrega al lanzar la opción','#0d9488')+
+    card('IVA cobrado',acM(s.iva_net),'incluido en los totales','#6b7280')+
+    card('Total del rango',acM(s.income_total),(contraN?acM(contraT)+' reemb./contrac. ('+contraN+') = ':'')+'<b>'+acM(s.deposit_net)+' neto</b>','#111827');
 }
 function acRenderTable(){
   const rows=(AC.kind?AC.entries.filter(e=>e.kind===AC.kind):AC.entries);
@@ -4817,7 +4830,13 @@ function acRenderTable(){
       <td class="right">${e.stripe_fee?acM(-Math.abs(e.stripe_fee)):'—'}</td>
       <td class="right" style="font-weight:700">${acM(e.amount)}</td>
       <td class="muted" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.reference||'')} ${esc(e.description||'')}">${esc(e.reference||'')}</td>
-    </tr>`;}).join(''):'<tr><td colspan="11" class="empty">Sin movimientos en el rango.</td></tr>';
+    </tr>`;}).join('')+(function(){
+      const t=rows.reduce((a,e)=>({b:a.b+(e.base_amount||0),i:a.i+(e.iva_amount||0),x:a.x+(e.extra_amount||0),f:a.f+(e.stripe_fee||0),m:a.m+(e.amount||0)}),{b:0,i:0,x:0,f:0,m:0});
+      return `<tr style="font-weight:800;background:#fff7ed;border-top:2px solid #FF6B35">
+        <td colspan="5">TOTAL DEL RANGO (neto)</td>
+        <td class="right">${acM(t.b)}</td><td class="right">${acM(t.i)}</td><td class="right">${t.x?acM(t.x):'—'}</td>
+        <td class="right">${t.f?acM(-Math.abs(t.f)):'—'}</td><td class="right">${acM(t.m)}</td><td></td></tr>`;
+    })():'<tr><td colspan="11" class="empty">Sin movimientos en el rango.</td></tr>';
 }
 function acRenderPnl(){
   const s=AC.summary; if(!s){$('acPnl').textContent='—';return;}
@@ -4861,13 +4880,32 @@ async function acAddEntry(){
   if(r.ok){['amAmt','amIva','amFee','amContract','amRef','amDesc'].forEach(i=>$(i).value='');loadConta();}
   else alert((r.data&&r.data.error)||'No se pudo registrar');
 }
+function acCloseRows(x,withPct){
+  // Desglose de un corte por categoría, como en el mock (chips + total naranja).
+  const k=x.kinds||{}; const inc=Number(x.income_total)||0;
+  const g=n=>k[n]||{count:0,total:0};
+  const pct=v=>withPct?`<td class="right">${inc>0&&v>0?Math.round(v/inc*100)+'%':'—'}</td>`:'';
+  let h=['renta','enganche','contado','liquidacion','epo'].map(n=>{const q=g(n);
+    return `<tr><td>${acChip(n)}</td><td class="right">${q.count||0}</td><td class="right">${acM(q.total)}</td>${pct(q.total||0)}</tr>`;}).join('');
+  const re=g('reembolso'), cc=g('contracargo'), aj=g('ajuste');
+  h+=`<tr><td>${acChip('reembolso')}</td><td class="right">${(re.count||0)+(cc.count||0)}</td><td class="right">${acM((re.total||0)+(cc.total||0))}</td>${withPct?'<td class="right">—</td>':''}</tr>`;
+  if(aj.count) h+=`<tr><td>${acChip('ajuste')}</td><td class="right">${aj.count}</td><td class="right">${acM(aj.total)}</td>${withPct?'<td class="right">—</td>':''}</tr>`;
+  h+=`<tr style="font-weight:800;background:#fff7ed;border-top:2px solid #FF6B35"><td>DEPÓSITO NETO</td><td class="right">${x.entry_count||0}</td><td class="right">${acM(x.deposit_net)}</td>${withPct?'<td class="right">100%</td>':''}</tr>`;
+  if(withPct) h+=`<tr><td colspan="2" style="font-weight:700">Utilidad neta del mes</td><td class="right" style="font-weight:800">${acM(x.net_profit)}</td><td></td></tr>`;
+  return h;
+}
 async function loadCloses(){
   const [d,m]=await Promise.all([api('GET','/api/accounting/closes?period_type=daily'),api('GET','/api/accounting/closes?period_type=monthly')]);
   const dj=(d.ok&&d.data&&d.data.closes)||[], mj=(m.ok&&m.data&&m.data.closes)||[];
-  $('acDailyBody').innerHTML=dj.length?dj.slice(0,15).map(c=>{const x=c.data||{};return `<tr><td>${esc(c.period_date)}</td><td class="right" style="font-weight:700">${acM(x.deposit_net)}</td><td class="right">${x.entry_count||0}</td><td class="muted" style="font-size:11px">${c.run_at?new Date(c.run_at).toLocaleString('es-MX'):''}</td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">Aún no hay cortes diarios.</td></tr>';
-  $('acMonthlyBody').innerHTML=mj.length?mj.slice(0,12).map(c=>{const x=c.data||{};const diff=Number(x.daily_diff)||0;
-    const badge=Math.abs(diff)<0.01?'<span style="color:#1a9e56;font-weight:700">✓ cuadra</span>':`<span style="color:#c62828;font-weight:700">Δ ${acM(diff)}</span>`;
-    return `<tr><td>${esc(String(c.period_date).slice(0,7))}</td><td class="right" style="font-weight:700">${acM(x.deposit_net)}</td><td class="right">${acM(x.net_profit)}</td><td>${badge} <span class="muted" style="font-size:11px">(${x.daily_closes||0} días)</span></td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">Aún no hay cortes mensuales.</td></tr>';
+  if(dj.length){ $('acDailyDate').textContent=dj[0].period_date; $('acDailyLatest').innerHTML=acCloseRows(dj[0].data||{},false); }
+  $('acDailyBody').innerHTML=dj.slice(1,9).map(c=>{const x=c.data||{};
+    return `<tr><td class="muted" style="font-size:12px">${esc(c.period_date)}</td><td class="right" style="font-size:12px;font-weight:700">${acM(x.deposit_net)}</td><td class="right muted" style="font-size:11px">${x.entry_count||0} movs.</td></tr>`;}).join('')||'<tr><td class="muted" style="font-size:12px">—</td></tr>';
+  if(mj.length){ const x0=mj[0].data||{}; const diff=Number(x0.daily_diff)||0;
+    const badge=Math.abs(diff)<0.01?'<span style="color:#1a9e56;font-weight:700">✓ cuadra con los diarios</span>':`<span style="color:#c62828;font-weight:700">Δ ${acM(diff)} vs diarios</span>`;
+    $('acMonthlyDate').innerHTML=`${esc(String(mj[0].period_date).slice(0,7))} · ${badge}`;
+    $('acMonthlyLatest').innerHTML=acCloseRows(x0,true); }
+  $('acMonthlyBody').innerHTML=mj.slice(1,7).map(c=>{const x=c.data||{};
+    return `<tr><td class="muted" style="font-size:12px">${esc(String(c.period_date).slice(0,7))}</td><td class="right" style="font-size:12px;font-weight:700">${acM(x.deposit_net)}</td><td class="right muted" style="font-size:11px">util. ${acM(x.net_profit)}</td></tr>`;}).join('')||'<tr><td class="muted" style="font-size:12px">—</td></tr>';
 }
 async function acRunClose(pt,date){
   if(!date||date.length<8){alert('Elige la fecha');return;}

@@ -273,6 +273,40 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    # ⚠️ SOLO FASE DE PRUEBAS — BORRADO REAL ⚠️
+    # DELETE /api/accounting/entry/:id { with_payment }
+    # Borra el renglón del libro DE VERDAD (no deja contra-asiento). Solo master.
+    # En producción esto NO debe existir: la contabilidad se corrige con ↩ Anular
+    # y ✏️ Modificar, que dejan rastro. QUITAR ESTE BLOQUE ANTES DEL GO-LIVE.
+    def delete_entry
+      unless @current_user&.role&.name == 'master'
+        return render(json: { error: 'Solo master puede BORRAR renglones (herramienta de pruebas).' }, status: :forbidden)
+      end
+
+      e = LedgerEntry.find(params[:id])
+      with_payment = params[:with_payment].nil? ? true : ActiveModel::Type::Boolean.new.cast(params[:with_payment])
+      label = "#{e.kind} $#{format('%.2f', e.amount)} · #{e.contract_label} · #{e.client_name}"
+      killed_payment = nil
+
+      if with_payment && e.payment_id
+        p = Payment.find_by(id: e.payment_id)
+        if p
+          killed_payment = p.id
+          remove_and_replay!(p.contract, p) # deshace el pago del contrato (saldo, calendario, crédito)
+        end
+      end
+      e.destroy!
+      AuditLog.record!(actor: @current_user, action: 'accounting_entry_deleted', target: nil,
+                       label: label.truncate(120),
+                       details: "⚠️ BORRADO REAL (fase de pruebas) del renglón ##{params[:id]}" \
+                                "#{killed_payment ? " · pago ##{killed_payment} eliminado y contrato reconstruido" : ' · sin pago ligado'}")
+      render json: { ok: true, deleted_payment: killed_payment }, status: :ok
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: 'Renglón no encontrado' }, status: :not_found
+    rescue StandardError => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     private
 
     # Quita un pago y RECONSTRUYE el contrato con los pagos restantes:

@@ -174,6 +174,9 @@ Rails.application.routes.draw do
     post   'accounting/entry',        to: 'api/accounting#create_entry'
     post   'accounting/void_payment', to: 'api/accounting#void_payment'
     post   'accounting/modify_payment', to: 'api/accounting#modify_payment'
+    # ⚠️ FASE DE PRUEBAS: borrado real de renglones del libro (solo master).
+    #    QUITAR esta ruta antes del go-live.
+    delete 'accounting/entry/:id',    to: 'api/accounting#delete_entry'
     get    'accounting/settings',     to: 'api/accounting#settings'
     post   'accounting/settings',     to: 'api/accounting#update_settings'
     post   'accounting/send_package', to: 'api/accounting#send_package'

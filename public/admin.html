@@ -357,7 +357,7 @@
           <input id="amDesc" class="sel" placeholder="Descripción" style="flex:1;min-width:140px;padding:7px 10px">
           <button class="btn" id="amAdd" style="background:#c62828">Registrar</button>
         </div>
-        <div class="muted" style="font-size:11.5px">Reembolsos con tarjeta se registran solos al borrar una orden con reembolso. Aquí se capturan los devueltos en efectivo, los contracargos que notifica Stripe y ajustes contables.</div>
+        <div class="muted" style="font-size:11.5px"><b style="color:#9333ea">🗑 = borrado real, solo para la fase de pruebas</b> (no deja rastro contable; en producción usa ↩ Anular o ✏️ Modificar). Reembolsos con tarjeta se registran solos al borrar una orden con reembolso. Aquí se capturan los devueltos en efectivo, los contracargos que notifica Stripe y ajustes contables.</div>
       </div>
 
       <div class="sec">
@@ -4841,7 +4841,7 @@ function acRenderTable(){
       <td class="right">${e.stripe_fee?acM(-Math.abs(e.stripe_fee)):'—'}</td>
       <td class="right" style="font-weight:700">${acM(e.amount)}</td>
       <td class="muted" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.reference||'')} ${esc(e.description||'')}">${esc(e.reference||'')}</td>
-      <td style="white-space:nowrap"><button class="acPr" data-id="${e.id}" title="Imprimir recibo" style="border:1px solid var(--brand);color:var(--brand);background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🖨</button><button class="acVd" data-id="${e.id}" title="${['reembolso','contracargo','ajuste'].includes(e.kind)?'Revertir movimiento (ajuste contrario)':'Anular / reembolsar pago'}" style="border:1px solid #c62828;color:#c62828;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">↩</button>${e.payment_id?`<button class="acMd" data-id="${e.id}" title="Modificar pago (corrección contable)" style="border:1px solid #6b7280;color:#6b7280;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">✏️</button>`:''}</td>
+      <td style="white-space:nowrap"><button class="acPr" data-id="${e.id}" title="Imprimir recibo" style="border:1px solid var(--brand);color:var(--brand);background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer">🖨</button><button class="acVd" data-id="${e.id}" title="${['reembolso','contracargo','ajuste'].includes(e.kind)?'Revertir movimiento (ajuste contrario)':'Anular / reembolsar pago'}" style="border:1px solid #c62828;color:#c62828;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">↩</button>${e.payment_id?`<button class="acMd" data-id="${e.id}" title="Modificar pago (corrección contable)" style="border:1px solid #6b7280;color:#6b7280;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">✏️</button>`:''}${MYROLE==='master'?`<button class="acDl" data-id="${e.id}" title="BORRAR de verdad (solo pruebas)" style="border:1px solid #9333ea;color:#9333ea;background:none;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">🗑</button>`:''}</td>
     </tr>`;}).join('')+(function(){
       const t=rows.reduce((a,e)=>({b:a.b+(e.base_amount||0),i:a.i+(e.iva_amount||0),x:a.x+(e.extra_amount||0),f:a.f+(e.stripe_fee||0),m:a.m+(e.amount||0)}),{b:0,i:0,x:0,f:0,m:0});
       return `<tr style="font-weight:800;background:#fff7ed;border-top:2px solid #FF6B35">
@@ -4861,6 +4861,21 @@ function acRenderTable(){
     const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
     if(e) acModifyRow(e);
   });
+  $('acBody').querySelectorAll('.acDl').forEach(b=>b.onclick=()=>{
+    const e=AC.entries.find(x=>String(x.id)===b.dataset.id);
+    if(e) acDeleteRow(e);
+  });
+}
+/* ⚠️ SOLO FASE DE PRUEBAS: borra el renglón DE VERDAD (sin contra-asiento).
+   En producción se usan ↩ Anular y ✏️ Modificar, que dejan rastro contable.
+   QUITAR ESTA FUNCIÓN Y EL BOTÓN 🗑 ANTES DEL GO-LIVE. */
+async function acDeleteRow(e){
+  const tienePago=!!e.payment_id;
+  if(!confirm(`⚠️ BORRAR DE VERDAD este renglón\n\n${(AC_KLBL[e.kind]||e.kind)} · ${e.contract_label||'—'} · ${e.client_name||'—'} · $${Number(e.amount).toFixed(2)}\n\nEsto NO deja contra-asiento: desaparece del libro, de los cortes y del P&L.\n${tienePago?'El pago también se elimina y el contrato se reconstruye (saldo, calendario y crédito).\n':''}\nSolo para la fase de pruebas. ¿Continuar?`))return;
+  if(!confirm('Última confirmación: esta acción NO se puede deshacer.'))return;
+  const r=await api('DELETE',`/api/accounting/entry/${e.id}${tienePago?'':'?with_payment=0'}`);
+  if(r.ok){loadConta();}
+  else alert((r.data&&r.data.error)||'No se pudo borrar');
 }
 /* ANULAR/REEMBOLSAR: pagos -> contra-asiento + reconstrucción del contrato
    (reembolso Stripe opcional). Movimientos manuales -> ajuste contrario.

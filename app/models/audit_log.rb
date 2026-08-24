@@ -52,7 +52,8 @@ class AuditLog < ApplicationRecord
     'accounting_close_run' => 'Corrió corte contable',
     'accounting_settings_changed' => 'Cambió configuración contable',
     'payment_voided'       => '↩ Anuló pago (con o sin reembolso)',
-    'payment_modified'     => '✏ Corrigió pago (corrección contable)'
+    'payment_modified'     => '✏ Corrigió pago (corrección contable)',
+    'accounting_entry_deleted' => '⚠️ BORRÓ un renglón del libro (fase de pruebas)'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

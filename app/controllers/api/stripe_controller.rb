@@ -57,9 +57,17 @@ module Api
         end
       end
 
+      # EXENCIÓN DE RESPONSABILIDAD por contrato: el pago combinado cobra el
+      # mismo % que los pagos individuales de cada contrato (antes NO la
+      # cobraba y esos pagos salían sin exención en el registro).
+      allocs.each do |a|
+        pct = contracts[a[:contract_id]].orders.first.try(:waiver).to_f
+        a[:fee] = pct.positive? ? ((a[:amount] * pct) / 100.0).round(2) : 0.0
+      end
       base_sum = allocs.sum { |a| a[:amount] }.round(2)
-      tax = ((base_sum * Product.tax_rate) / 100.0).round(2)
-      total_cents = ((base_sum + tax) * 100).round
+      fee_sum = allocs.sum { |a| a[:fee] }.round(2)
+      tax = (((base_sum + fee_sum) * Product.tax_rate) / 100.0).round(2)
+      total_cents = ((base_sum + fee_sum + tax) * 100).round
       customer_id = ensure_stripe_customer!(@current_user)
 
       nums = allocs.map { |a| contracts[a[:contract_id]].contract_number.presence || contracts[a[:contract_id]].order_ref }
@@ -70,11 +78,12 @@ module Api
         setup_future_usage: 'off_session',
         automatic_payment_methods: { enabled: true },
         description: "Pago combinado: #{nums.join(', ')}",
-        metadata: { user_id: @current_user.id, kind: 'multi', tax_amount: tax,
-                    allocations: allocs.map { |a| { c: a[:contract_id], a: a[:amount] } }.to_json }
+        metadata: { user_id: @current_user.id, kind: 'multi', tax_amount: tax, waiver_total: fee_sum,
+                    allocations: allocs.map { |a| { c: a[:contract_id], a: a[:amount], f: a[:fee] } }.to_json }
       })
       render json: { client_secret: pi['client_secret'], payment_intent_id: pi['id'],
-                     base_total: base_sum, tax: tax, total: (base_sum + tax).round(2) }, status: :ok
+                     base_total: base_sum, waiver_total: fee_sum, tax: tax,
+                     total: (base_sum + fee_sum + tax).round(2) }, status: :ok
     rescue StripeClient::Error => e
       render json: { error: e.message }, status: :unprocessable_entity
     end
@@ -272,9 +281,10 @@ module Api
         end
         first_payment = nil
         total = (pi['amount'].to_i / 100.0).round(2)
-        base_sum = allocs.sum { |al| al['a'].to_f }.round(2)
+        # base + exención de cada renglón (los intents viejos no traen 'f': fee 0).
+        basefee_sum = allocs.sum { |al| al['a'].to_f + al['f'].to_f }.round(2)
         tax_total = pi.dig('metadata', 'tax_amount').to_f
-        tax_total = (total - base_sum).round(2) if tax_total <= 0 && total > base_sum
+        tax_total = (total - basefee_sum).round(2) if tax_total <= 0 && total > basefee_sum
         fee_total = stripe_fee_for(pi)
         allocs.each do |al|
           c = Contract.find_by(id: al['c'])
@@ -283,14 +293,17 @@ module Api
           amt = al['a'].to_f.round(2)
           next unless amt.positive?
 
-          pmt = c.payments.new(amount: amt, method: 'stripe',
-                               note: "Stripe #{pi_id} | pago combinado (total cobrado $#{'%.2f' % total})",
+          wfee = al['f'].to_f.round(2)
+          note = "Stripe #{pi_id} | pago combinado (total cobrado $#{'%.2f' % total})"
+          note += " | exención de responsabilidad $#{'%.2f' % wfee}" if wfee.positive?
+          pmt = c.payments.new(amount: amt, method: 'stripe', note: note,
                                stripe_payment_intent_id: "#{pi_id}-c#{c.id}")
           # Desglose contable proporcional (IVA y comisión Stripe repartidos por peso del renglón).
           if Payment.column_names.include?('iva_amount')
-            share = base_sum.positive? ? (amt / base_sum) : 0
+            share = basefee_sum.positive? ? ((amt + wfee) / basefee_sum) : 0
+            pmt.extra_amount = wfee
             pmt.iva_amount = (tax_total * share).round(2)
-            pmt.total_charged = (amt + pmt.iva_amount.to_f).round(2)
+            pmt.total_charged = (amt + wfee + pmt.iva_amount.to_f).round(2)
             pmt.stripe_fee = (fee_total * share).round(2) if fee_total
           end
           pmt.save!

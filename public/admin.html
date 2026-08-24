@@ -4958,15 +4958,14 @@ function acReceiptHtml(e){
       ${e.items_label?row('Artículo(s)',`<span style="font-size:11px">${esc(e.items_label)}</span>`):''}
       ${row('Concepto',AC_KLBL[e.kind]||e.kind)}
       ${e.payment_seq?row('No. de pago',String(e.payment_seq).replace('/',' de ')):''}
-      ${Number(e.waiver_pct)>0?row('Exención de responsabilidad',`${Number(e.waiver_pct)}%`):''}
       ${row('Método',(e.method==='stripe'||e.method==='autopay')?'Tarjeta (Stripe)':esc(e.method||'—'))}
       ${e.reference?row('Referencia',`<span style="font-size:10px">${esc(e.reference)}</span>`):''}
     </table>
     <hr style="border:none;border-top:1px dashed #999;margin:10px 0">
     <table style="width:100%;font-size:13px">
       ${row('Abono al contrato',money(e.base_amount))}
-      ${Number(e.extra_amount)?row('Enganche / exención',money(e.extra_amount)):''}
-      ${Number(e.iva_amount)?row('IVA',money(e.iva_amount)):''}
+      ${Number(e.extra_amount)?row(`Exención de responsabilidad${Number(e.waiver_pct)>0?` (${Number(e.waiver_pct)}%)`:''}`,money(e.extra_amount)):''}
+      ${Number(e.iva_amount)?row(`IVA${(Number(e.base_amount)+Number(e.extra_amount))!==0?` (${Math.abs(Math.round(Number(e.iva_amount)/(Number(e.base_amount)+Number(e.extra_amount))*100))}%)`:''}`,money(e.iva_amount)):''}
       ${row(mov?'TOTAL DEL MOVIMIENTO':'TOTAL PAGADO',money(e.amount),true)}
     </table>
     <p style="text-align:center;font-size:11px;color:#666;margin-top:14px">${mov?'Comprobante interno de contabilidad.':'Gracias por su pago. Este recibo es su comprobante.'}<br>WhatsApp +52 81 1824 7975</p>

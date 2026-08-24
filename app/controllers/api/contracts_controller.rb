@@ -68,11 +68,18 @@ module Api
                               contract.contract_installments.map { |i| ContractInstallmentSerializer.new(i).serializable_hash[:data][:attributes] }
                             end
       # HISTORIAL DE PAGOS con folio para REIMPRIMIR RECIBO (incluye el pago
-      # inicial). balance_after = saldo del financiado después de cada abono.
+      # inicial). balance_after = saldo del financiado después de cada abono;
+      # payment_seq = "cuotas cubiertas / total" (ej. 6/26) por acumulado.
       running = 0.0
       fin_total = contract.financed_amount.to_f
+      sched = contract.contract_installments.order(:number).pluck(:amount).map(&:to_f)
+      cum = []
+      sched.each { |a| cum << ((cum.last || 0.0) + a).round(2) }
+      waiver_pct = contract.orders.first.try(:waiver).to_f
+      items_label = contract.orders.map { |o| o.respond_to?(:product_title) ? o.product_title : nil }.compact.join(' + ')
       data[:payments] = contract.payments.order(:paid_at, :id).map do |p|
         running = (running + p.amount.to_f).round(2)
+        covered = cum.count { |s| s <= running + 0.009 }
         { id: p.id, paid_at: p.paid_at,
           amount: p.amount.to_f.round(2),
           kind: (p.try(:kind).presence || 'renta'),
@@ -81,6 +88,9 @@ module Api
           total_charged: (p.try(:total_charged).to_f.positive? ? p.total_charged.to_f : p.amount.to_f).round(2),
           method: p.method,
           reference: (p.respond_to?(:stripe_payment_intent_id) ? p.stripe_payment_intent_id : nil),
+          waiver_pct: waiver_pct,
+          items_label: items_label.presence,
+          payment_seq: (sched.any? ? "#{covered}/#{sched.size}" : nil),
           balance_after: [(fin_total - running).round(2), 0].max }
       end
       data[:document] = document_payload(contract)

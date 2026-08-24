@@ -20,7 +20,7 @@ class LedgerEntry < ApplicationRecord
 
     c = p.contract
     u = p.user || c&.user
-    create!(
+    attrs = {
       entry_date: (p.paid_at || Time.current).in_time_zone('America/Monterrey').to_date,
       happened_at: p.paid_at || Time.current,
       kind: (p.try(:kind).presence || 'renta'),
@@ -36,7 +36,18 @@ class LedgerEntry < ApplicationRecord
       contract_label: c ? (c.contract_number.presence || c.order_ref) : nil,
       client_name: [u&.name, u&.last_name].compact.join(' ').presence,
       payment_id: p.id, contract_id: p.contract_id, user_id: u&.id
-    )
+    }
+    # Datos del RECIBO (artículos, % de exención y no. de pago) — defensivo por
+    # si la migración de recibos aún no ha corrido en producción.
+    if column_names.include?('items_label') && c
+      items = c.orders.map { |o| o.respond_to?(:product_title) ? o.product_title : nil }.compact.join(' + ')
+      total = c.contract_installments.count
+      paid  = c.contract_installments.where(status: 'paid').count
+      attrs[:items_label] = items.presence&.truncate(180)
+      attrs[:waiver_pct] = c.orders.first.try(:waiver).to_f
+      attrs[:payment_seq] = (total.positive? ? "#{paid}/#{total}" : nil)
+    end
+    create!(attrs)
   rescue StandardError => e
     Rails.logger.error "[Ledger] record_payment! pago #{p.id}: #{e.message}"
     nil

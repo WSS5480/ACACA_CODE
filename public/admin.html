@@ -4952,7 +4952,10 @@ function acReceiptHtml(e){
       ${row('Fecha',dt)}
       ${row('Cliente',esc(e.client_name||'—'))}
       ${row('Contrato',esc(e.contract_label||'—'))}
+      ${e.items_label?row('Artículo(s)',`<span style="font-size:11px">${esc(e.items_label)}</span>`):''}
       ${row('Concepto',AC_KLBL[e.kind]||e.kind)}
+      ${e.payment_seq?row('No. de pago',String(e.payment_seq).replace('/',' de ')):''}
+      ${Number(e.waiver_pct)>0?row('Exención de responsabilidad',`${Number(e.waiver_pct)}%`):''}
       ${row('Método',(e.method==='stripe'||e.method==='autopay')?'Tarjeta (Stripe)':esc(e.method||'—'))}
       ${e.reference?row('Referencia',`<span style="font-size:10px">${esc(e.reference)}</span>`):''}
     </table>

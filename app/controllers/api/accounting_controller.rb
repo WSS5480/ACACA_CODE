@@ -195,7 +195,8 @@ module Api
         amount: e.amount.to_f, base_amount: e.base_amount.to_f, iva_amount: e.iva_amount.to_f,
         extra_amount: e.extra_amount.to_f, stripe_fee: e.stripe_fee.to_f, fx_rate: e.fx_rate&.to_f,
         method: e.method, reference: e.reference, description: e.description,
-        contract_label: e.contract_label, client_name: e.client_name, contract_id: e.contract_id }
+        contract_label: e.contract_label, client_name: e.client_name, contract_id: e.contract_id,
+        items_label: e.try(:items_label), waiver_pct: e.try(:waiver_pct)&.to_f, payment_seq: e.try(:payment_seq) }
     end
 
     def expense_json(e)

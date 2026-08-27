@@ -170,7 +170,7 @@ class Api::ProductsController < ApplicationController
     return render json: { error: 'Producto no encontrado' }, status: :not_found unless product
     return render json: { error: 'Sin ASIN' }, status: :unprocessable_entity if product.asin.blank?
 
-    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, params[:amazon_domain].presence || 'amazon.com.mx')
+    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, domain_for(product))
     return render json: { ok: false, error: 'Sin datos de Amazon (¿retirado?)' }, status: :ok if detail.blank?
 
     price = (detail['buybox_winner'] || {})['price'] || {}
@@ -212,7 +212,7 @@ class Api::ProductsController < ApplicationController
     return render json: { error: 'Producto no encontrado' }, status: :not_found unless product
     return render json: { error: 'El producto no tiene ASIN' }, status: :unprocessable_entity if product.asin.blank?
 
-    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, params[:amazon_domain].presence || 'amazon.com.mx')
+    detail = RainforestImportService.new.send(:fetch_product_detail, product.asin, domain_for(product))
     return render json: { error: 'No se pudo obtener el detalle de Amazon' }, status: :unprocessable_entity if detail.blank?
 
     # LA PRINCIPAL PRIMERO (main_image) + el resto, sin duplicados por ID.
@@ -340,6 +340,14 @@ class Api::ProductsController < ApplicationController
   end
 
   private
+
+  # MERCADO del producto: si el request no lo dice, se deduce de la MONEDA con
+  # que se importó (MXN → amazon.com.mx, lo demás → amazon.com). Así un catálogo
+  # MIXTO refresca precios y fotos contra la tienda correcta.
+  def domain_for(product)
+    params[:amazon_domain].presence ||
+      (product&.currency.to_s.casecmp('mxn').zero? ? 'amazon.com.mx' : 'amazon.com')
+  end
 
   # Consulta la página de Amazon del producto SIN Rainforest (sin créditos).
   # Devuelve { available:, code:, reason: }. available=nil => no se pudo determinar (no marcar).

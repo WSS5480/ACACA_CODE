@@ -37,3 +37,6 @@
 www-acasa-main/
 /ACACA_CODE/
 MAIL_FROM=*.txt
+
+# Llave del API de 21st.dev (NUNCA se sube al repo)
+.21st/api-key.txt

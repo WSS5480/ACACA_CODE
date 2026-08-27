@@ -3310,7 +3310,7 @@ async function loadMarketing(){
 }
 
 /* ---- Creador de publicaciones: emojis + negrita que sí se ve en Facebook ---- */
-const MKT_EMOJIS=['🇺🇸','🇲🇽','➡️','🛒','📦','🚚','🏠','📱','📺','🧊','💳','💰','✅','🔥','🎉','🎁','⭐','😍','🙌','👨‍👩‍👧‍👦','❤️','👉','📲','💬'];
+const MKT_EMOJIS=['🇺🇸','🇲🇽','🤝','➡️','👉','📲','💬','🔗','🛒','🛍️','📦','🚚','🏠','🔑','🏷️','📱','💻','📺','🎧','⌚','🎮','📷','🧊','🧺','🍳','🔧','🔨','🪚','🛠️','🪜','💳','💰','💵','💸','✅','☑️','📄','🖊️','🔥','🎉','🎊','🥳','🎁','⭐','✨','💥','⚡','😍','😎','🤩','🙌','👏','💪','🙏','❤️','🧡','👨‍👩‍👧‍👦','👶','😊','⏰','🔔','📅','📣','📢','❗','🚀','🎯','🌮','🪅','🌵','💐','🎄','🎃','☀️','❄️'];
 let mktLastTa=null; // último textarea enfocado (composer o editor de la biblioteca)
 function mktInsert(txt){
   const ta=(mktLastTa&&document.body.contains(mktLastTa))?mktLastTa:$('mktText'); if(!ta) return;

@@ -117,6 +117,35 @@
   .rfbar-indet{width:40%!important;animation:rfIndet 1s linear infinite;}
   textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-height:62px;font-family:inherit;}
   .muted{color:var(--mut);font-size:12.5px;line-height:1.6;}
+  /* ============ MOBILE (celular): la barra lateral se vuelve barra superior,
+     las tablas se deslizan de lado dentro de su tarjeta, e inputs de 16px
+     (menos de 16px hace que el iPhone haga zoom al enfocar). ============ */
+  @media (max-width: 820px){
+    .app{flex-direction:column;}
+    .sb{position:sticky;top:0;z-index:60;width:100%;height:auto;flex-direction:row;align-items:center;gap:2px;border-right:0;border-bottom:1px solid var(--line);}
+    .sb .brand{padding:10px 8px 10px 12px;font-size:16px;flex:none;}
+    .sb nav{flex:1;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px 4px;gap:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .sb nav::-webkit-scrollbar{display:none;}
+    .sb nav a{white-space:nowrap;padding:8px 10px;font-size:13px;gap:7px;flex:none;}
+    .sb .sep{display:none;}
+    .sb .foot{margin-top:0;border-top:0;padding:6px 10px 6px 4px;gap:8px;flex:none;}
+    .sb .foot .who{display:none;}
+    main{padding:14px 12px 90px;}
+    h1{font-size:21px;}
+    .cards{gap:10px;margin-bottom:16px;}
+    .stat{padding:13px;}
+    .stat .n{font-size:23px;}
+    .toolbar{padding:11px 10px;gap:8px;}
+    .search{min-width:140px;}
+    main table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}
+    thead th{padding:10px;}
+    tbody td{padding:11px 10px;}
+    .search input,.sel,select,input[type=text],input[type=number],input[type=email],input[type=password],input[type=date],textarea{font-size:16px;}
+    .tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
+    .tabs::-webkit-scrollbar{display:none;}
+    .tabs button{white-space:nowrap;flex:none;}
+  }
+
 </style>
 </head>
 <body>

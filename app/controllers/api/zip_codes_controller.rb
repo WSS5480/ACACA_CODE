@@ -16,11 +16,19 @@ class Api::ZipCodesController < ApplicationController
 
   # GET /api/zip_codes
   def index
-    zip_codes = ZipCode.all
-    zip_codes = apply_search_filter(zip_codes, columns: %w[code state_initials state_name city])
-    if params[:country].present?
-      zip_codes = zip_codes.where(country: params[:country])
+    zip_codes = filtered_zip_codes
+
+    # Si piden UN código completo (5 dígitos) con país y NO está en la tabla,
+    # se consulta el catálogo oficial en línea (zippopotam.us — datos de los
+    # correos de EUA y México), se guarda como caché en zip_codes y se vuelve
+    # a buscar. Así el autollenado del storefront nunca se queda mudo por un
+    # hueco en la tabla, y todo queda verificado contra datos reales.
+    full_zip = params[:search].to_s.gsub(/\D/, '')
+    if full_zip.length == 5 && params[:country].present? && !zip_codes.exists?
+      ZipLookup.fetch_and_cache(params[:country], full_zip)
+      zip_codes = filtered_zip_codes
     end
+
     render_paginated(zip_codes, ZipCodeSerializer)
   end
 
@@ -79,6 +87,14 @@ class Api::ZipCodesController < ApplicationController
   end
 
   private
+
+  # Mismo filtro que siempre usó index, re-ejecutable después de cachear.
+  def filtered_zip_codes
+    scope = ZipCode.all
+    scope = apply_search_filter(scope, columns: %w[code state_initials state_name city])
+    scope = scope.where(country: params[:country]) if params[:country].present?
+    scope
+  end
 
   def set_zip_code
     @zip_code = ZipCode.find(params[:id])

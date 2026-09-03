@@ -120,12 +120,35 @@ module Api
     end
 
     # GET /api/stripe/payment_methods  -> tarjetas guardadas del cliente
+    # La MISMA tarjeta guardada varias veces (la casilla del pago inicial la
+    # re-guardaba en cada compra) se muestra UNA sola vez: Stripe identifica
+    # la tarjeta física por 'fingerprint'; se conserva la copia más reciente
+    # y las repetidas se desprenden (detach) al vuelo. Es seguro: nada guarda
+    # ids de tarjeta — el autopago y el cobro con un clic toman la lista viva.
     def payment_methods
       cid = @current_user.stripe_customer_id
       return render(json: { cards: [] }, status: :ok) if cid.blank?
 
       res = StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' })
-      cards = (res['data'] || []).map do |pm|
+      seen = {}
+      dupes = []
+      (res['data'] || []).each do |pm| # Stripe devuelve la más reciente primero
+        fp = pm.dig('card', 'fingerprint').presence ||
+             "#{pm.dig('card', 'brand')}-#{pm.dig('card', 'last4')}-#{pm.dig('card', 'exp_month')}-#{pm.dig('card', 'exp_year')}"
+        if seen.key?(fp)
+          dupes << pm['id']
+        else
+          seen[fp] = pm
+        end
+      end
+      dupes.each do |pm_id|
+        begin
+          StripeClient.request(:post, "/v1/payment_methods/#{pm_id}/detach", {})
+        rescue StripeClient::Error
+          nil # si no se pudo desprender, igual queda fuera de la lista
+        end
+      end
+      cards = seen.values.map do |pm|
         { id: pm['id'], brand: pm.dig('card', 'brand'), last4: pm.dig('card', 'last4'),
           exp_month: pm.dig('card', 'exp_month'), exp_year: pm.dig('card', 'exp_year') }
       end

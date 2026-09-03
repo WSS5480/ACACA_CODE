@@ -50,19 +50,12 @@ class Api::RiskEngineConfigsController < ApplicationController
     end
 
     active_v = RiskEngineConfig.active_version
-    has_limit = Credit.column_names.include?('credit_limit')
     count = 0
 
     scope.find_each do |u|
-      new_limit = u.calculate_initial_credit.to_f.round(2)
-      credit = u.credit || u.build_credit(amount: new_limit)
-      old_limit = (has_limit && credit.credit_limit) ? credit.credit_limit.to_f : credit.amount.to_f
-      used = [(old_limit - credit.amount.to_f), 0].max
-      new_amount = [(new_limit - used), 0].max.round(2)
-      credit.amount = new_amount
-      credit.credit_limit = new_limit if has_limit
-      credit.save!
-      u.update_column(:risk_version, active_v) if User.column_names.include?('risk_version')
+      # Misma matemática que User#recalculate_credit! — y ahora con el
+      # parentesco REAL del primer "quien recibe" (antes usaba el default).
+      u.recalculate_credit!
       count += 1
     end
 

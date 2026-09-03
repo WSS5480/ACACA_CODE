@@ -17,6 +17,29 @@ class User < ApplicationRecord
   has_many :payments, dependent: :nullify
   has_many :beneficiaries, dependent: :destroy
 
+  # Parentesco REAL para el motor de riesgo: el del PRIMER "quien recibe" del
+  # cliente (su destinatario principal). nil mientras no haya ninguno — en ese
+  # caso el motor usa su valor por defecto, como en el registro.
+  def primary_kinship
+    b = beneficiaries.order(:created_at).first
+    b && b.respond_to?(:kinship) ? b.kinship.presence : nil
+  end
+
+  # Recalcula la línea con el motor ACTIVO y el parentesco real, respetando lo
+  # ya usado: nueva disponible = nuevo límite - usado (nunca negativa).
+  def recalculate_credit!
+    new_limit = calculate_initial_credit(relationship: primary_kinship).to_f.round(2)
+    cr = credit || build_credit(amount: new_limit)
+    has_limit = Credit.column_names.include?('credit_limit')
+    old_limit = has_limit && cr.credit_limit ? cr.credit_limit.to_f : cr.amount.to_f
+    used = [(old_limit - cr.amount.to_f), 0].max
+    cr.amount = [(new_limit - used), 0].max.round(2)
+    cr.credit_limit = new_limit if has_limit
+    cr.save!
+    update_column(:risk_version, risk_engine_version) if User.column_names.include?('risk_version')
+    cr
+  end
+
   validates :housing_type, inclusion: { in: %w[owner tenant], message: 'debe ser owner o tenant' }, allow_nil: true
 
   # No usamos el correo de confirmación por defecto de Devise: los clientes reciben el link en el correo de

@@ -35,7 +35,7 @@ module CreditCalculable
       months_points(c, months_job) +
       income_points(c) +
       kinship_points(c, relationship) +
-      (c['delivery'] || 0)
+      delivery_points(c)
   end
 
   # Versión del motor con la que se evaluó (para guardar en el cliente).
@@ -63,6 +63,16 @@ module CreditCalculable
     months = value.to_i
     tier = (c['months'] || []).find { |min, _pts| months >= min }
     tier ? tier[1] : 0
+  end
+
+  # Puntos de entrega LIGADOS a la respuesta real (antes eran fijos para
+  # todos). Hoy solo entregamos en México: 'mx' (o el dato vacío de cuentas
+  # viejas, que siempre fue México) recibe los puntos; otro país, 0.
+  def delivery_points(c)
+    dc = (respond_to?(:delivery_country) ? delivery_country : nil).to_s.strip.downcase
+    return (c['delivery'] || 0) if dc.blank? || dc == 'mx' || dc.include?('mexico') || dc.include?('méxico')
+
+    0
   end
 
   def income_points(c)

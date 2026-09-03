@@ -28,6 +28,14 @@ class Api::BeneficiariesController < ApplicationController
     end
 
     if @beneficiary.save
+      # El parentesco alimenta el motor de riesgo: al conocerse o cambiar el
+      # "quien recibe", la línea se recalcula con el dato REAL. Nunca bloquea
+      # el guardado si el recálculo falla.
+      begin
+        @beneficiary.user&.recalculate_credit!
+      rescue StandardError => e
+        Rails.logger.warn "[beneficiary] recalc credit: #{e.message}"
+      end
       render json: BeneficiarySerializer.new(@beneficiary).serializable_hash, status: :created
     else
       render json: { errors: @beneficiary.errors.full_messages }, status: :unprocessable_entity
@@ -37,6 +45,14 @@ class Api::BeneficiariesController < ApplicationController
   # PATCH/PUT /api/beneficiaries/:id
   def update
     if @beneficiary.update(beneficiary_params)
+      # El parentesco alimenta el motor de riesgo: al conocerse o cambiar el
+      # "quien recibe", la línea se recalcula con el dato REAL. Nunca bloquea
+      # el guardado si el recálculo falla.
+      begin
+        @beneficiary.user&.recalculate_credit!
+      rescue StandardError => e
+        Rails.logger.warn "[beneficiary] recalc credit: #{e.message}"
+      end
       render json: BeneficiarySerializer.new(@beneficiary).serializable_hash, status: :ok
     else
       render json: { errors: @beneficiary.errors.full_messages }, status: :unprocessable_entity
@@ -45,7 +61,15 @@ class Api::BeneficiariesController < ApplicationController
 
   # DELETE /api/beneficiaries/:id
   def destroy
+    owner = @beneficiary.user
     @beneficiary.destroy
+    # Si se va el "quien recibe" principal, el parentesco vigente cambia:
+    # recalcular con el que quede (o el default si ya no hay ninguno).
+    begin
+      owner&.recalculate_credit!
+    rescue StandardError => e
+      Rails.logger.warn "[beneficiary] recalc credit: #{e.message}"
+    end
     head :no_content
   end
 

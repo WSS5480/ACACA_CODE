@@ -8,7 +8,9 @@ class Api::SettingsController < ApplicationController
   PRIVACY_KEY = 'privacy_policy'
 
   # La lectura del aviso de privacidad es PÚBLICA (la página /privacidad del sitio la muestra).
-  skip_before_action :authenticate_entity!, only: [:rates, :privacy], raise: false
+  # La lectura de las preguntas de aprobación también: el REGISTRO (público) la
+  # usa para mostrar/ocultar sus preguntas informativas según la lista maestra.
+  skip_before_action :authenticate_entity!, only: [:rates, :privacy, :approval_questions], raise: false
 
   # GET /api/settings/rates  (público)
   # Tasas configurables + factores derivados de la tasa de interés:

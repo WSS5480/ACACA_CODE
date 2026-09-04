@@ -64,7 +64,38 @@ class Api::RiskEngineConfigsController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  # GET /api/risk_engine/reference_findings — hallazgos del motor de decisión
+  # (sombra) + contratos actualmente en HOLD/STOP para revisión humana.
+  def reference_findings
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff?
+
+    findings = begin
+      JSON.parse(AppSetting.get(ReferenceGateReadiness::KEY).to_s)
+    rescue StandardError
+      nil
+    end
+    holds = []
+    if defined?(ReferenceGate) && ReferenceGate.ready?
+      holds = Contract.where(reference_gate_status: %w[hold stop])
+                      .order(reference_gate_at: :desc).limit(50).map do |c|
+        { id: c.id, ref: (c.contract_number.presence || (c.respond_to?(:order_ref) ? c.order_ref : nil) || "##{c.id}"),
+          cliente: [c.user&.name, c.user&.last_name].compact.join(' '),
+          estado: c.reference_gate_status, razones: c.reference_gate_reasons, desde: c.reference_gate_at }
+      end
+    end
+    render json: { findings: findings, en_revision: holds, config: ReferenceGateReadiness.config }, status: :ok
+  end
+
+  # POST /api/risk_engine/reference_findings_run — recalcular AHORA (staff)
+  def reference_findings_run
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless staff?
+    return render(json: { error: 'El gate aún no tiene tablas (falta migrar)' }, status: :unprocessable_entity) unless defined?(ReferenceGate) && ReferenceGate.ready?
+
+    render json: { ok: true, findings: ReferenceGateReadiness.evaluate! }, status: :ok
+  end
+
   private
+
 
   def staff?
     %w[master admin].include?(@current_user&.role&.name)

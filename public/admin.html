@@ -732,6 +732,29 @@
     <section class="view hide" data-v="riesgo">
       <div class="head"><h1>Configuración — Motor de Riesgo</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px"><a data-view="config" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">⚙️ General</a><a data-view="riesgo" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--navy);color:#fff">📊 Motor de Riesgo</a><a data-view="preguntas" style="cursor:pointer;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">❓ Preguntas de aprobación</a></div>
+
+      <div class="sec" id="rgPanel" style="padding:16px;margin-bottom:16px">
+        <div class="stitle" style="padding:0 0 6px">🕵️ Gate de referencias (modo sombra) · motor de decisión</div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 10px">El gate compara lo declarado contra lo que contestan las referencias y guarda un veredicto por contrato — <b>sin bloquear nada</b>. El motor de decisión re-evalúa DIARIO (1 pm) todo el libro madurado y avisa aquí y en la Bitácora cuando la evidencia cambia. El switch de la Fase 7 lo mueve una persona, siempre.</p>
+        <div id="rgBanner" style="border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:700;background:#eef0f6;color:var(--navy)">Cargando…</div>
+        <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>
+          <th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--line)">Regla</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">Disparó</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">% malo (disparó)</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">% malo (limpio)</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">Lift</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">z</th>
+          <th style="padding:6px 8px;border-bottom:2px solid var(--line)">Veredicto</th>
+        </tr></thead><tbody id="rgRules"><tr><td colspan="7" class="muted" style="padding:8px">—</td></tr></tbody></table></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <button class="btn" id="rgRun" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">↻ Recalcular ahora</button>
+          <span class="muted" id="rgMeta" style="font-size:12px"></span>
+        </div>
+        <div id="rgHoldsWrap" style="margin-top:12px;display:none">
+          <div style="font-weight:800;color:var(--navy);font-size:13px;margin-bottom:6px">Contratos en revisión (HOLD / STOP)</div>
+          <div id="rgHolds"></div>
+        </div>
+      </div>
       <p class="muted" style="margin:-6px 0 16px">Cada configuración es una versión guardada. Edita, prueba con un solicitante, guarda como nueva versión (con el motivo) o revierte a una anterior.</p>
 
       <div class="rk-warn" id="rk-warn" style="display:none"></div>
@@ -1152,6 +1175,7 @@ function show(view){
   if(view==='catalogos' && !loaded.rfcats){ loaded.rfcats=1; rfLoadCategories(); }
   if(view==='catalogos') loaded.cat=1;
   if(view==='riesgo' && !loaded.rk){ loadVersions(); loadRecalcList(); loaded.rk=1; }
+  if(view==='riesgo'){ loadRefGate(); }
   if(view==='config' && !loaded.cfg){ loadFx(); loadRf(); loaded.cfg=1; }
   if(view==='security' && !loaded.sec){ loadSecurity(); loaded.sec=1; }
   if(view==='security') loadChangeReqs();
@@ -1816,6 +1840,48 @@ async function gwCardStart(cid,amt,ap){
   };
 }
 if($('gwBack')) $('gwBack').onclick=()=>{ show('gestion'); };
+/* ---- GATE DE REFERENCIAS (sombra): hallazgos del motor de decisión ---- */
+async function loadRefGate(){
+  const banner=$('rgBanner'); if(!banner) return;
+  const r=await api('GET','/api/risk_engine/reference_findings');
+  if(!(r.ok&&r.data)){ banner.textContent='No se pudo cargar.'; return; }
+  const f=r.data.findings;
+  const colors={ENCENDER:['#e8f7ee','#1a7f4e'],AJUSTAR:['#fff7ed','#b45309'],ESPERAR:['#eef0f6','#39425a']};
+  const names={sobreestimo_antiguedad:'Sobreestimó antigüedad',respuesta_negativa:'Respuesta negativa clave',pocas_respuestas:'Pocas respuestas',patron_uniforme:'Patrón uniforme'};
+  const vcol={predice:'#1a7f4e',no_predice:'#c62828',datos_insuficientes:'var(--mut)'};
+  const td='padding:6px 8px;border-bottom:1px solid var(--line);text-align:center';
+  if(f&&f.recomendacion){
+    const c=colors[f.recomendacion]||colors.ESPERAR;
+    banner.style.background=c[0]; banner.style.color=c[1];
+    banner.innerHTML='<b>'+esc(f.recomendacion)+'</b> — '+esc(f.guia||'');
+    $('rgMeta').textContent='Último cálculo: '+new Date(f.computed_at).toLocaleString()+' · gates evaluados: '+(f.volumen_evaluado??0)+' · madurados: '+(f.madurados??0)+' · tasa HOLD: '+Math.round((f.tasa_hold||0)*100)+'%';
+    const pct=x=>x==null?'—':(x*100).toFixed(1)+'%';
+    $('rgRules').innerHTML=Object.entries(f.reglas||{}).map(([k,v])=>
+      '<tr><td style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)">'+(names[k]||k)+'</td>'+
+      '<td style="'+td+'">'+(v.n_disparo??0)+' / '+(v.n_limpio??0)+'</td>'+
+      '<td style="'+td+'">'+pct(v.malo_disparo)+'</td>'+
+      '<td style="'+td+'">'+pct(v.malo_limpio)+'</td>'+
+      '<td style="'+td+'">'+(v.lift??'—')+'</td>'+
+      '<td style="'+td+'">'+(v.z??'—')+'</td>'+
+      '<td style="'+td+';font-weight:800;color:'+(vcol[v.veredicto]||'var(--mut)')+'">'+String(v.veredicto||'').replace(/_/g,' ')+'</td></tr>'
+    ).join('')||'<tr><td colspan="7" class="muted" style="padding:8px">Sin datos todavía.</td></tr>';
+  } else {
+    banner.style.background='#eef0f6'; banner.style.color='var(--navy)';
+    banner.textContent='ESPERAR — aún no corre el primer cálculo (corre solo a la 1 pm, o usa Recalcular ahora).';
+    $('rgRules').innerHTML='<tr><td colspan="7" class="muted" style="padding:8px">Sin datos todavía.</td></tr>';
+    $('rgMeta').textContent='';
+  }
+  const hs=r.data.en_revision||[];
+  $('rgHoldsWrap').style.display=hs.length?'block':'none';
+  $('rgHolds').innerHTML=hs.map(h=>'<div style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;font-size:12.5px"><b>'+esc(h.ref||('#'+h.id))+'</b> · '+esc(h.cliente||'')+' — <span style="font-weight:800;color:'+(h.estado==='stop'?'#c62828':'#b45309')+'">'+String(h.estado||'').toUpperCase()+'</span> <span class="muted">('+esc(String(h.razones||'').replace(/,/g,', '))+')</span></div>').join('');
+}
+document.addEventListener('click',async e=>{
+  if(e.target && e.target.id==='rgRun'){
+    e.target.disabled=true;
+    await api('POST','/api/risk_engine/reference_findings_run');
+    e.target.disabled=false; loadRefGate();
+  }
+});
 document.addEventListener('click',e=>{const a=e.target.closest('[data-view]'); if(a){e.preventDefault(); show(a.dataset.view);}});
 
 /* ---------------- Helpers ---------------- */

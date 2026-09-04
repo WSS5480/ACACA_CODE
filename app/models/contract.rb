@@ -5,6 +5,8 @@
 class Contract < ApplicationRecord
   belongs_to :user
   has_many :orders, dependent: :nullify
+  has_many :reference_pings, dependent: :destroy
+  has_many :reference_checks, dependent: :destroy
   has_many :payments, dependent: :destroy
   has_many :contract_installments, -> { order(:number) }, dependent: :destroy
   has_one_attached :signature # firma electrónica del cliente (imagen)

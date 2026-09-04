@@ -32,6 +32,21 @@ class ScheduledTick
 
     # 3) Tipo de cambio USD->MXN una vez al día (mediodía de Monterrey) y
     #    REPRECIACIÓN del catálogo completo + pedidos sin pago inicial.
+    # 3.5) MOTOR DE DECISIÓN del gate de referencias (1 pm Monterrey, 1x/día):
+    #    re-evalúa TODO el libro madurado; si algún veredicto o la recomendación
+    #    cambian, queda en la Bitácora y en el banner del Motor de Riesgo.
+    if t.hour == 13 && defined?(ReferenceGateReadiness) && defined?(ReferenceGate) && ReferenceGate.ready?
+      begin
+        key = "rg_findings_#{t.to_date}"
+        unless Rails.cache.read(key)
+          Rails.cache.write(key, 1, expires_in: 20.hours)
+          out[:reference_gate_findings] = ReferenceGateReadiness.evaluate!['recomendacion']
+        end
+      rescue StandardError => e
+        out[:reference_gate_findings] = e.message
+      end
+    end
+
     if t.hour == 12 && defined?(ExchangeRates::FetchRateJob)
       begin
         ExchangeRates::FetchRateJob.new.perform

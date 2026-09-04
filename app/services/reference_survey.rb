@@ -185,7 +185,7 @@ class ReferenceSurvey
         []
       end
       log = [] unless log.is_a?(Array)
-      log << { 'q' => q, 'a' => opt[:t], 'neg' => !!opt[:neg] }
+      log << { 'q_key' => "#{p.target_kind}_#{idx}", 'q' => q, 'opt' => key, 'a' => opt[:t], 'neg' => !!opt[:neg], 'at' => Time.current.iso8601 }
       cols = { answers: log.to_json, question_idx: idx + 1 }
       cols[:time_known] = opt[:t] if idx.zero? && p.respond_to?(:time_known)
       p.update_columns(cols)
@@ -193,6 +193,15 @@ class ReferenceSurvey
       ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
                          person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
                          body: "📋#{opt[:neg] ? ' ⚠' : ''} #{p.ref_name} (#{p.target_kind}) — #{q} → #{opt[:t]}")
+
+
+      # GATE SOMBRA: registra la comparación y re-evalúa el veredicto del
+      # contrato. Jamás rompe la entrevista si algo falla.
+      begin
+        ReferenceGate.record_answer!(p.reload, idx, key) if defined?(ReferenceGate)
+      rescue StandardError => e
+        Rails.logger.warn "[ReferenceSurvey] gate: #{e.message}"
+      end
 
       ask_current(p.reload)
     end
@@ -206,6 +215,11 @@ class ReferenceSurvey
       negs = log.is_a?(Array) ? log.count { |x| x['neg'] } : 0
       p.update_columns(survey_state: 'done')
       p.update_columns(recommends: negs.positive? ? 'no' : 'si') if p.respond_to?(:recommends)
+      begin
+        ReferenceGate.evaluate!(p.contract) if defined?(ReferenceGate) && p.contract
+      rescue StandardError => e
+        Rails.logger.warn "[ReferenceSurvey] gate: #{e.message}"
+      end
       # Cierre con BOTÓN humano (sin URL fea): "Conocer Ácasa" abre la tienda.
       body = WaAutoText.text('ent_gracias') # editable en Configuración → Respuestas WhatsApp
       resp = WhatsappCloud.new.send_link_button(p.phone, body: body, button_text: '🛍 Conocer Ácasa', url: STORE)
@@ -226,6 +240,11 @@ class ReferenceSurvey
       ContactLog.create!(user_id: p.contract&.user_id, person_type: 'reference',
                          person_name: p.ref_name, phone: p.phone, author_name: 'Automático',
                          body: "🚩 BANDERA ROJA: #{p.ref_name} (#{p.target_kind}) indica NO conocer a #{p.customer_name} (\"#{body.to_s[0, 120]}\") — revisar antes de aprobar")
+      begin
+        ReferenceGate.evaluate!(p.contract) if defined?(ReferenceGate) && p.contract
+      rescue StandardError => e
+        Rails.logger.warn "[ReferenceSurvey] gate: #{e.message}"
+      end
       say(p, WaAutoText.text('ent_flag'))
     end
 

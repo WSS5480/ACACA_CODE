@@ -151,6 +151,8 @@ Rails.application.routes.draw do
     post 'risk_engine/versions', to: 'api/risk_engine_configs#create'
     post 'risk_engine/versions/:version/activate', to: 'api/risk_engine_configs#activate'
     post 'risk_engine/recalc_credit', to: 'api/risk_engine_configs#recalc_credit'
+    get  'risk_engine/reference_findings', to: 'api/risk_engine_configs#reference_findings'
+    post 'risk_engine/reference_findings_run', to: 'api/risk_engine_configs#reference_findings_run'
 
     post 'stripe/payment_intent',  to: 'api/stripe#payment_intent'
     post 'stripe/charge_saved',    to: 'api/stripe#charge_saved'

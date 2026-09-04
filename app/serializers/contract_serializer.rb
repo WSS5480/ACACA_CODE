@@ -142,4 +142,15 @@ class ContractSerializer
       'por_entregar'
     end
   end
+
+  # Gate de referencias (modo sombra) — nil hasta que corra la migración.
+  attribute :reference_gate_status do |c|
+    c.respond_to?(:reference_gate_status) ? c.reference_gate_status : nil
+  end
+  attribute :reference_gate_reasons do |c|
+    c.respond_to?(:reference_gate_reasons) ? c.reference_gate_reasons : nil
+  end
+  attribute :reference_gate_at do |c|
+    c.respond_to?(:reference_gate_at) ? c.reference_gate_at : nil
+  end
 end

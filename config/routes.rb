@@ -153,6 +153,8 @@ Rails.application.routes.draw do
     post 'risk_engine/recalc_credit', to: 'api/risk_engine_configs#recalc_credit'
     get  'risk_engine/reference_findings', to: 'api/risk_engine_configs#reference_findings'
     post 'risk_engine/reference_findings_run', to: 'api/risk_engine_configs#reference_findings_run'
+    get  'go_live/backup',  to: 'api/go_live#backup'
+    post 'go_live/execute', to: 'api/go_live#execute'
 
     post 'stripe/payment_intent',  to: 'api/stripe#payment_intent'
     post 'stripe/charge_saved',    to: 'api/stripe#charge_saved'

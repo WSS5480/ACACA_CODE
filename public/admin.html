@@ -848,6 +848,20 @@
         <button data-stab="contract">Control de documentos legales</button>
         <button data-stab="rates">Tasas e impuestos</button>
         <button data-stab="audit">Bitácora de cambios</button>
+        <button data-stab="golive">🚀 Go live</button>
+      </div>
+      <div id="secTabGoLive" style="display:none">
+        <div class="sec" style="padding:18px;border:2px solid #c62828;border-radius:12px">
+          <div class="stitle" style="padding:0 0 6px;color:#c62828">🚀 Switch de GO LIVE — borrar TODOS los datos de prueba</div>
+          <p class="muted" style="margin:0 0 8px;font-size:13px"><b>Borra:</b> contratos, cuotas, pagos, órdenes, compradores, referencias y entrevistas, quien recibe, avales, carritos, WhatsApp, historial de contacto, tickets, compromisos, contabilidad (pólizas, cierres y gastos), líneas de crédito y TODAS las cuentas de clientes de prueba. <b>Conserva:</b> catálogo y fotos, categorías, tasas, contrato/aviso/waiver, preguntas, Motor de Riesgo y su historial, usuarios del equipo, códigos postales, tipo de cambio, la Bitácora y los cambios firmados. Además fija la fecha de corte del motor de decisión: desde hoy solo cuentan datos reales.</p>
+          <p class="muted" style="margin:0 0 12px;font-size:13px">Pasos: <b>1)</b> descarga el respaldo y guárdalo. <b>2)</b> escribe la frase y ejecuta. Solo el usuario <b>master</b> puede hacerlo. Después, en Stripe: borra los datos de prueba (Developers → Delete all test data) y cambia las llaves a las de producción.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn" id="glBackup" style="background:#eef0f6;color:var(--navy);padding:9px 14px">1) Descargar respaldo (JSON)</button>
+            <input id="glPhrase" placeholder="Escribe: BORRAR Y LANZAR" style="padding:9px 12px;border:1px solid #dfe3ea;border-radius:8px;min-width:220px;font-size:13px">
+            <button class="btn" id="glExec" style="background:#c62828;color:#fff;padding:9px 14px">2) 🚀 BORRAR TODO Y LANZAR</button>
+          </div>
+          <div id="glMsg" class="muted" style="margin-top:10px;font-size:13px"></div>
+        </div>
       </div>
       <!-- Cambios sensibles pendientes de FIRMA (visible en toda la sección Seguridad) -->
       <div id="secChanges"></div>
@@ -4425,10 +4439,40 @@ if($('secTabs')) $('secTabs').addEventListener('click',e=>{
   $('secTabContract').style.display = tab==='contract' ? '' : 'none';
   $('secTabRates').style.display = tab==='rates' ? '' : 'none';
   $('secTabAudit').style.display = tab==='audit' ? '' : 'none';
+  if($('secTabGoLive')) $('secTabGoLive').style.display = tab==='golive' ? '' : 'none';
   if(tab==='contract' && !CT_LOADED){ CT_LOADED=1; loadContractTpl(); loadPrivacyTpl(); }
   if(tab==='rates') loadRates();
   if(tab==='audit') loadAudit();
 });
+
+/* ------- 🚀 GO LIVE: respaldo y borrado total de datos de prueba ------- */
+if($('glBackup')) $('glBackup').onclick=async()=>{
+  $('glMsg').textContent='Generando respaldo…';
+  try{
+    const r=await fetch('/api/go_live/backup',{headers:TOKEN?{Authorization:TOKEN}:{}});
+    if(!r.ok){ const d=await r.json().catch(()=>null); $('glMsg').textContent=(d&&d.error)||'No se pudo generar el respaldo.'; return; }
+    const blob=await r.blob();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='respaldo-pre-go-live-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    $('glMsg').textContent='✓ Respaldo descargado. Guárdalo en un lugar seguro antes del paso 2.';
+  }catch(e){ $('glMsg').textContent='No se pudo generar el respaldo.'; }
+};
+if($('glExec')) $('glExec').onclick=async()=>{
+  const phrase=$('glPhrase').value.trim();
+  if(phrase!=='BORRAR Y LANZAR'){ $('glMsg').textContent='Escribe exactamente: BORRAR Y LANZAR'; return; }
+  if(!confirm('🚀 GO LIVE\n\nEsto BORRA todos los datos de prueba de forma permanente (ya descargaste el respaldo, ¿verdad?).\n\n¿Ejecutar ahora?')) return;
+  $('glExec').disabled=true; $('glMsg').textContent='Ejecutando…';
+  const r=await api('POST','/api/go_live/execute',{confirm:phrase});
+  $('glExec').disabled=false;
+  if(r.ok&&r.data&&r.data.ok){
+    const tot=Object.values(r.data.borrado||{}).reduce((a,b)=>a+b,0);
+    $('glMsg').innerHTML='✅ <b>Listo para lanzar.</b> Se borraron '+tot+' registros en '+Object.keys(r.data.borrado||{}).length+' tablas y '+(r.data.clientes_borrados||0)+' cliente(s) de prueba. Corte del motor de decisión: '+esc(r.data.fecha_corte||'')+'. Ahora: borra los datos de prueba en Stripe y cambia las llaves a producción.';
+    $('glPhrase').value='';
+  } else {
+    $('glMsg').textContent=(r.data&&r.data.error)||'No se pudo ejecutar.';
+  }
+};
 
 /* ------- Seguridad: Bitácora de cambios (auditoría por usuario) ------- */
 let AU_LOGS=[], AU_SORT={key:'created_at',dir:-1}, AU_ACTIONS_LOADED=0, AU_USERS={};

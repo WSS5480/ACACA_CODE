@@ -1854,7 +1854,7 @@ async function loadRefGate(){
     const c=colors[f.recomendacion]||colors.ESPERAR;
     banner.style.background=c[0]; banner.style.color=c[1];
     banner.innerHTML='<b>'+esc(f.recomendacion)+'</b> — '+esc(f.guia||'');
-    $('rgMeta').textContent='Último cálculo: '+new Date(f.computed_at).toLocaleString()+' · gates evaluados: '+(f.volumen_evaluado??0)+' · madurados: '+(f.madurados??0)+' · tasa HOLD: '+Math.round((f.tasa_hold||0)*100)+'%';
+    $('rgMeta').textContent='Último cálculo: '+new Date(f.computed_at).toLocaleString()+' · gates evaluados: '+(f.volumen_evaluado??0)+' · madurados: '+(f.madurados??0)+' · tasa HOLD: '+Math.round((f.tasa_hold||0)*100)+'%'+(f.datos_desde?(' · solo datos desde '+f.datos_desde+' (las pruebas no cuentan)'):'');
     const pct=x=>x==null?'—':(x*100).toFixed(1)+'%';
     $('rgRules').innerHTML=Object.entries(f.reglas||{}).map(([k,v])=>
       '<tr><td style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)">'+(names[k]||k)+'</td>'+

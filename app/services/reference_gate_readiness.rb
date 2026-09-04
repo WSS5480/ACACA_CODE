@@ -20,7 +20,10 @@ class ReferenceGateReadiness
     'min_lift'        => 1.5,  # el disparo debe multiplicar el riesgo 1.5x
     'z_crit'          => 1.96, # 95% de confianza
     'min_volume'      => 100,  # gates evaluados antes de recomendar encender
-    'max_hold_rate'   => 0.35  # si el gate detiene a más del 35%, fricciona de más
+    'max_hold_rate'   => 0.35, # si el gate detiene a más del 35%, fricciona de más
+    'ignore_before'   => '2026-09-04' # FECHA DE CORTE: los contratos de PRUEBA
+                                      # anteriores a esta fecha NO cuentan para
+                                      # las estadísticas (editable al lanzar)
   }.freeze
   KEY  = 'reference_gate_findings'
   HKEY = 'reference_gate_findings_history'
@@ -37,14 +40,22 @@ class ReferenceGateReadiness
 
     def evaluate!
       cfg = config
-      volume_all = Contract.where.not(reference_gate_status: nil).count
-      holds = Contract.where(reference_gate_status: %w[hold stop]).count
+      # SOLO datos reales: todo lo creado antes de la fecha de corte (fase de
+      # pruebas) queda fuera de TODAS las cuentas del motor.
+      cutoff = begin
+        cfg['ignore_before'].present? ? Date.parse(cfg['ignore_before'].to_s) : nil
+      rescue StandardError
+        nil
+      end
+      base = Contract.where.not(reference_gate_status: nil)
+      base = base.where('contracts.created_at >= ?', cutoff) if cutoff
+      volume_all = base.count
+      holds = base.where(reference_gate_status: %w[hold stop]).count
       hold_rate = volume_all.positive? ? (holds.to_f / volume_all).round(3) : 0.0
 
-      seasoned = Contract.where.not(reference_gate_status: nil)
-                         .where.not(status: 'cancelled')
-                         .where('contracts.created_at <= ?', cfg['season_days'].to_i.days.ago)
-                         .includes(:contract_installments)
+      seasoned = base.where.not(status: 'cancelled')
+                     .where('contracts.created_at <= ?', cfg['season_days'].to_i.days.ago)
+                     .includes(:contract_installments)
       rows = seasoned.map { |c| { reasons: c.reference_gate_reasons.to_s.split(','), bad: bad?(c, cfg) } }
 
       rules = {}
@@ -106,7 +117,8 @@ class ReferenceGateReadiness
 
       snapshot = { 'computed_at' => Time.current.iso8601, 'volumen_evaluado' => volume_all,
                    'madurados' => rows.size, 'tasa_hold' => hold_rate, 'reglas' => rules,
-                   'recomendacion' => rec, 'guia' => guia, 'config' => cfg }
+                   'recomendacion' => rec, 'guia' => guia, 'config' => cfg,
+                   'datos_desde' => cutoff&.iso8601 }
 
       prev = begin
         JSON.parse(AppSetting.get(KEY).to_s)

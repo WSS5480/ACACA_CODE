@@ -102,7 +102,10 @@ class ContractDocument
       'monto_exencion' => exencion ? money(exencion) : '0.00',
       'cuota_procesamiento' => (Product.processing_fee.positive? ? money(Product.processing_fee) : '0.00'),
       # TASA ANUAL calculada del contrato: (interés ÷ principal) anualizada por el plazo.
-      'tasa_ordinaria' => (@c.respond_to?(:annual_interest_rate) && @c.annual_interest_rate.positive? ? format('%g', @c.annual_interest_rate) : format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0))),
+      # La carátula imprime la tasa CONTRACTUAL configurada (saldo insoluto,
+      # cláusula SÉPTIMA) — nunca la equivalente 'add-on' re-despejada, que
+      # bajo amortización daría otro número y contradiría la metodología.
+      'tasa_ordinaria' => format('%g', (@c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0)),
       'tasa_moratoria' => (Product.mora_rate.positive? ? format('%g', Product.mora_rate) : nil),
       'descuento_anticipado' => nil,
       # CAT calculado del contrato (efectivo; incluye cuota de procesamiento, sin la exención de responsabilidad opcional).
@@ -160,13 +163,9 @@ class ContractDocument
              "$#{money(total_row)}", "$#{money(saldo)}")
     end
     rate = @c.respond_to?(:interest_rate) ? @c.interest_rate : 25.0
-    factor = @c.respond_to?(:finance_factor) ? @c.finance_factor : 1.25
-    note = format("\nCargo financiero: %g%% sobre el principal (diferencia a 100 del factor de financiamiento %.2f). Interés: $%s sobre un principal de $%s.",
-                  rate, factor, money(@c.respond_to?(:interest_amount) ? @c.interest_amount : 0),
+    note = format("\nTasa de interés ordinaria anual FIJA: %g%%. Interés calculado sobre SALDO INSOLUTO: saldo × (tasa anual ÷ 360 × días del periodo). Interés total del plazo: $%s sobre un principal de $%s.",
+                  rate, money(@c.respond_to?(:interest_amount) ? @c.interest_amount : 0),
                   money(@c.respond_to?(:principal_amount) ? @c.principal_amount : 0))
-    if @c.respond_to?(:annual_interest_rate) && @c.annual_interest_rate.positive?
-      note += format("\nTasa de interés ordinaria ANUAL equivalente por el plazo contratado: %g%%.", @c.annual_interest_rate)
-    end
     if @c.respond_to?(:computed_cat) && @c.computed_cat.positive?
       note += format("\nCAT: %g%% efectivo anual. Para fines informativos y de comparación. Incluye la cuota de procesamiento; no incluye la exención de responsabilidad opcional ni IVA.", @c.computed_cat)
     end

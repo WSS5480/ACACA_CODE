@@ -167,27 +167,39 @@ module Api
       return render(json: { error: 'El enganche no puede ser mayor al precio de contado' }, status: :unprocessable_entity) if down > total
 
       # PRINCIPAL = contado - enganche.
-      # FINANCIADO (a pagar) = principal x 1.25 (cargo financiero).
-      # El credito cubre el FINANCIADO completo (con cargo incluido): todo lo
-      # que rebase el credito debe irse al enganche.
+      # FINANCIADO (a pagar) = tabla AMORTIZADA sobre SALDO INSOLUTO — la
+      # matemática del contrato (cláusula SÉPTIMA: tasa anual FIJA ÷ 360 ×
+      # días del periodo), ya NO principal × factor. El credito sigue
+      # cubriendo el FINANCIADO completo (principal + interés): todo lo que
+      # rebase el credito debe irse al enganche.
       principal = (total - down).round(2)
-      financed = (principal * Product.finance_factor).round(2)
+      freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
+      scale = freq == 'monthly' ? 4.333 : (freq == 'biweekly' ? 2.0 : 1.0)
+      periods = [(weeks / scale).round, 1].max
+      quote = Contract.amortized_quote(principal: principal, frequency: freq, periods: periods)
+      financed = quote[:total]
 
       available = user.credit&.amount.to_f
       return render(json: { error: "El monto a financiar ($#{financed}) supera el credito disponible ($#{available.round(2)}); sube el enganche" }, status: :unprocessable_entity) if financed > available + 0.01
 
-      freq = %w[weekly biweekly monthly].include?(params[:frequency].to_s) ? params[:frequency].to_s : 'weekly'
       waiver_pct = ActiveModel::Type::Boolean.new.cast(params[:waiver]) ? Product.waiver_rate : nil
       # Beneficiario (opcional pero recomendado): debe pertenecer al cliente.
       beneficiary_id = params[:beneficiary_id].present? ? user.beneficiaries.where(id: params[:beneficiary_id]).pick(:id) : nil
-      weekly = (financed / weeks).round(2)
+      weekly = (quote[:payment] / scale).round(2)
       min_wk = Product.min_weekly_for(weeks)
       if financed > 0 && weekly < min_wk
         if min_wk <= 10
-          # Plazo corto: se mantiene el pago de $10/sem y se reducen las semanas;
-          # la ultima semana liquida el resto del saldo.
-          weeks = [(financed / 10.0).ceil, 1].max
-          weekly = [10.0, financed].min.round(2)
+          # Plazo corto: se ACORTA el plazo hasta que el pago amortizado quede
+          # en el minimo (~$10/sem); la ultima cuota liquida el saldo exacto.
+          best = (1..periods).to_a.reverse.find do |cand|
+            q2 = Contract.amortized_quote(principal: principal, frequency: freq, periods: cand)
+            ((q2[:payment] / scale).round(2)) >= 10.0
+          end || 1
+          periods = best
+          quote = Contract.amortized_quote(principal: principal, frequency: freq, periods: periods)
+          financed = quote[:total]
+          weekly = (quote[:payment] / scale).round(2)
+          weeks = [(periods * scale).round, 1].max
         else
           return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{min_wk} para este plazo. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
         end

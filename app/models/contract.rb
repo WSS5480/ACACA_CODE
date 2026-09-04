@@ -134,6 +134,57 @@ class Contract < ApplicationRecord
     frequency.presence || 'weekly'
   end
 
+  # Días por periodo para el cálculo de interés (cláusula SÉPTIMA y la
+  # Metodología de cálculo: tasa anual FIJA ÷ 360 × días transcurridos).
+  PERIOD_DAYS = { 'weekly' => 7, 'biweekly' => 14, 'monthly' => 30 }.freeze
+
+  # Escala pago-semanal → pago-por-periodo (igual que period_payment).
+  def period_scale
+    case freq
+    when 'monthly'  then 4.333
+    when 'biweekly' then 2.0
+    else                 1.0
+    end
+  end
+
+  # Número de CUOTAS del plazo contratado (weeks está en semanas).
+  def scheduled_periods
+    [(weeks.to_i / period_scale).round, 1].max
+  end
+
+  # Cotización AMORTIZADA sobre SALDO INSOLUTO — la matemática del contrato:
+  # interés del periodo = saldo × (tasa anual ÷ 360 × días del periodo);
+  # pago fijo de anualidad; la ÚLTIMA cuota liquida el saldo exacto. Se simula
+  # la tabla con redondeo a centavos para que el total sea el que se cobra.
+  def self.amortized_quote(principal:, frequency:, periods:, annual_rate: nil)
+    p = principal.to_f.round(2)
+    n = [periods.to_i, 1].max
+    rate = (annual_rate || (Product.respond_to?(:interest_rate) ? Product.interest_rate : 25.0)).to_f
+    days = PERIOD_DAYS.fetch(frequency.to_s, 7)
+    i = (rate / 100.0) * days / 360.0
+    return { payment: 0.0, last_payment: 0.0, total: 0.0, interest: 0.0, periods: n } if p <= 0
+    if i <= 0
+      per = (p / n).round(2)
+      last = (p - per * (n - 1)).round(2)
+      return { payment: per, last_payment: last, total: p, interest: 0.0, periods: n }
+    end
+    pay = ((p * i) / (1 - (1 + i)**-n)).round(2)
+    saldo = p
+    total = 0.0
+    last = pay
+    (1..n).each do |k|
+      interes = (saldo * i).round(2)
+      if k == n
+        last = (saldo + interes).round(2)
+        total = (total + last).round(2)
+      else
+        total = (total + pay).round(2)
+        saldo = (saldo - (pay - interes)).round(2)
+      end
+    end
+    { payment: pay, last_payment: last, total: total, interest: (total - p).round(2), periods: n }
+  end
+
   # Pago por periodo = pago semanal escalado a la frecuencia (quincenal x2, mensual x4.333).
   def period_payment
     fin = financed_amount.to_f
@@ -212,14 +263,15 @@ class Contract < ApplicationRecord
     contract_installments.delete_all
     self.first_due_date ||= self.class.aligned_first_due(freq, start_date || Date.current)
     save!(validate: false) if changed?
-    n, per = schedule_periods_and_amount
-    return if n <= 0
-    total = financed_amount.to_f
-    acc = 0.0
+    # Tabla AMORTIZADA sobre saldo insoluto (cláusula SÉPTIMA). Las columnas
+    # financiado/pago se sincronizan con la tabla: lo que se muestra es
+    # exactamente lo que se cobra.
+    q = self.class.amortized_quote(principal: principal_amount, frequency: freq, periods: scheduled_periods)
+    n = q[:periods]
+    return if n <= 0 || q[:total] <= 0
+    update_columns(financed_amount: q[:total], weekly_payment: (q[:payment] / period_scale).round(2))
     rows = (1..n).map do |i|
-      amt = (i == n) ? (total - acc).round(2) : per.round(2)
-      acc = (acc + amt).round(2)
-      { number: i, due_date: due_date_for_period(i), amount: amt, paid_amount: 0, status: 'pending' }
+      { number: i, due_date: due_date_for_period(i), amount: (i == n ? q[:last_payment] : q[:payment]), paid_amount: 0, status: 'pending' }
     end
     contract_installments.create!(rows)
   end
@@ -230,8 +282,9 @@ class Contract < ApplicationRecord
     Product.respond_to?(:finance_factor) ? Product.finance_factor : 1.25
   end
 
+  # Tasa ordinaria anual FIJA del contrato (Seguridad → Tasas e impuestos).
   def interest_rate
-    ((finance_factor - 1) * 100).round(2)
+    Product.respond_to?(:interest_rate) ? Product.interest_rate.to_f : ((finance_factor - 1) * 100).round(2)
   end
 
   # Periodos por año según la frecuencia (semanal 52, quincenal 26, mensual 12).

@@ -49,7 +49,6 @@ DATOS ECONÓMICOS DEL CRÉDITO
   Cuota de Procesamiento: $ {{cuota_procesamiento}}
   Tasa de Interés Ordinario anual: {{tasa_ordinaria}} %
   Tasa de Intereses Moratorios: {{tasa_moratoria}} %
-  Porcentaje de descuento por pago total anticipado en una sola exhibición: {{descuento_anticipado}} %
   CAT · Costo Anual Total: {{cat}} % Fijo Sin IVA. Para fines informativos y de comparación exclusivamente.
 
 MONEDA EN LA CUAL SE CALCULARÁN Y PAGARÁN LAS OBLIGACIONES (OPCIONAL): A elección del COMPRADOR, el presente crédito y todas sus obligaciones se calcularán y pagarán en la siguiente moneda de circulación legal:
@@ -130,7 +129,7 @@ Intereses ordinarios. - Intereses ordinarios a razón del porcentaje señalado e
 
 Intereses moratorios. - Interés moratorio consistente en dividir el interés correspondiente al porcentaje señalado en la caratula entre 360 días, el resultado se multiplica por el saldo insoluto que exista al momento de incurrirse en mora, este resultado por los días efectivamente transcurridos, en la inteligencia de que cada monto de pago u obligación de pago no pagada a tiempo devengará intereses moratorios hasta su pago total. Cualquier cantidad pagada, se aplicará primero al pago de intereses o cualquier adeudo y cualquier remanente, en caso de existir, se aplicará al monto del principal.
 
-CUARTA. - CAT.- El Costo Anual Total (CAT): Es el porcentaje anualizado que incluye los intereses y demás accesorios del crédito y el Impuesto al Valor Agregado, que se calcula para fines informativos y de comparación, como se indica en la carátula del contrato.
+CUARTA. - CAT.- El Costo Anual Total (CAT): Es el porcentaje anualizado que incluye los intereses y demás accesorios del crédito, sin incluir el Impuesto al Valor Agregado, que se calcula para fines informativos y de comparación, como se indica en la carátula del contrato.
 
 QUINTA. - Enganche. Ambas partes manifiestan, que el COMPRADOR deberá pagar al VENDEDOR en un plazo no mayor a 05 cinco días naturales tras la firma de este contrato, la cantidad señalada como enganche en la caratula a través de los medios de pago señalados por el VENDEDOR a través de su página web señalada en la caratula (de ahora en adelante “La página web”)
 
@@ -176,7 +175,7 @@ Responder al COMPRADOR en caso de vicios ocultos del Bien Mueble que fueran de s
 
 DÉCIMA CUARTA. - Pagos Anticipados. El COMPRADOR podrá anticipar cualquier pago, siempre que este al corriente en sus pagos y dichos pagos sean aplicados al saldo insoluto del principal o a los pagos inmediatos siguiente, sin penalización alguna. El COMPRADOR deberá avisar mediante correo electrónico a el VENDEDOR sobre el pago anticipado que haya realizado, en máximo 48 horas, anexando el comprobante del pago adelantado.
 
-DÉCIMA QUINTA. - Pago Anticipado Final en una sola exhibición. A elección del COMPRADOR, este podrá, ejercer la opción de pagar el saldo restante en un solo pago, después de haber realizado el pago del Enganche y cuota de procesamiento, siempre que este al corriente de sus pagos y antes de completar todos los pagos. El precio a pagar será el resultado de aplicar el Porcentaje de Descuento sobre el saldo pendiente de pago por parte del COMPRADOR. No se considerarán como pagos previos al VENDEDOR cualquier sanción, interese moratorios, exenciones de responsabilidad y cualquier otra que no corresponda al capital. Al monto resultante se le añadirá el impuesto correspondiente.
+DÉCIMA QUINTA. - Pago Anticipado Final en una sola exhibición. A elección del COMPRADOR, este podrá ejercer la opción de pagar el saldo restante en un solo pago, después de haber realizado el pago del Enganche y cuota de procesamiento, siempre que esté al corriente de sus pagos y antes de completar todos los pagos, sin penalización alguna. El precio a pagar será el SALDO INSOLUTO del principal más los intereses devengados a la fecha del pago conforme a la Metodología de cálculo de interés de este contrato; al anticipar el pago, el COMPRADOR deja de causar los intereses no devengados del plazo restante. No se considerarán como pagos previos al VENDEDOR cualquier sanción, intereses moratorios, exenciones de responsabilidad y cualquier otra que no corresponda al capital. Al monto resultante se le añadirá el impuesto correspondiente.
 
 DÉCIMA SEXTA. – Entrega y Garantía del Bien Mueble. Al momento de la entrega del Bien Mueble y dentro de un plazo máximo de 10 diez días naturales, el COMPRADOR deberá inspeccionar el bien mueble y notificar al VENDEDOR si el mismo no cumple con la descripción señalada en la carátula, si presenta fallas o daños. Si el COMPRADOR no informan dentro del plazo de 10 diez días naturales sobre cualquier irregularidad, libera y exonera al VENDEDOR de cualquier responsabilidad futura relacionada con el Bien Mueble. Asimismo, el COMPRADOR deberá conservar el empaque original del Bien Mueble y todo documento o accesorio que se incluya dentro del empaque del Bien Mueble.
 

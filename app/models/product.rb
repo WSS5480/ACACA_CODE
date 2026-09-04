@@ -112,9 +112,21 @@ class Product < ApplicationRecord
     return 0 if cost <= 0 || weeks.to_f <= 0
     cash = cost * t * f
     dp = (downpayment || cash * 0.10).to_f
-    financed = (cash - dp) * Product.finance_factor
-    return 0 if financed <= 0
-    (financed / weeks.to_f).round(2)
+    principal = (cash - dp).round(2)
+    return 0 if principal <= 0
+    Product.weekly_annuity(principal, weeks.to_i)
+  end
+
+  # Pago SEMANAL amortizado sobre SALDO INSOLUTO — la matemática del contrato
+  # (cláusula SÉPTIMA): interés = saldo × (tasa anual ÷ 360 × 7 días). Misma
+  # fórmula que Contract.amortized_quote, para que tienda y contrato cuadren.
+  def self.weekly_annuity(principal, weeks)
+    p = principal.to_f
+    n = weeks.to_i
+    return 0 if p <= 0 || n <= 0
+    i = (interest_rate / 100.0) * 7.0 / 360.0
+    return (p / n).round(2) if i <= 0
+    ((p * i) / (1 - (1 + i)**-n)).round(2)
   end
 
   # Plazos disponibles (solo los que superan $20 semanales) para un enganche dado

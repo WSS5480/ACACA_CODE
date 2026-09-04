@@ -1,8 +1,11 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
-if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
-  ./bin/rails db:prepare
-fi
+# MIGRAR SIEMPRE al arrancar (db:prepare es idempotente y no hace nada si ya
+# está al día). El `if` anterior comparaba el comando con "./bin/rails server"
+# y la forma en que Render lo pasa no coincidía — las migraciones se quedaban
+# sin correr en cada deploy (así se quedó fuera la tabla del gate). Si una
+# migración falla, el arranque truena a propósito: mejor no servir código
+# nuevo sobre un esquema viejo.
+./bin/rails db:prepare
 
 exec "${@}"

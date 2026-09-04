@@ -147,6 +147,12 @@ class Contract < ApplicationRecord
     end
   end
 
+  # Tasa del PERIODO (cláusula SÉPTIMA): tasa anual ÷ 360 × días del periodo.
+  def periodic_rate
+    rate = Product.respond_to?(:interest_rate) ? Product.interest_rate.to_f : 25.0
+    (rate / 100.0) * PERIOD_DAYS.fetch(freq, 7) / 360.0
+  end
+
   # Número de CUOTAS del plazo contratado (weeks está en semanas).
   def scheduled_periods
     [(weeks.to_i / period_scale).round, 1].max
@@ -347,9 +353,13 @@ class Contract < ApplicationRecord
     0.0
   end
 
-  # Pago aplicado a SALDO: el excedente (más allá de la cuota próxima pendiente) paga
-  # PRINCIPAL directo, así que se le perdona el cargo financiero (factor − 1) sobre ese
-  # excedente → el saldo baja por 1.25x el extra, el plazo se ACORTA y se ahorra interés.
+  # Pago aplicado a SALDO (saldo insoluto REAL): el excedente — más allá de la
+  # cuota próxima pendiente — paga PRINCIPAL directo. El saldo insoluto es el
+  # VALOR PRESENTE de las cuotas pendientes a la tasa del contrato (propiedad
+  # de toda tabla amortizada); se re-amortiza (saldo − extra) con el MISMO
+  # pago: el plazo se ACORTA y los intereses de las cuotas que ya no correrán
+  # dejan de causarse solos — cláusulas DÉCIMA CUARTA/QUINTA. (Antes se
+  # perdonaba un 25% plano del extra: regalaba de más al inicio del plazo.)
   # (El modo normal/PLAZO usa apply_payment!: el extra adelanta cuotas futuras.)
   def apply_payment_saldo!(amount)
     nxt = contract_installments.where.not(status: 'paid').order(:number).first
@@ -360,10 +370,39 @@ class Contract < ApplicationRecord
     apply_payment!(cover) if cover.positive?
 
     if extra.positive?
-      rebate = (extra * (finance_factor - 1)).round(2)
-      new_fin = [(financed_amount.to_f - rebate).round(2), total_paid].max
-      update_columns(financed_amount: new_fin)
-      rebuild_pending_schedule!
+      i = periodic_rate
+      pend = contract_installments.where.not(status: 'paid').order(:number).to_a
+      if pend.any?
+        rp = pend.each_with_index.sum { |row, k| (row.amount.to_f - row.paid_amount.to_f) / ((1 + i)**(k + 1)) }.round(2)
+        new_rp = (rp - extra).round(2)
+        start_num = pend.first.number
+        first_due = pend.first.due_date || due_date_for_period(start_num)
+        contract_installments.where.not(status: 'paid').delete_all
+        if new_rp <= 0.009
+          update_columns(financed_amount: total_paid, status: (status == 'cancelled' ? status : 'paid'))
+        else
+          per = [period_payment.to_f, 0.01].max
+          rows = []
+          saldo = new_rp
+          1000.times do |k|
+            interes = (saldo * i).round(2)
+            due_date = case freq
+                       when 'monthly'  then first_due >> k
+                       when 'biweekly' then first_due + (k * 14)
+                       else                 first_due + (k * 7)
+                       end
+            if (saldo + interes) <= (per + 0.005)
+              rows << { number: start_num + k, due_date: due_date, amount: (saldo + interes).round(2), paid_amount: 0, status: 'pending' }
+              break
+            end
+            rows << { number: start_num + k, due_date: due_date, amount: per, paid_amount: 0, status: 'pending' }
+            saldo = (saldo - (per - interes)).round(2)
+          end
+          contract_installments.create!(rows)
+          update_columns(financed_amount: (total_paid + rows.sum { |r| r[:amount] }).round(2),
+                         weeks: [(contract_installments.count * period_scale).round, 1].max)
+        end
+      end
     end
     reload
   end

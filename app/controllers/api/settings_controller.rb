@@ -58,6 +58,8 @@ class Api::SettingsController < ApplicationController
     # Rol sistema (Admin de sistemas) aplica directo; también si aún no corre la migración.
     if role == 'sistema' || !approvals_ready?
       proposed.each { |k, v| AppSetting.set(k, v.to_s) }
+      # La tasa cambia los pagos amortizados: refrescar el "Desde" guardado.
+      Product.refresh_min_weekly! if proposed.key?('interest_rate')
       AuditLog.record!(actor: @current_user, action: 'rates_updated',
                        label: 'Tasas e impuestos', details: changes.join(' · '))
       return rates

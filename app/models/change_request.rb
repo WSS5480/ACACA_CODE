@@ -76,6 +76,8 @@ class ChangeRequest < ApplicationRecord
     case kind
     when 'rates'
       data.each { |k, v| AppSetting.set(k, v.to_s) }
+      # La tasa cambia los pagos amortizados: refrescar el "Desde" guardado.
+      Product.refresh_min_weekly! if data.key?('interest_rate')
       AuditLog.record!(actor: actor, action: 'rates_updated',
                        label: 'Tasas e impuestos', details: summary.to_s + sig_note)
     when 'contract_template'

@@ -151,6 +151,15 @@ class Product < ApplicationRecord
     TERMS.none? { |weeks, _m| calculate_weekly_payment(weeks: weeks, downpayment: dp) > Product.min_weekly_for(weeks) }
   end
 
+  # Refresca el "Desde $X /sem" GUARDADO de todo el catálogo (el serializer lo
+  # recalcula en vivo, pero el filtro por rango usa la columna). Se llama al
+  # cambiar la tasa de interés.
+  def self.refresh_min_weekly!
+    where(status: 'active').find_each { |p| p.update_column(:min_weekly_payment, p.recalculated_min_weekly_payment) }
+  rescue StandardError => e
+    Rails.logger.warn "[products] refresh_min_weekly: #{e.message}"
+  end
+
   # "Pago x sem": el pago semanal mínimo entre los plazos ofrecidos
   def recalculated_min_weekly_payment
     plans = available_payment_plans

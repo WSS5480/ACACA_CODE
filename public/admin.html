@@ -913,11 +913,35 @@
             <div><div class="muted" style="font-size:12px;margin-bottom:4px">Cuota de procesamiento ($)</div>
               <input id="rtProc" type="number" min="0" max="10000" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
               <div class="muted" style="font-size:11px;margin-top:3px">Fija, se cobra con el pago inicial</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Tope pago/ingreso (%)</div>
+              <input id="rtPti" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">0 = apagado · común 25–35%. Pago semanal (nuevo + activos) ≤ % del ingreso declarado</div></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Tope si ingreso variable (%)</div>
+              <input id="rtPtiVar" type="number" min="0" max="100" step="0.01" style="width:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right">
+              <div class="muted" style="font-size:11px;margin-top:3px">Más apretado para expedientes que el gate marcó 'ingreso variable'. 0 = usa el general</div></div>
             <button class="btn" id="rtSave">Guardar tasas</button>
             <span class="muted" id="rtMsg"></span>
           </div>
           <p class="muted" style="margin:14px 0 0;font-size:12px">Los cambios aplican a compras y cobros NUEVOS. Los contratos ya firmados conservan sus términos; los productos con factor propio en Catálogos conservan el suyo (el nuevo factor de contado es el valor por defecto).</p>
           <p class="muted" style="margin:8px 0 0;font-size:12px"><b>Tasa anual y CAT se calculan solos, por contrato</b>, con el precio de contado, el monto de interés, el plazo y la cuota de procesamiento vigente — cada contrato generado sale con sus cifras correctas (el CAT incluye la cuota de procesamiento y excluye la exención de responsabilidad opcional).</p>
+        </div>
+        <div class="sec" style="padding:18px;margin-top:14px">
+          <div class="stitle" style="padding:0 0 6px">Enganche mínimo por categoría</div>
+          <p class="muted" style="margin:0 0 12px;font-size:12.5px">Piso de enganche por TIPO de artículo (riesgo del artículo, no de la persona): celulares y laptops suelen llevar piso más alto por ser fáciles de revender. El piso base es <b>10%</b>; deja un campo en 10 (o vacío) para usar el base. En carritos mixtos manda el piso MÁS ALTO. Aplica a compras nuevas al instante.</p>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end" id="cfRow">
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Electrónica (%)</div>
+              <input data-cf="Electrónica" type="number" min="10" max="90" step="0.5" placeholder="10" style="width:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right"></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Electrodomésticos (%)</div>
+              <input data-cf="Electrodomésticos" type="number" min="10" max="90" step="0.5" placeholder="10" style="width:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right"></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Hogar y muebles (%)</div>
+              <input data-cf="Hogar y muebles" type="number" min="10" max="90" step="0.5" placeholder="10" style="width:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right"></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Herramientas (%)</div>
+              <input data-cf="Herramientas" type="number" min="10" max="90" step="0.5" placeholder="10" style="width:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right"></div>
+            <div><div class="muted" style="font-size:12px;margin-bottom:4px">Cuidado personal (%)</div>
+              <input data-cf="Cuidado personal" type="number" min="10" max="90" step="0.5" placeholder="10" style="width:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:14px;text-align:right"></div>
+            <button class="btn" id="cfSave">Guardar pisos</button>
+            <span class="muted" id="cfMsg"></span>
+          </div>
         </div>
       </div>
       <div id="secTabContract" style="display:none">
@@ -4592,11 +4616,23 @@ async function loadChangeReqs(){
     if(r2.ok) loadChangeReqs(); else alert((r2.data&&r2.data.error)||'No se pudo rechazar.');
   });
 }
+if($('cfSave')) $('cfSave').onclick=async()=>{
+  const floors={};
+  document.querySelectorAll('#cfRow input[data-cf]').forEach(el=>{ const v=parseFloat(el.value); if(v>10) floors[el.dataset.cf]=v; });
+  $('cfMsg').textContent='Guardando…'; $('cfSave').disabled=true;
+  const r=await api('PUT','/api/settings/category_floors',{floors});
+  $('cfSave').disabled=false;
+  $('cfMsg').textContent=(r.ok&&r.data&&r.data.ok)?'✓ Guardado.':((r.data&&r.data.error)||'No se pudo guardar.');
+};
 async function loadRates(){
   const r=await api('GET','/api/settings/rates');
   if(!r.ok||!r.data){ $('rtMsg').textContent='No se pudieron cargar las tasas.'; return; }
   $('rtTax').value=r.data.tax_rate; $('rtInt').value=r.data.interest_rate; $('rtWaiver').value=r.data.waiver_rate;
   $('rtMora').value=r.data.mora_rate; $('rtProc').value=r.data.processing_fee;
+  if($('rtPti')) $('rtPti').value=r.data.pti_max||0;
+  if($('rtPtiVar')) $('rtPtiVar').value=r.data.pti_max_variable||0;
+  const fl=r.data.category_down_floors||{};
+  document.querySelectorAll('#cfRow input[data-cf]').forEach(el=>{ el.value = fl[el.dataset.cf]!=null ? fl[el.dataset.cf] : ''; });
   rtShowFactors();
 }
 function rtShowFactors(){
@@ -4606,7 +4642,7 @@ function rtShowFactors(){
 if($('rtInt')) $('rtInt').addEventListener('input',rtShowFactors);
 if($('rtSave')) $('rtSave').onclick=async()=>{
   $('rtMsg').textContent='Guardando…'; $('rtSave').disabled=true;
-  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0});
+  const r=await api('PUT','/api/settings/rates',{tax_rate:parseFloat($('rtTax').value)||0, interest_rate:parseFloat($('rtInt').value)||0, waiver_rate:parseFloat($('rtWaiver').value)||0, mora_rate:parseFloat($('rtMora').value)||0, processing_fee:parseFloat($('rtProc').value)||0, pti_max:parseFloat($('rtPti')&&$('rtPti').value)||0, pti_max_variable:parseFloat($('rtPtiVar')&&$('rtPtiVar').value)||0});
   $('rtSave').disabled=false;
   if(r.ok&&r.data&&r.data.pending){ $('rtMsg').textContent='⏳ '+(r.data.message||'Cambio propuesto: requiere las firmas de los administradores.'); loadChangeReqs(); loadRates(); }
   else if(r.ok){ $('rtMsg').textContent='✓ Tasas guardadas — ya rigen precios, cobros y contratos nuevos.'; rtShowFactors(); loadChangeReqs(); }

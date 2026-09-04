@@ -153,6 +153,7 @@ Rails.application.routes.draw do
     post 'risk_engine/recalc_credit', to: 'api/risk_engine_configs#recalc_credit'
     get  'risk_engine/reference_findings', to: 'api/risk_engine_configs#reference_findings'
     post 'risk_engine/reference_findings_run', to: 'api/risk_engine_configs#reference_findings_run'
+    put 'settings/category_floors', to: 'api/settings#update_category_floors'
     get  'go_live/backup',  to: 'api/go_live#backup'
     post 'go_live/execute', to: 'api/go_live#execute'
 

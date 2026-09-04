@@ -20,6 +20,16 @@ class User < ApplicationRecord
   # Parentesco REAL para el motor de riesgo: el del PRIMER "quien recibe" del
   # cliente (su destinatario principal). nil mientras no haya ninguno — en ese
   # caso el motor usa su valor por defecto, como en el registro.
+  # ¿Algún contrato suyo quedó marcado por el gate con 'ingreso_variable'?
+  # (El empleador contestó 'Variable' o 'No sabría decir' sobre su ingreso.)
+  def variable_income_flag?
+    return false unless Contract.column_names.include?('reference_gate_reasons')
+
+    contracts.where("reference_gate_reasons LIKE '%ingreso_variable%'").exists?
+  rescue StandardError
+    false
+  end
+
   def primary_kinship
     b = beneficiaries.order(:created_at).first
     b && b.respond_to?(:kinship) ? b.kinship.presence : nil

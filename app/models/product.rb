@@ -47,9 +47,11 @@ class Product < ApplicationRecord
     (effective_price.to_f * (turns || 3.5).to_f).round(2)
   end
 
-  # Enganche mínimo = 10% del precio de contado
+  # Enganche mínimo = piso por CATEGORÍA (10% base; configurable por tipo de
+  # artículo en Seguridad → Tasas e impuestos → Enganche mínimo por categoría).
   def min_downpayment
-    (total_price * 0.10).round(2)
+    pct = defined?(CategoryFloor) ? CategoryFloor.pct_for(self) : 10.0
+    (total_price * pct / 100.0).round(2)
   end
 
   # Pago semanal: financiado = (contado - enganche) x factor de financiamiento.
@@ -94,6 +96,22 @@ class Product < ApplicationRecord
   # Cuota de procesamiento (USD, fija): se cobra con el pago inicial (cláusula TERCERA).
   def self.processing_fee
     AppSetting.rate('processing_fee', 0.0)
+  rescue StandardError
+    0.0
+  end
+
+  # TOPE de pago/ingreso (pti, %): 0 = APAGADO. Si está activo, el pago
+  # semanal nuevo + lo que ya paga en contratos activos no puede rebasar este
+  # % del ingreso semanal declarado.
+  def self.pti_max
+    AppSetting.rate('pti_max', 0.0)
+  rescue StandardError
+    0.0
+  end
+
+  # Tope MÁS APRETADO para expedientes que el gate marcó con ingreso variable.
+  def self.pti_max_variable
+    AppSetting.rate('pti_max_variable', 0.0)
   rescue StandardError
     0.0
   end

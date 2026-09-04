@@ -24,7 +24,11 @@ class Api::SettingsController < ApplicationController
       processing_fee: Product.processing_fee,
       cat_rate: Product.cat_rate,
       finance_factor: Product.finance_factor,
-      cash_factor: Product.default_cash_factor
+      cash_factor: Product.default_cash_factor,
+      pti_max: (Product.respond_to?(:pti_max) ? Product.pti_max : 0),
+      pti_max_variable: (Product.respond_to?(:pti_max_variable) ? Product.pti_max_variable : 0),
+      category_down_floors: (defined?(CategoryFloor) ? CategoryFloor.floors : {}),
+      category_floor_base: (defined?(CategoryFloor) ? CategoryFloor::BASE_PCT : 10)
     }, status: :ok
   end
 
@@ -38,9 +42,11 @@ class Api::SettingsController < ApplicationController
     end
 
     limits = { 'tax_rate' => 100, 'interest_rate' => 100, 'waiver_rate' => 100,
-               'mora_rate' => 500, 'cat_rate' => 1000, 'processing_fee' => 10_000 }
+               'mora_rate' => 500, 'cat_rate' => 1000, 'processing_fee' => 10_000,
+               'pti_max' => 100, 'pti_max_variable' => 100 }
     defaults = { 'tax_rate' => 0, 'interest_rate' => 25, 'waiver_rate' => 0,
-                 'mora_rate' => 0, 'cat_rate' => 0, 'processing_fee' => 0 }
+                 'mora_rate' => 0, 'cat_rate' => 0, 'processing_fee' => 0,
+                 'pti_max' => 0, 'pti_max_variable' => 0 }
     proposed = {}
     changes = []
     limits.each_key do |k|
@@ -72,6 +78,31 @@ class Api::SettingsController < ApplicationController
     render json: { pending: true, change_request: cr.as_api,
                    message: "Cambio propuesto: requiere #{cr.required_signatures} firmas de administradores (la tuya ya cuenta). Se avisó por correo a los demás." },
            status: :accepted
+  end
+
+  # PUT /api/settings/category_floors { floors: { "Electrónica" => 20, ... } }
+  # Enganche mínimo por CATEGORÍA (%). Vacío o <=10 = piso base del 10%.
+  def update_category_floors
+    role = @current_user&.role&.name
+    unless %w[master admin sistema].include?(role)
+      return render json: { error: 'Solo master, admin o sistema pueden cambiar los pisos' }, status: :forbidden
+    end
+
+    raw = params[:floors].respond_to?(:to_unsafe_h) ? params[:floors].to_unsafe_h : {}
+    clean = {}
+    CategoryFloor::DEPTS.keys.each do |d|
+      v = raw[d].to_f
+      next if v <= CategoryFloor::BASE_PCT # 10 o menos = piso base, no se guarda
+
+      return render(json: { error: "Valor invalido para #{d} (entre 10 y 90)" }, status: :unprocessable_entity) if v > 90
+
+      clean[d] = v.round(2)
+    end
+    AppSetting.set('category_down_floors', clean.to_json)
+    AuditLog.record!(actor: @current_user, action: 'rates_updated',
+                     label: 'Enganche mínimo por categoría',
+                     details: clean.map { |k, v| "#{k}: #{format('%g', v)}%" }.join(' · ').presence || 'Todo al piso base (10%)')
+    render json: { ok: true, floors: clean }, status: :ok
   end
 
   # GET /api/settings/rainforest

@@ -162,8 +162,10 @@ module Api
       return render(json: { error: 'Plazo (semanas) invalido' }, status: :unprocessable_entity) if weeks <= 0
 
       down = params[:downpayment].to_f
-      min_down = (total * 0.10).round(2)
-      return render(json: { error: "El enganche minimo es $#{min_down} (10% del precio de contado)" }, status: :unprocessable_entity) if down + 0.01 < min_down
+      # Piso por CATEGORÍA: el más alto entre los artículos del carrito (10% base).
+      floor_pct = defined?(CategoryFloor) ? CategoryFloor.pct_for_products(products) : 10.0
+      min_down = (total * floor_pct / 100.0).round(2)
+      return render(json: { error: "El enganche minimo es $#{min_down} (#{format('%g', floor_pct)}% del precio de contado#{floor_pct > 10 ? ' por el tipo de articulo' : ''})" }, status: :unprocessable_entity) if down + 0.01 < min_down
       return render(json: { error: 'El enganche no puede ser mayor al precio de contado' }, status: :unprocessable_entity) if down > total
 
       # PRINCIPAL = contado - enganche.
@@ -202,6 +204,29 @@ module Api
           weeks = [(periods * scale).round, 1].max
         else
           return render(json: { error: "El pago semanal combinado ($#{weekly}) debe ser al menos $#{min_wk} para este plazo. Agrega mas articulos, sube el enganche o baja el plazo." }, status: :unprocessable_entity)
+        end
+      end
+
+      # TOPE DE PAGO / INGRESO (pti): apagado con 0. Activo: el pago semanal
+      # nuevo (con exención si la eligió) MÁS lo que ya paga por semana en sus
+      # contratos activos no puede rebasar el % del ingreso semanal declarado.
+      # Expedientes marcados 'ingreso_variable' por el gate usan el tope más
+      # apretado. El ingreso declarado es el PISO de su rango (conservador).
+      pti = Product.respond_to?(:pti_max) ? Product.pti_max.to_f : 0.0
+      if pti.positive?
+        if user.respond_to?(:variable_income_flag?) && user.variable_income_flag?
+          v = Product.pti_max_variable.to_f
+          pti = v if v.positive? && v < pti
+        end
+        income = user.estimated_income.to_f
+        if income.positive?
+          waiver_wk = waiver_pct ? (weekly * waiver_pct / 100.0).round(2) : 0.0
+          existing_wk = user.contracts.where(status: 'active').sum(:weekly_payment).to_f.round(2)
+          burden = (existing_wk + weekly + waiver_wk).round(2)
+          cap = (income * pti / 100.0).round(2)
+          if burden > cap + 0.01
+            return render(json: { error: "El pago semanal de esta compra ($#{format('%.2f', (weekly + waiver_wk))})#{existing_wk.positive? ? " mas lo que ya pagas por semana ($#{format('%.2f', existing_wk)})" : ''} rebasa tu tope de pago: $#{format('%.2f', cap)} (#{format('%g', pti)}% de tu ingreso semanal declarado). Sube el enganche, elige un plazo mas largo o liquida un contrato activo." }, status: :unprocessable_entity)
+          end
         end
       end
 

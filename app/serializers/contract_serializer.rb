@@ -41,6 +41,13 @@ class ContractSerializer
   attribute :period_payment do |c|
     c.respond_to?(:period_payment) ? c.period_payment : c.weekly_payment
   end
+  # PRIMERA CUOTA REAL de la tabla amortizada (en la frecuencia elegida): el
+  # pago que acompaña al enganche en el pago inicial. Se manda SIEMPRE, aunque
+  # el calendario venga oculto antes de pagar el inicial — sin este dato la
+  # pantalla de pago caía al monto SEMANAL aunque eligieran quincena o mes.
+  attribute :first_installment_amount do |c|
+    c.respond_to?(:first_period_payment) ? c.first_period_payment : c.weekly_payment
+  end
 
   attribute :next_due_date do |c|
     c.next_due_date

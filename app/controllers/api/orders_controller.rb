@@ -259,6 +259,13 @@ class Api::OrdersController < ApplicationController
 
   # DELETE /api/orders/:id
   def destroy
+    # Un artículo que pertenece a un CONTRATO no se borra suelto desde el lado
+    # del cliente: dejaría el contrato apartando crédito sin sus artículos.
+    # La cancelación correcta es la del pedido completo (DELETE /contracts/:id),
+    # que libera el crédito de inmediato y deja rastro en la Bitácora.
+    if acting_as_client? && @order.contract_id.present?
+      return render json: { error: 'Este artículo pertenece a un pedido. Cancela el pedido completo desde la página del pedido para liberar tu crédito.' }, status: :unprocessable_entity
+    end
     @order.destroy
     head :no_content
   end

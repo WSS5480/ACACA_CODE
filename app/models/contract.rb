@@ -240,8 +240,15 @@ class Contract < ApplicationRecord
     end
   end
 
-  # Pago del primer periodo (primera cuota).
+  # Pago del primer periodo: la PRIMERA CUOTA PENDIENTE REAL de la tabla
+  # amortizada, en la frecuencia del contrato (semanal, quincenal o mensual).
+  # El cálculo derivado del pago semanal queda solo como respaldo cuando aún
+  # no existe calendario — derivarlo siempre regresaba a "la semana".
   def first_period_payment
+    row = contract_installments.order(:number).where.not(status: 'paid').first ||
+          contract_installments.order(:number).first
+    return row.amount.to_f.round(2) if row
+
     _n, amt = schedule_periods_and_amount
     amt.round(2)
   end

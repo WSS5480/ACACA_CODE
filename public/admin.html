@@ -32,6 +32,23 @@
   .sb .foot .av{width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .sb .foot .who{font-size:12.5px;color:var(--mut);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .sb .foot .out{cursor:pointer;color:var(--mut);}
+  .sb nav .grp{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#9aa0ae;padding:14px 12px 4px;font-weight:700;}
+  .sb nav .grp:first-child{padding-top:4px;}
+  #gsBar{display:flex;align-items:center;gap:10px;margin:0 0 14px;}
+  #gsBar .search{flex:1;max-width:520px;}
+  #compBar{margin:0 0 16px;}
+  #compBar button .n{font-size:11px;background:#eef0f6;color:#5b6270;border-radius:999px;padding:0 6px;margin-left:5px;font-weight:700;}
+  #compBar button.on .n{background:#ffedd5;color:#9a3c00;}
+  .cfg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;}
+  .cfg-card{display:block;text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;color:inherit;}
+  .cfg-card:hover{border-color:var(--brand);}
+  .cfg-card b{display:block;font-size:14.5px;color:var(--navy);margin-bottom:3px;}
+  .cfg-card span{font-size:12.5px;color:var(--mut);}
+  .cfg-card .tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:#eef0f6;color:#5b6270;}
+  .cfg-card .tag.sign{background:#ffedd5;color:#9a3c00;}
+  .cfg-card .tag.danger{background:#fee2e2;color:#b91c1c;}
+  .cfg-card.danger{border-color:#fca5a5;}
+  @media (max-width:900px){ .sb nav .grp{display:none;} #gsBar .search{max-width:none;} }
 
   /* ---------- Main ---------- */
   main{flex:1;min-width:0;padding:26px 32px 60px;}
@@ -169,23 +186,21 @@
   <aside class="sb">
     <a class="brand" href="https://acasa-frontend.vercel.app/" title="Volver a la tienda"><span>acasa</span><img src="/acasa-icon.svg" alt="" style="width:16px;height:16px;align-self:flex-start;margin-top:1px;"></a>
     <nav id="nav">
-      <a data-view="dashboard" class="on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard</a>
-      <a data-view="clientes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Clientes</a>
-      <a data-view="contratos" style="padding-left:36px;font-size:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Contratos</a>
-      <a data-view="ordenes"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Órdenes</a>
-      <a data-view="crm"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg> CRM</a>
-      <a data-view="whatsapp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> WhatsApp <span id="waBadge" style="display:none;margin-left:6px;background:#25D366;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px">0</span></a>
-      <a data-view="gestion"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg> Gestión de cuenta</a>
+      <div class="grp">Operación</div>
+      <a data-view="dashboard" class="on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg> Inicio</a>
+      <a data-view="pipeline"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg> Pedidos y contratos</a>
+      <a data-view="clientes360"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg> Clientes</a>
+      <a data-view="cobranza"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8M14 8h6v6"/></svg> Cobranza</a>
+      <a data-view="bandeja"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg> Bandeja <span id="waBadge" style="display:none;margin-left:6px;background:#25D366;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px">0</span></a>
       <div id="navAdmin" style="display:none">
-      <div class="sep"></div>
-      <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Marketing</a>
-      <a data-view="creditos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Créditos</a>
-      <a data-view="conta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Contabilidad</a>
-      <a data-view="catalogos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Catálogos</a>
-      <a data-view="waresp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Respuestas WhatsApp</a>
-      <a data-view="soporte"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg> Soporte</a>
-      <a data-view="config"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
-      <a data-view="security"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Seguridad</a>
+      <div class="grp">Finanzas</div>
+      <a data-view="conta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg> Contabilidad</a>
+      <a data-view="pagos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg> Pagos y Stripe</a>
+      <div class="grp" id="grpProducto">Producto</div>
+      <a data-view="catalogo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7"/></svg> Catálogo y precios</a>
+      <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l14-6v14L3 13z"/><path d="M17 8a4 4 0 0 1 0 8"/></svg> Marketing</a>
+      <div class="grp">Sistema</div>
+      <a data-view="confighub"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg> Configuración</a>
       </div><!-- /navAdmin -->
     </nav>
     <div class="foot">
@@ -196,9 +211,11 @@
   </aside>
 
   <main>
+    <div id="gsBar"><div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="gsInput" placeholder="Buscar cliente, teléfono o correo… (Enter)"></div></div>
+    <div id="compBar" class="tabs hide"></div>
     <!-- ---------- DASHBOARD ---------- -->
     <section class="view" data-v="dashboard">
-      <div class="head"><h1>Dashboard</h1><div class="sp"></div>
+      <div class="head"><h1>Inicio</h1><div class="sp"></div>
         <select class="sel" id="dashFilter">
           <option value="">Todos</option>
           <option value="last_30_days" selected>Últimos 30 días</option>
@@ -1122,6 +1139,23 @@
         <p class="muted">Las reglas de puntaje y montos de crédito se administran en <a data-view="riesgo" style="color:var(--brand-d);font-weight:700;cursor:pointer">Motor de Riesgo</a>, con historial de versiones y opción de revertir.</p>
       </div>
     </section>
+
+    <!-- ---------- CONFIGURACIÓN (índice) ---------- -->
+    <section class="view hide" data-v="cfgindex">
+      <div class="head"><h1>Configuración</h1></div>
+      <p class="muted" style="margin:0 0 14px">Todo lo que gobierna el negocio, en un solo índice. Lo que cambia dinero o documentos legales se firma; lo demás se guarda directo y queda en la Bitácora.</p>
+      <div class="cfg-grid">
+        <a class="cfg-card" data-goto="riesgo"><b>Motor de riesgo</b><span>Escala de crédito, versiones, simulador · gate de referencias y motor de decisión</span></a>
+        <a class="cfg-card" data-goto="preguntas"><b>Preguntas de aprobación</b><span>Lista previa (registro) y lista final (verificación)</span></a>
+        <a class="cfg-card" data-goto="security:rates"><b>Tasas e impuestos</b><span>Tasa anual, IVA, exención, cuota, pisos por categoría, tope de pago</span><br><em class="tag sign">requiere firma</em></a>
+        <a class="cfg-card" data-goto="security:contract"><b>Documentos legales</b><span>Contrato, aviso de privacidad, exención de responsabilidad</span><br><em class="tag sign">requiere firma</em></a>
+        <a class="cfg-card" data-goto="waresp"><b>Respuestas de WhatsApp</b><span>Plantillas y textos automáticos por evento</span></a>
+        <a class="cfg-card" data-goto="config"><b>Tipo de cambio e importación</b><span>USD → MXN diario · conexión con Rainforest (Amazon)</span></a>
+        <a class="cfg-card" data-goto="security:users"><b>Equipo y accesos</b><span>Usuarios, roles y revocaciones</span><br><em class="tag sign">revocar requiere firma</em></a>
+        <a class="cfg-card" data-goto="security:audit"><b>Bitácora de cambios</b><span>Quién cambió qué y cuándo, en todo el sistema</span></a>
+        <a class="cfg-card danger" data-goto="security:golive"><b>🚀 Go live</b><span>Respaldo + borrado de datos de prueba + fecha de corte del motor</span><br><em class="tag danger">zona de peligro · solo master</em></a>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -1186,8 +1220,9 @@ async function applyRoleNav(){
   const canMkt=adminOnly||MYROLE==='admin_redes'; // Marketing: admins + Administrador de Redes sociales
   if(el){
     el.style.display=canMkt?'':'none';
-    // admin_redes sólo ve Marketing bajo la línea; el resto queda oculto para él
+    // admin_redes sólo ve Marketing (grupo Producto); el resto queda oculto para él
     el.querySelectorAll('a').forEach(a=>{ if(a.id!=='navMkt') a.style.display=adminOnly?'':'none'; });
+    el.querySelectorAll('.grp').forEach(g=>{ g.style.display=(adminOnly||g.id==='grpProducto')?'':'none'; });
   }
   if($('navMkt')) $('navMkt').style.display=canMkt?'':'none';
 }
@@ -1198,8 +1233,10 @@ $('logout').onclick=()=>{TOKEN=null;location.reload();};
 /* ---------------- Router ---------------- */
 const loaded={};
 function show(view){
+  if(typeof AREAS!=='undefined' && AREAS[view]) return showArea(view);
   document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===view));
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('hide',s.dataset.v!==view));
+  if(typeof syncAreaBar==='function') syncAreaBar(view);
   if(view==='dashboard'){ loadDash(); loadOrders('dashboard'); }
   if(view==='clientes' && !loaded.cli){ loadClients(); }
   if(view==='creditos' && !loaded.cre){ loadCredits(); }
@@ -1222,6 +1259,126 @@ function show(view){
   if(view==='waresp' && !loaded.war){ loadWaResponses(); loaded.war=1; }
   if(view==='soporte'){ stBack(); loadTickets(); }
 }
+
+/* ---------------- ÁREAS (menú agrupado) ----------------
+   Cada área reúne pantallas que YA existen bajo una barra de pestañas; las
+   pantallas no cambian, sólo dónde se encuentran. 'v' = pantalla que se
+   muestra; 'after' = ajuste al entrar (filtro de etapa, pestaña interna…). */
+const AREAS={
+  pipeline:{title:'Pedidos y contratos',tabs:[
+    {l:'Todos',v:'contratos',after:()=>conStage('')},
+    {l:'Pago inicial pendiente',v:'crm'},
+    {l:'Completar datos',v:'contratos',after:()=>conStage('missing_info'),k:'missing_info'},
+    {l:'Por verificar',v:'contratos',after:()=>conStage('verify'),k:'verify'},
+    {l:'Por aprobar',v:'contratos',after:()=>conStage('approve'),k:'approve'},
+    {l:'Por firmar',v:'contratos',after:()=>conStage('sign'),k:'sign'},
+    {l:'Por entregar',v:'contratos',after:()=>conStage('deliver'),k:'deliver'},
+    {l:'Activos',v:'contratos',after:()=>conStage('active'),k:'active'},
+    {l:'Liquidados / devueltos',v:'contratos',after:()=>conStage('closed'),k:'closed'},
+    {l:'Órdenes (artículos)',v:'ordenes'}]},
+  clientes360:{title:'Clientes',tabs:[{l:'Clientes',v:'clientes'},{l:'Créditos',v:'creditos',admin:true}]},
+  cobranza:{title:'Cobranza',tabs:[{l:'Cartera y vencidos',v:'gestion',after:()=>closeAging()},{l:'Account aging',v:'gestion',after:()=>openAging()}]},
+  bandeja:{title:'Bandeja',tabs:[{l:'WhatsApp',v:'whatsapp'},{l:'Ventas por cerrar',v:'crm'},{l:'Soporte',v:'soporte'}]},
+  pagos:{title:'Pagos y Stripe',tabs:[{l:'Reembolsos',v:'conta',after:()=>acKind('reembolso')},{l:'Contracargos',v:'conta',after:()=>acKind('contracargo')},{l:'Ajustes',v:'conta',after:()=>acKind('ajuste')}]},
+  catalogo:{title:'Catálogo y precios',tabs:[{l:'Productos',v:'catalogos'},{l:'Tipo de cambio e importación',v:'config'}]},
+  confighub:{title:'Configuración',tabs:[
+    {l:'Índice',v:'cfgindex'},{l:'Motor de riesgo',v:'riesgo'},{l:'Preguntas',v:'preguntas'},
+    {l:'Tasas e impuestos',v:'security',after:()=>secTab('rates')},{l:'Documentos legales',v:'security',after:()=>secTab('contract')},
+    {l:'Respuestas WhatsApp',v:'waresp'},{l:'Equipo y accesos',v:'security',after:()=>secTab('users')},
+    {l:'Bitácora',v:'security',after:()=>secTab('audit')},{l:'Go live',v:'security',after:()=>secTab('golive')}]}
+};
+// Pantalla -> área "dueña" (para resaltar el menú y mostrar la barra cuando se
+// llega por un enlace interno y no por el menú).
+const VIEW2AREA={contratos:'pipeline',ordenes:'pipeline',crm:'pipeline',clientes:'clientes360',creditos:'clientes360',gestion:'cobranza',geswb:'cobranza',
+  whatsapp:'bandeja',soporte:'bandeja',catalogos:'catalogo',config:'catalogo',riesgo:'confighub',preguntas:'confighub',security:'confighub',waresp:'confighub',cfgindex:'confighub'};
+let AREA_CUR=null, AREA_TAB={};
+function areaTabsFor(key){
+  const adminOnly=['master','admin','sistema'].includes(MYROLE);
+  return (AREAS[key]?AREAS[key].tabs:[]).filter(t=>!t.admin||adminOnly);
+}
+function showArea(key, idx){
+  const tabs=areaTabsFor(key); if(!tabs.length) return;
+  if(idx==null) idx=AREA_TAB[key]||0;
+  if(idx>=tabs.length) idx=0;
+  AREA_CUR=key; AREA_TAB[key]=idx;
+  const t=tabs[idx];
+  show(t.v);
+  if(t.after){ try{ t.after(); }catch(e){ console.warn('area after', e); } }
+}
+function renderAreaBar(key, view){
+  const bar=$('compBar'); if(!bar) return;
+  const tabs=areaTabsFor(key);
+  if(!tabs.length){ bar.classList.add('hide'); bar.innerHTML=''; return; }
+  const cur=(AREA_CUR===key)?(AREA_TAB[key]||0):-1;
+  bar.innerHTML=tabs.map((t,i)=>`<button data-ai="${i}" class="${i===cur?'on':''}">${esc(t.l)}${t.k?`<span class="n" data-k="${t.k}"></span>`:''}</button>`).join('');
+  bar.classList.remove('hide');
+  bar.querySelectorAll('button').forEach(b=>b.onclick=()=>showArea(key, Number(b.dataset.ai)));
+  areaCounts();
+}
+function syncAreaBar(view){
+  const key=(AREA_CUR && areaTabsFor(AREA_CUR).some(t=>t.v===view)) ? AREA_CUR : (VIEW2AREA[view]||null);
+  if(key){
+    const tabs=areaTabsFor(key); const cur=tabs[AREA_TAB[key]||0];
+    if(key!==AREA_CUR || !cur || cur.v!==view){
+      // Se llegó por un enlace interno: deducir la pestaña por la pantalla (y la etapa, en el pipeline).
+      let i=tabs.findIndex(t=>t.v===view && (key!=='pipeline' || view!=='contratos' || (t.k||'')===CONSTAGE));
+      if(i<0) i=tabs.findIndex(t=>t.v===view);
+      AREA_TAB[key]=i<0?0:i;
+    }
+    AREA_CUR=key;
+  }
+  if(!key){ AREA_CUR=null; const bar=$('compBar'); if(bar){ bar.classList.add('hide'); bar.innerHTML=''; } return; }
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===key));
+  renderAreaBar(key, view);
+}
+// Pipeline: filtro por ETAPA sobre la lista de contratos (mismas 6 etapas que ve el cliente).
+function conStage(k){
+  CONSTAGE=k||'';
+  if(CONLOADING) return; // la carga en curso pinta con la etapa nueva al llegar
+  if(Array.isArray(CONALL) && CONALL.length && loaded.con){ renderConList(); } else { loadContracts(null); }
+}
+function conStageMatch(c, k){
+  k=k||CONSTAGE; if(!k) return true;
+  const st=String(pick(c,['account_status'],'')||''); const vs=Number(pick(c,['verified_sections'],0))||0;
+  switch(k){
+    case 'missing_info': return st==='missing_info';
+    case 'verify': return st==='pending_approval' && vs<5;
+    case 'approve': return st==='pending_approval' && vs>=5;
+    case 'sign': return st==='pending_signature';
+    case 'deliver': return st==='pending_delivery';
+    case 'active': return st==='active';
+    case 'closed': return ['paid_off','returned','charged_off'].includes(st);
+    default: return true;
+  }
+}
+function areaCounts(){
+  const bar=$('compBar'); if(!bar || AREA_CUR!=='pipeline' || typeof CONALL==='undefined') return;
+  bar.querySelectorAll('.n[data-k]').forEach(sp=>{ const n=CONALL.filter(c=>conStageMatch(c, sp.dataset.k)).length; sp.textContent=n; sp.style.display=n?'':'none'; });
+}
+function closeAging(){ const ag=$('conAging'), gm=$('gesMain'); if(ag) ag.style.display='none'; if(gm) gm.style.display=''; }
+function secTab(k){ const b=$('secTabs')&&$('secTabs').querySelector(`button[data-stab="${k}"]`); if(b) b.click(); }
+function acKind(k){
+  if(typeof AC!=='undefined') AC.kind=k;
+  const pick_=()=>{ const b=$('acKinds')&&$('acKinds').querySelector(`button[data-k="${k}"]`); if(b) b.click(); };
+  pick_(); setTimeout(pick_, 700); setTimeout(pick_, 1800); // el libro carga async: se reintenta al llegar
+}
+// Tarjetas del índice de Configuración y cualquier enlace data-goto="vista" o "security:pestaña".
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-goto]'); if(!a) return;
+  e.preventDefault();
+  const [v,tab]=String(a.dataset.goto).split(':');
+  const key=VIEW2AREA[v]||null;
+  if(key){ const tabs=areaTabsFor(key); const i=tabs.findIndex(t=>t.v===v && (!tab || String(t.after||'').includes(`'${tab}'`))); if(i>=0){ showArea(key,i); return; } }
+  show(v); if(tab) secTab(tab);
+});
+// Búsqueda global: va a Clientes con el texto ya aplicado.
+if($('gsInput')) $('gsInput').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const q=$('gsInput').value.trim();
+  if($('cliSearch')) $('cliSearch').value=q;
+  showArea('clientes360',0);
+  if($('cliSearch') && loaded.cli) $('cliSearch').dispatchEvent(new Event('input'));
+});
 
 /* ---- PREGUNTAS DE APROBACIÓN (Motor de riesgo): lista maestra editable ---- */
 let AQ={pre:[],final:[]};
@@ -2759,7 +2916,7 @@ function istPill(st){ st=String(st||'').toLowerCase();
 function goClientContracts(uid){ loaded.con=1; show('contratos'); loadContracts(uid); }
 let CONFILTER=null;
 async function loadContracts(userId){
-  CONFILTER = userId||null;
+  CONFILTER = userId||null; CONLOADING=true;
   const dt=$('conDetail'); if(dt){ dt.style.display='none'; dt.innerHTML=''; }
   const wrap=$('conTableWrap'); if(wrap) wrap.style.display='';
   const body=$('conBody'); if(!body) return;
@@ -2769,7 +2926,7 @@ async function loadContracts(userId){
   let cliRec=null;
   if(userId){ try{ cliRec=(await fetchClients()).find(u=>String(pick(u,['id'],''))===String(userId))||null; }catch(e){} }
   const cliName = cliRec ? (([pick(cliRec,['name','first_name'],''),pick(cliRec,['last_name'],'')].filter(Boolean).join(' '))||pick(cliRec,['email'],'Cliente')) : null;
-  $('conTitle').textContent = userId ? (cliName||'Cliente') : 'Gestion de Contratos';
+  $('conTitle').textContent = userId ? (cliName||'Cliente') : 'Pedidos y contratos';
   const fb=$('conFichaBtn'), cb=$('conConvBtn'), fich=$('cliFicha');
   if(fich){ fich.style.display='none'; fich.innerHTML=''; }
   if(fb){ fb.style.display = userId ? '' : 'none'; fb.onclick=()=>openClientSheet(userId); }
@@ -2780,6 +2937,12 @@ async function loadContracts(userId){
   if(!r.ok){ body.innerHTML='<tr><td colspan="12" class="empty">No se pudieron cargar los contratos.</td></tr>'; return; }
   // Un contrato EXISTE hasta que se paga el pago inicial; los pedidos sin pagar viven SOLO en el CRM.
   const list=rows(r.data).filter(c=>pick(c,['initial_paid'],true)||String(pick(c,['status'],''))!=='active');
+  CONALL=list; CONLOADING=false; renderConList();
+}
+// Pinta la lista de contratos (CONALL) aplicando el filtro de etapa del pipeline (CONSTAGE).
+function renderConList(){
+  const body=$('conBody'); if(!body) return;
+  const list=CONSTAGE?CONALL.filter(c=>conStageMatch(c)):CONALL;
   body.innerHTML = list.length ? list.map(c=>{
     const num=pick(c,['contract_number'],null)||pick(c,['order_ref'],null)||'-', cli=pick(c,['client_name'],'-');
     const total=pick(c,['total_amount'],null), fin=pick(c,['financed_amount'],null);
@@ -2796,11 +2959,11 @@ async function loadContracts(userId){
       <td>${weeks!=null?esc(weeks)+' sem':'-'}</td>
       <td>${['current','past_due','active'].includes(String(ps))?'<span class="pill p-appr">Activo</span>':'<span class="pill" style="background:#eef0f6;color:#5b6270">Inactivo</span>'}</td>
       <td>${conStatusPill(ps)}</td><td>${(function(){const f=String(pick(c,['fulfillment'],'')||'');const m={pendiente:['p-pend','Pendiente'],por_entregar:['p-other','Por entregar'],entregado:['p-appr','Entregado']}[f];return m?`<span class=\"pill ${m[0]}\">${m[1]}</span>`:'—';})()}</td><td class="right">${esc(items)}</td></tr>`;
-  }).join('') : '<tr><td colspan="12" class="empty">No hay contratos todavia</td></tr>';
+  }).join('') : `<tr><td colspan="12" class="empty">${CONSTAGE?'No hay contratos en esta etapa':'No hay contratos todavia'}</td></tr>`;
   body.querySelectorAll('.con-row').forEach(tr=>tr.onclick=()=>openContract(tr.dataset.id));
-  CONLIST=list; renderConStats(list);
+  CONLIST=list; renderConStats(list); areaCounts();
 }
-let CONLIST=[];
+let CONLIST=[], CONALL=[], CONSTAGE='', CONLOADING=false;
 
 /* ---------------- CRM: ventas por cerrar (pago inicial pendiente) ---------------- */
 async function loadCrm(){

@@ -2723,7 +2723,7 @@ async function setClientCredit(id){
   if(v==null) return;
   const amt=parseFloat(v); if(isNaN(amt)||amt<0){ alert('Monto invalido'); return; }
   const r=await api('POST','/api/users/'+encodeURIComponent(id)+'/set_credit',{amount:amt});
-  if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; await loadClients(); alert('Credito fijado en $'+amt.toLocaleString()); }
+  if(r.ok&&r.data&&r.data.ok){ CLIENTS=[]; loaded.cli=0; loaded.cre=0; await loadClients(); alert('Credito fijado en $'+Number(amt).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})); }
   else { alert((r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo fijar el credito.'); }
 }
 async function deleteClient(id, name){

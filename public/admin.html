@@ -162,6 +162,10 @@
   textarea{width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;min-height:62px;font-family:inherit;color:var(--ink);}
   .muted{color:var(--muted);font-size:12.5px;line-height:1.6;}
   #acPnl{padding:6px 16px 14px;}
+  [data-v="bkbancos"] td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;}
+  [data-v="bkbancos"] .cards{grid-template-columns:repeat(5,1fr);}
+  @media(max-width:1100px){[data-v="bkbancos"] .cards{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:700px){[data-v="bkbancos"] .cards{grid-template-columns:repeat(2,1fr);}}
   /* ============ MOBILE (celular): la barra lateral se vuelve barra superior,
      las tablas se deslizan de lado dentro de su tarjeta, e inputs de 16px
      (menos de 16px hace que el iPhone haga zoom al enfocar). ============ */
@@ -227,6 +231,7 @@
       <div class="grp">Finanzas</div>
       <a data-view="conta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg> Contabilidad</a>
       <a data-view="pagos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg> Pagos y Stripe</a>
+      <a data-view="bancos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M9.5 10v9M14.5 10v9M19 10v9"/><path d="M3 19h18"/></svg> Bancos</a>
       <div class="grp" id="grpProducto">Producto</div>
       <a data-view="catalogo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7"/></svg> Catálogo y precios</a>
       <a data-view="marketing" id="navMkt" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l14-6v14L3 13z"/><path d="M17 8a4 4 0 0 1 0 8"/></svg> Marketing</a>
@@ -1171,6 +1176,69 @@
       </div>
     </section>
 
+    <!-- ---------- BANCOS (Finanzas): cuentas conectadas, saldos, movimientos, conciliación Stripe ---------- -->
+    <section class="view hide" data-v="bkbancos">
+      <div class="head"><h1>Bancos</h1><div class="sp"></div>
+        <button class="btn" id="bkSyncAll" style="background:#eef0f6;color:var(--navy)" title="Sincroniza todas las conexiones automáticas y concilia con Stripe">↻ Actualizar todo</button>
+        <button class="btn" id="bkAddManual" style="background:#eef0f6;color:var(--navy)" title="Cualquier banco: se alimenta importando el estado de cuenta (CSV/Excel)">＋ Cuenta manual (México)</button>
+        <button class="btn" id="bkAddPlaid" title="Se abre la ventana segura de Plaid; tú entras a tu banco ahí">＋ Conectar banco de EE. UU.</button>
+      </div>
+      <div id="bkNotice" class="hide" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;font-size:13.5px"></div>
+
+      <!-- Cuentas y saldos -->
+      <div id="bkPanelCuentas">
+        <div class="cards" id="bkTotals"></div>
+        <div id="bkConnList"><div class="sec"><div class="empty">Cargando…</div></div></div>
+      </div>
+
+      <!-- Movimientos -->
+      <div id="bkPanelMovs" class="hide">
+        <div class="sec">
+          <div class="toolbar">
+            <select class="sel" id="bkMvAccount"><option value="">Todas las cuentas</option></select>
+            <select class="sel" id="bkMvKind"><option value="">Entradas y salidas</option><option value="in">Solo entradas</option><option value="out">Solo salidas</option></select>
+            <select class="sel" id="bkMvOnly"><option value="">Todos los movimientos</option><option value="stripe">Depósitos de Stripe identificados</option><option value="sin_gasto">Cargos sin gasto registrado</option><option value="con_gasto">Con gasto registrado</option><option value="pending">Pendientes (sin liquidar)</option></select>
+            <input type="date" id="bkMvFrom" class="sel" style="padding-right:10px;background-image:none">
+            <input type="date" id="bkMvTo" class="sel" style="padding-right:10px;background-image:none">
+            <div class="search" style="max-width:260px;flex:1"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="bkMvQ" placeholder="Descripción, comercio o importe…"></div>
+            <button class="btn" id="bkMvGo">Buscar</button>
+            <button class="btn" id="bkMvCsv" style="background:#eef0f6;color:var(--navy)">⬇ CSV</button>
+          </div>
+          <div id="bkMvSums" class="muted" style="padding:0 14px 8px"></div>
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>Fecha</th><th>Cuenta</th><th>Descripción</th><th>Categoría del banco</th><th class="right">Importe</th><th>Conciliación</th><th></th></tr></thead>
+            <tbody id="bkMvBody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody></table>
+          </div>
+          <div id="bkMvPager" class="toolbar" style="justify-content:flex-end"></div>
+        </div>
+      </div>
+
+      <!-- Conciliación Stripe -->
+      <div id="bkPanelStripe" class="hide">
+        <div class="sec">
+          <div class="toolbar"><div class="stitle" style="padding:0;flex:1">Depósitos de Stripe → banco</div>
+            <select class="sel" id="bkSpOnly"><option value="">Todos (120 días)</option><option value="unmatched">Solo sin identificar</option></select>
+            <button class="btn" id="bkSpRun">↻ Conciliar ahora</button>
+          </div>
+          <p class="muted" style="padding:0 14px 10px;margin:0">Cada depósito (payout) de Stripe se empareja con el movimiento del banco del mismo importe que llega entre 1 día antes y 5 días después de la fecha prevista. Si el banco lo describe distinto, lígalo a mano con el número del movimiento (columna Movimientos).</p>
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>Llegada</th><th>Depósito de Stripe</th><th class="right">Importe</th><th>Estado</th><th>Movimiento del banco</th><th></th></tr></thead>
+            <tbody id="bkSpBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuración -->
+      <div id="bkPanelConfig" class="hide">
+        <div class="sec" style="padding:18px" id="bkCfg">Cargando…</div>
+      </div>
+
+      <!-- Ventana emergente reutilizable (alta manual, importar estado de cuenta, desconectar, gasto) -->
+      <div id="bkModal" class="hide" style="position:fixed;inset:0;background:rgba(27,35,64,.45);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div id="bkModalBox" style="background:var(--surface);border-radius:14px;max-width:820px;width:100%;max-height:92vh;overflow:auto;padding:20px 22px;box-shadow:var(--shadow)"></div>
+      </div>
+    </section>
+
     <!-- ---------- CONFIGURACIÓN (índice) ---------- -->
     <section class="view hide" data-v="cfgindex">
       <div class="head"><h1>Configuración</h1></div>
@@ -1236,6 +1304,7 @@ async function enterApp(){
   pollWaBadge();
   if(!window.WA_POLL) window.WA_POLL=setInterval(pollWaBadge,30000);
   show('dashboard');
+  if(typeof bkOauthResume==='function') bkOauthResume();
 }
 /* Menú por rol: lo que está DEBAJO de la línea (Créditos, Catálogos, Motor de
    Riesgo, Configuración, Seguridad) sólo lo ven master, admin y sistema. */
@@ -1291,11 +1360,12 @@ function show(view){
   if(view==='preguntas' && !loaded.aq){ loadApprovalQuestions(); loaded.aq=1; }
   if(view==='waresp' && !loaded.war){ loadWaResponses(); loaded.war=1; }
   if(view==='soporte'){ stBack(); loadTickets(); }
+  if(view==='bkbancos'){ bkLoad(); }
 }
 
 // Miga sobre el título: grupo del menú (y el área, cuando el título de la pantalla no es el del área).
 const NAVGROUP={dashboard:'Operación',pipeline:'Operación',contratos:'Operación',ordenes:'Operación',crm:'Operación',clientes360:'Operación',clientes:'Operación',creditos:'Operación',
-  cobranza:'Operación',gestion:'Operación',geswb:'Operación',bandeja:'Operación',whatsapp:'Operación',soporte:'Operación',conta:'Finanzas',pagos:'Finanzas',
+  cobranza:'Operación',gestion:'Operación',geswb:'Operación',bandeja:'Operación',whatsapp:'Operación',soporte:'Operación',conta:'Finanzas',pagos:'Finanzas',bkbancos:'Finanzas',
   catalogo:'Producto',catalogos:'Producto',config:'Producto',marketing:'Producto',confighub:'Sistema',cfgindex:'Sistema',riesgo:'Sistema',preguntas:'Sistema',security:'Sistema',waresp:'Sistema'};
 function setCrumb(view){
   try{
@@ -1326,6 +1396,7 @@ const AREAS={
   cobranza:{title:'Cobranza',tabs:[{l:'Cartera y vencidos',v:'gestion',after:()=>closeAging()},{l:'Account aging',v:'gestion',after:()=>openAging()}]},
   bandeja:{title:'Bandeja',tabs:[{l:'WhatsApp',v:'whatsapp'},{l:'Ventas por cerrar',v:'crm'},{l:'Soporte',v:'soporte'}]},
   pagos:{title:'Pagos y Stripe',tabs:[{l:'Reembolsos',v:'conta',after:()=>acKind('reembolso')},{l:'Contracargos',v:'conta',after:()=>acKind('contracargo')},{l:'Ajustes',v:'conta',after:()=>acKind('ajuste')}]},
+  bancos:{title:'Bancos',tabs:[{l:'Cuentas y saldos',v:'bkbancos',after:()=>bkTab('cuentas')},{l:'Movimientos',v:'bkbancos',after:()=>bkTab('movs')},{l:'Conciliación Stripe',v:'bkbancos',after:()=>bkTab('stripe')},{l:'Configuración',v:'bkbancos',after:()=>bkTab('config')}]},
   catalogo:{title:'Catálogo y precios',tabs:[{l:'Productos',v:'catalogos'},{l:'Tipo de cambio e importación',v:'config'}]},
   confighub:{title:'Configuración',tabs:[
     {l:'Índice',v:'cfgindex'},{l:'Motor de riesgo',v:'riesgo'},{l:'Preguntas',v:'preguntas'},
@@ -1336,7 +1407,7 @@ const AREAS={
 // Pantalla -> área "dueña" (para resaltar el menú y mostrar la barra cuando se
 // llega por un enlace interno y no por el menú).
 const VIEW2AREA={contratos:'pipeline',ordenes:'pipeline',crm:'pipeline',clientes:'clientes360',creditos:'clientes360',gestion:'cobranza',geswb:'cobranza',
-  whatsapp:'bandeja',soporte:'bandeja',catalogos:'catalogo',config:'catalogo',riesgo:'confighub',preguntas:'confighub',security:'confighub',waresp:'confighub',cfgindex:'confighub'};
+  whatsapp:'bandeja',soporte:'bandeja',bkbancos:'bancos',catalogos:'catalogo',config:'catalogo',riesgo:'confighub',preguntas:'confighub',security:'confighub',waresp:'confighub',cfgindex:'confighub'};
 let AREA_CUR=null, AREA_TAB={};
 function areaTabsFor(key){
   const adminOnly=['master','admin','sistema'].includes(MYROLE);
@@ -5476,6 +5547,403 @@ function acExportCsv(){
   a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
   a.download=`registro_${$('acFrom').value}_a_${$('acTo').value}${AC.kind?'_'+AC.kind:''}.csv`;
   a.click();URL.revokeObjectURL(a.href);
+}
+
+
+/* ================= BANCOS (Finanzas) =================
+   Cuentas bancarias del negocio: EE. UU. por Plaid (la persona entra a su banco en
+   la ventana de Plaid; aquí nunca se capturan credenciales) y cuentas MANUALES para
+   cualquier banco (México hoy) alimentadas con el estado de cuenta (CSV/Excel).
+   Movimientos con signo (+ entra / − sale), conciliación con los depósitos de Stripe
+   y "→ Gasto" para pasar un cargo al libro de Contabilidad. */
+const BK={inited:false,tab:'cuentas',summary:null,mv:{page:1,per:100,rows:[],total:0,loaded:false},sp:[]};
+const BK_PLAID_JS='https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+const BK_XLSX_JS='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const BK_FLAG={US:'🇺🇸',MX:'🇲🇽'};
+const BK_STATUS={active:['Activa','p-appr'],login_required:['Requiere volver a entrar','p-pend'],error:['Con error','p-canc'],disconnected:['Desconectada','p-other']};
+const BK_EXP_CATS={producto:'Producto (costo Amazon)',envio:'Envío',comisiones:'Comisiones',publicidad:'Publicidad',nomina:'Nómina',software:'Software',incobrable:'Incobrable',otro:'Otro'};
+
+function bkISO(d){ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function bkM(v,cur){ const n=Number(v)||0; const s=(cur==='MXN'?'MX$':'$')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); return n<0?`<span class="mono" style="color:var(--bad);font-weight:700">−${s}</span>`:`<span class="mono" style="font-weight:600">${s}</span>`; }
+function bkWhen(v){ if(!v) return 'nunca'; const d=new Date(v); if(isNaN(d)) return '—'; const m=Math.round((Date.now()-d.getTime())/60000); if(m<2) return 'hace un momento'; if(m<60) return `hace ${m} min`; const h=Math.round(m/60); if(h<36) return `hace ${h} h`; return fdate(v); }
+function bkNotice(msg,kind){ const el=$('bkNotice'); if(!el) return; if(!msg){ el.classList.add('hide'); return; }
+  const c={ok:['var(--ok-soft)','var(--ok)'],bad:['var(--bad-soft)','var(--bad)'],info:['var(--info-soft)','var(--info)']}[kind||'info'];
+  el.style.background=c[0]; el.style.color=c[1]; el.innerHTML=esc(msg); el.classList.remove('hide'); }
+function bkModal(html){ const m=$('bkModal'); if(!html){ m.classList.add('hide'); $('bkModalBox').innerHTML=''; return; } $('bkModalBox').innerHTML=html; m.classList.remove('hide'); }
+function bkLoadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector(`script[src="${src}"]`)) return res(); const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar '+src)); document.head.appendChild(s); }); }
+function bkTab(t){ BK.tab=t||'cuentas'; const map={cuentas:'bkPanelCuentas',movs:'bkPanelMovs',stripe:'bkPanelStripe',config:'bkPanelConfig'};
+  Object.keys(map).forEach(k=>{ const el=$(map[k]); if(el) el.classList.toggle('hide',k!==BK.tab); });
+  if(BK.tab==='movs' && !BK.mv.loaded) bkMovs(1);
+  if(BK.tab==='stripe') bkStripe();
+  if(BK.tab==='config') bkConfig(); }
+
+async function bkLoad(){
+  if(!BK.inited){ BK.inited=true; bkBind(); const t=new Date(), f=new Date(); f.setDate(f.getDate()-90); $('bkMvFrom').value=bkISO(f); $('bkMvTo').value=bkISO(t); }
+  const r=await api('GET','/api/bank/summary');
+  if(!r.ok){ bkNotice((r.data&&r.data.error)||'No se pudo cargar Bancos.','bad'); return; }
+  BK.summary=r.data; bkRenderSummary(); bkFillAccounts(); bkTab(BK.tab);
+}
+function bkBind(){
+  $('bkAddPlaid').onclick=()=>bkConnectPlaid(null);
+  $('bkAddManual').onclick=bkManualForm;
+  $('bkSyncAll').onclick=bkSyncAll;
+  $('bkMvGo').onclick=()=>bkMovs(1);
+  $('bkMvQ').addEventListener('keydown',e=>{ if(e.key==='Enter') bkMovs(1); });
+  ['bkMvAccount','bkMvKind','bkMvOnly'].forEach(id=>$(id).onchange=()=>bkMovs(1));
+  $('bkMvCsv').onclick=bkMovsCsv;
+  $('bkSpRun').onclick=bkStripeRun;
+  $('bkSpOnly').onchange=bkStripe;
+  $('bkModal').addEventListener('click',e=>{ if(e.target===$('bkModal')) bkModal(null); });
+}
+
+/* ---- Cuentas y saldos ---- */
+function bkRenderSummary(){
+  const s=BK.summary; const conns=s.connections||[];
+  const live=conns.filter(c=>c.status!=='disconnected');
+  const nAcc=live.reduce((n,c)=>n+c.accounts.filter(a=>a.active).length,0);
+  const tot=s.totals||{};
+  const cards=[];
+  ['USD','MXN'].forEach(cur=>{ if(tot[cur]!=null) cards.push(`<div class="stat"><div class="ic i-green"></div><div class="l">Saldo total ${cur}</div><div class="n">${bkM(tot[cur],cur)}</div></div>`); });
+  cards.push(`<div class="stat"><div class="ic i-blue"></div><div class="l">Cuentas conectadas</div><div class="n">${nAcc}</div></div>`);
+  cards.push(`<div class="stat"><div class="ic i-amber"></div><div class="l">Movimientos guardados</div><div class="n">${(s.counts&&s.counts.transactions)||0}</div></div>`);
+  cards.push(`<div class="stat"><div class="ic i-orange"></div><div class="l">Depósitos Stripe sin identificar</div><div class="n">${(s.counts&&s.counts.unmatched_payouts)||0}</div></div>`);
+  $('bkTotals').innerHTML=cards.join('');
+  if(!conns.length){
+    $('bkConnList').innerHTML=`<div class="sec" style="padding:26px 22px">
+      <div class="stitle" style="padding:0 0 6px">Todavía no hay cuentas conectadas</div>
+      <p class="muted" style="margin:0 0 12px;max-width:72ch">Conecta tu banco de EE. UU. con el botón <b>Conectar banco de EE. UU.</b> (se abre la ventana segura de Plaid: tú entras a tu banco ahí y nosotros solo recibimos permiso de lectura). Para bancos de México da de alta una <b>cuenta manual</b> e importa el estado de cuenta que descargas del portal del banco (CSV o Excel); queda en la misma pantalla, con la misma conciliación.</p>
+      ${s.config&&s.config.plaid&&!s.config.plaid.configured?'<p class="muted" style="margin:0"><b>Plaid aún no está configurado en Render</b> (PLAID_CLIENT_ID / PLAID_SECRET / PLAID_ENV). Ve a la pestaña Configuración.</p>':''}
+    </div>`;
+    return;
+  }
+  const order=c=>({active:0,login_required:1,error:2,disconnected:3}[c.status]||0);
+  $('bkConnList').innerHTML=conns.slice().sort((a,b)=>order(a)-order(b)||a.id-b.id).map(bkConnCard).join('');
+  $('bkConnList').querySelectorAll('[data-bk]').forEach(b=>b.onclick=()=>bkAction(b.dataset.bk,Number(b.dataset.id),b));
+}
+function bkConnCard(c){
+  const st=BK_STATUS[c.status]||[c.status,'p-other'];
+  const off=c.status==='disconnected';
+  const manual=c.provider==='manual';
+  const accRows=c.accounts.map(a=>`<tr style="${a.active?'':'opacity:.55'}">
+      <td><b>${esc(a.label)}</b><small>${esc([a.subtype||a.kind||'', a.currency].filter(Boolean).join(' · '))}${a.last_txn_on?' · último mov. '+esc(fdate(a.last_txn_on)):''}</small></td>
+      <td class="right">${a.current_balance==null?'<span class="muted">sin saldo</span>':bkM(a.current_balance,a.currency)}${a.available_balance!=null&&a.available_balance!==a.current_balance?`<small>disponible ${bkM(a.available_balance,a.currency)}</small>`:''}</td>
+      <td class="right"><span class="muted">${a.txn_count} mov.</span></td>
+      <td class="right" style="white-space:nowrap">${off?'':(manual?`<button class="btn" data-bk="import" data-id="${a.id}" style="padding:6px 10px;font-size:12.5px">⬆ Importar estado de cuenta</button> <button class="btn" data-bk="balance" data-id="${a.id}" style="background:#eef0f6;color:var(--navy);padding:6px 10px;font-size:12.5px">Saldo</button>`:'')} <button class="btn" data-bk="movs" data-id="${a.id}" style="background:#eef0f6;color:var(--navy);padding:6px 10px;font-size:12.5px">Movimientos</button></td>
+    </tr>`).join('');
+  const actions=off?`<span class="muted">Desconectada ${esc(bkWhen(c.disconnected_at))} · movimientos conservados</span>`:
+    (manual?'':`<button class="btn" data-bk="sync" data-id="${c.id}" style="background:#eef0f6;color:var(--navy)">↻ Actualizar</button> `)+
+    (c.status==='login_required'&&!manual?`<button class="btn" data-bk="relink" data-id="${c.id}">🔑 Volver a entrar al banco</button> `:'')+
+    `<button class="btn" data-bk="disconnect" data-id="${c.id}" style="background:#fff;border-color:var(--bad);color:var(--bad)">Desconectar</button>`;
+  return `<div class="sec" style="${off?'opacity:.75':''}">
+    <div class="toolbar" style="padding:14px 16px 8px">
+      <div style="flex:1;min-width:220px"><div class="stitle" style="padding:0">${BK_FLAG[c.country]||''} ${esc(c.institution_name)} <span class="pill ${st[1]}" style="margin-left:6px;vertical-align:middle">${st[0]}</span></div>
+        <div class="muted">${manual?'Cuenta manual · se alimenta con el estado de cuenta':'Plaid · sincronización automática (diaria y al avisar el banco)'} · última actualización ${esc(bkWhen(c.last_synced_at))}${c.last_error?` · <span style="color:var(--bad)">${esc(c.last_error)}</span>`:''}</div></div>
+      <div>${actions}</div>
+    </div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Cuenta</th><th class="right">Saldo</th><th class="right"></th><th></th></tr></thead><tbody>${accRows||'<tr><td colspan="4" class="empty">Sin cuentas todavía.</td></tr>'}</tbody></table></div>
+  </div>`;
+}
+function bkFillAccounts(){
+  const sel=$('bkMvAccount'); const cur=sel.value; const opts=['<option value="">Todas las cuentas</option>'];
+  (BK.summary.connections||[]).forEach(c=>c.accounts.forEach(a=>opts.push(`<option value="${a.id}">${esc((BK_FLAG[c.country]||'')+' '+c.institution_name+' · '+a.label)}</option>`)));
+  sel.innerHTML=opts.join(''); sel.value=cur;
+}
+async function bkAction(kind,id,btn){
+  if(kind==='sync') return bkSync(id,btn);
+  if(kind==='relink') return bkConnectPlaid(id);
+  if(kind==='disconnect') return bkDisconnectForm(id);
+  if(kind==='import') return bkImportForm(id);
+  if(kind==='balance') return bkBalanceForm(id);
+  if(kind==='movs'){ $('bkMvAccount').value=String(id); showArea('bancos',1); return; }
+}
+async function bkSync(id,btn){
+  if(btn){ btn.disabled=true; btn.textContent='Actualizando…'; }
+  const r=await api('POST',`/api/bank/connections/${id}/sync`,{});
+  if(btn){ btn.disabled=false; btn.textContent='↻ Actualizar'; }
+  if(!r.ok){ bkNotice((r.data&&r.data.error)||'No se pudo actualizar','bad'); }
+  else bkNotice(`Actualizado: ${r.data.result}${r.data.stripe?' · Stripe: '+r.data.stripe:''}`,'ok');
+  BK.mv.loaded=false; bkLoad();
+}
+async function bkSyncAll(){
+  const b=$('bkSyncAll'); b.disabled=true; b.textContent='Actualizando…';
+  const r=await api('POST','/api/bank/sync_all',{});
+  b.disabled=false; b.textContent='↻ Actualizar todo';
+  if(!r.ok) bkNotice((r.data&&r.data.error)||'No se pudo actualizar','bad');
+  else { const o=r.data.result||{}; const parts=Object.keys(o).map(k=>`${k==='stripe'?'Stripe':k.replace('conn_','conexión #')}: ${o[k]}`); bkNotice(parts.length?parts.join(' · '):'No había conexiones automáticas pendientes.','ok'); }
+  BK.mv.loaded=false; bkLoad();
+}
+
+/* ---- Plaid Link (EE. UU.) ---- */
+async function bkConnectPlaid(connId){
+  try{
+    const r=await api('POST','/api/bank/plaid/link_token', connId?{connection_id:connId}:{});
+    if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo crear la sesión de Plaid.','bad');
+    await bkLoadScript(BK_PLAID_JS);
+    try{ localStorage.setItem('bk_plaid_link', JSON.stringify({token:r.data.link_token, connection_id:connId||null, at:Date.now()})); }catch(e){}
+    bkOpenPlaid(r.data.link_token, connId||null, null);
+  }catch(e){ bkNotice(e.message,'bad'); }
+}
+function bkOpenPlaid(token, connId, receivedRedirectUri){
+  const cfg={ token,
+    onSuccess: async (public_token, metadata)=>{
+      try{ localStorage.removeItem('bk_plaid_link'); }catch(e){}
+      bkNotice('Conectando con el banco y bajando el historial…','info');
+      let r;
+      if(connId) r=await api('POST','/api/bank/plaid/relinked',{connection_id:connId});
+      else r=await api('POST','/api/bank/plaid/exchange',{public_token, institution:(metadata&&metadata.institution)?{institution_id:metadata.institution.institution_id,name:metadata.institution.name}:{}});
+      if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo terminar la conexión.','bad');
+      bkNotice(connId?`Reconectado · ${r.data.sync||''}`:`Banco conectado · primera sincronización: ${r.data.first_sync||'ok'}. Si el banco aún no entrega el historial, se completa solo en los próximos minutos.`,'ok');
+      BK.mv.loaded=false; bkLoad();
+    },
+    onExit: (err)=>{ try{ localStorage.removeItem('bk_plaid_link'); }catch(e){} if(err) bkNotice('Plaid: '+(err.display_message||err.error_message||err.error_code||'se cerró la ventana'),'bad'); }
+  };
+  if(receivedRedirectUri) cfg.receivedRedirectUri=receivedRedirectUri;
+  Plaid.create(cfg).open();
+}
+// Regreso de un banco con OAuth (Chase, BofA, Wells…): la URL trae oauth_state_id y
+// Link debe reabrirse con el MISMO token que se guardó antes de salir.
+async function bkOauthResume(){
+  if(!/oauth_state_id=/.test(location.search)) return;
+  if(!['master','admin','sistema'].includes(MYROLE)) return;
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem('bk_plaid_link')||'null'); }catch(e){}
+  const href=window.location.href;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  show('bancos');
+  if(!saved||!saved.token||(Date.now()-(saved.at||0))>4*3600*1000){ bkNotice('Regresaste del banco pero la sesión de Plaid ya no está guardada; vuelve a dar clic en Conectar banco.','bad'); return; }
+  try{ await bkLoadScript(BK_PLAID_JS); bkOpenPlaid(saved.token, saved.connection_id, href); }catch(e){ bkNotice(e.message,'bad'); }
+}
+
+/* ---- Desconectar (archivo, con confirmación escrita) ---- */
+function bkDisconnectForm(id){
+  const c=(BK.summary.connections||[]).find(x=>x.id===id); if(!c) return;
+  bkModal(`<div class="stitle" style="padding:0 0 6px">Desconectar ${esc(c.institution_name)}</div>
+    <p class="muted" style="margin:0 0 12px">${c.provider==='plaid'?'Se revoca el acceso en Plaid y se destruye el token.':'La cuenta deja de aparecer como activa.'} Los movimientos ya guardados <b>se conservan</b> (quedan archivados, no se borran). Escribe <b>DESCONECTAR</b> para confirmar.</p>
+    <input id="bkDcConfirm" placeholder="DESCONECTAR" style="width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="bkDcCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button><button class="btn" id="bkDcGo" style="background:var(--bad);border-color:var(--bad)">Desconectar</button></div>`);
+  $('bkDcCancel').onclick=()=>bkModal(null);
+  $('bkDcGo').onclick=async()=>{
+    const r=await api('POST',`/api/bank/connections/${id}/disconnect`,{confirm:$('bkDcConfirm').value});
+    if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo desconectar','bad');
+    bkModal(null); bkNotice(`Desconectada${r.data.note?' · '+r.data.note:''}. Movimientos conservados.`,'ok'); BK.mv.loaded=false; bkLoad();
+  };
+}
+
+/* ---- Cuenta manual ---- */
+function bkManualForm(){
+  bkModal(`<div class="stitle" style="padding:0 0 4px">Cuenta manual</div>
+    <p class="muted" style="margin:0 0 14px">Para cualquier banco (México hoy). Descargas el estado de cuenta del portal del banco (CSV o Excel) y lo importas aquí; los movimientos entran a la misma pantalla y a la misma conciliación con Stripe. Los repetidos se detectan solos, así que puedes importar el mismo periodo dos veces sin duplicar.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">
+      <label class="muted">Banco<input id="bkMfInst" placeholder="BBVA México" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted">Nombre de la cuenta<input id="bkMfName" placeholder="Cheques empresarial" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted">País<select id="bkMfCountry" class="sel" style="width:100%;margin-top:4px"><option value="MX">México</option><option value="US">Estados Unidos</option></select></label>
+      <label class="muted">Moneda<select id="bkMfCur" class="sel" style="width:100%;margin-top:4px"><option value="MXN">MXN</option><option value="USD">USD</option></select></label>
+      <label class="muted">Tipo<select id="bkMfKind" class="sel" style="width:100%;margin-top:4px"><option value="depository">Cheques / débito</option><option value="credit">Tarjeta de crédito</option></select></label>
+      <label class="muted">Últimos 4 dígitos (opcional)<input id="bkMfMask" maxlength="4" placeholder="1234" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted">Saldo actual (opcional)<input id="bkMfBal" placeholder="45,000.00" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" id="bkMfCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button><button class="btn" id="bkMfGo">Crear cuenta</button></div>`);
+  $('bkMfCancel').onclick=()=>bkModal(null);
+  $('bkMfGo').onclick=async()=>{
+    const r=await api('POST','/api/bank/manual_accounts',{institution_name:$('bkMfInst').value,name:$('bkMfName').value,country:$('bkMfCountry').value,currency:$('bkMfCur').value,kind:$('bkMfKind').value,mask:$('bkMfMask').value,current_balance:$('bkMfBal').value});
+    if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo crear','bad');
+    bkModal(null); bkNotice('Cuenta creada. Ahora importa su estado de cuenta.','ok'); bkLoad();
+  };
+}
+function bkFindAccount(id){ let out=null; (BK.summary.connections||[]).forEach(c=>c.accounts.forEach(a=>{ if(a.id===id) out=Object.assign({connection:c},a); })); return out; }
+function bkBalanceForm(id){
+  const a=bkFindAccount(id); if(!a) return;
+  bkModal(`<div class="stitle" style="padding:0 0 6px">Saldo de ${esc(a.label)}</div>
+    <p class="muted" style="margin:0 0 12px">Captura el saldo que muestra el banco hoy (${a.currency}). Al importar un estado de cuenta con columna de saldo se actualiza solo.</p>
+    <input id="bkBalVal" value="${a.current_balance==null?'':a.current_balance}" style="width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;font-size:15px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="bkBalCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button><button class="btn" id="bkBalGo">Guardar</button></div>`);
+  $('bkBalCancel').onclick=()=>bkModal(null);
+  $('bkBalGo').onclick=async()=>{ const r=await api('PUT',`/api/bank/accounts/${id}`,{current_balance:$('bkBalVal').value}); if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo guardar','bad'); bkModal(null); bkLoad(); };
+}
+
+/* ---- Importar estado de cuenta (CSV / Excel) ---- */
+const BK_COLS=[['','— ignorar —'],['date','Fecha'],['description','Descripción'],['amount','Importe (con signo)'],['debit','Cargo / retiro'],['credit','Abono / depósito'],['balance','Saldo']];
+function bkGuessCol(h){ h=String(h||'').toLowerCase(); if(/fecha|date|día|dia/.test(h)) return 'date'; if(/descrip|concepto|detalle|memo|referencia|movimiento|narr/.test(h)) return 'description'; if(/saldo|balance/.test(h)) return 'balance'; if(/cargo|retiro|debit|débito|withdraw|egreso/.test(h)) return 'debit'; if(/abono|dep[oó]sito|credit|crédito|ingreso/.test(h)) return 'credit'; if(/importe|monto|amount|cantidad|total/.test(h)) return 'amount'; return ''; }
+function bkImportForm(id){
+  const a=bkFindAccount(id); if(!a) return;
+  BK.imp={id, text:null, preview:null};
+  bkModal(`<div class="stitle" style="padding:0 0 4px">Importar estado de cuenta · ${esc(a.connection.institution_name)} · ${esc(a.label)}</div>
+    <p class="muted" style="margin:0 0 12px">1) Descarga el estado de cuenta del portal del banco en <b>CSV</b> o <b>Excel</b> (.xlsx/.xls). 2) Elígelo aquí. 3) Indica qué columna es la fecha, la descripción y el importe (o cargo y abono). Los movimientos repetidos no se duplican.</p>
+    <input type="file" id="bkImpFile" accept=".csv,.txt,.tsv,.xls,.xlsx" style="font-size:14px">
+    <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">…o pega el texto del CSV</summary><textarea id="bkImpText" rows="5" placeholder="fecha,descripción,cargo,abono,saldo" style="margin-top:6px"></textarea><button class="btn" id="bkImpPasteGo" style="margin-top:6px;background:#eef0f6;color:var(--navy)">Usar este texto</button></details>
+    <div id="bkImpPreview" style="margin-top:14px"></div>`);
+  $('bkImpFile').onchange=bkImpFilePicked;
+  $('bkImpPasteGo').onclick=()=>{ const t=$('bkImpText').value; if(t.trim()) bkImpPreview(t); };
+}
+async function bkImpFilePicked(e){
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  try{
+    let text;
+    if(/\.xlsx?$/i.test(f.name)){
+      await bkLoadScript(BK_XLSX_JS);
+      const buf=await f.arrayBuffer(); const wb=XLSX.read(buf,{type:'array',cellDates:true}); const ws=wb.Sheets[wb.SheetNames[0]];
+      text=XLSX.utils.sheet_to_csv(ws,{FS:',',dateNF:'yyyy-mm-dd',blankrows:false});
+    } else {
+      const buf=await f.arrayBuffer(); text=new TextDecoder('utf-8').decode(buf);
+      if(/�/.test(text)) text=new TextDecoder('windows-1252').decode(buf); // bancos MX exportan en Latin-1
+    }
+    bkImpPreview(text);
+  }catch(err){ bkNotice('No se pudo leer el archivo: '+err.message,'bad'); }
+}
+async function bkImpPreview(text){
+  BK.imp.text=text;
+  const r=await api('POST',`/api/bank/accounts/${BK.imp.id}/preview`,{csv:text});
+  if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo leer el archivo','bad');
+  BK.imp.preview=r.data; const rows=r.data.rows||[]; const cols=r.data.columns||0; const head=rows[0]||[];
+  const a=bkFindAccount(BK.imp.id);
+  const selects=[]; for(let i=0;i<cols;i++){ const g=bkGuessCol(head[i]); selects.push(`<th style="text-transform:none;letter-spacing:0"><select class="sel" data-col="${i}" style="width:100%;min-width:130px;font-size:12px;padding:6px 26px 6px 8px">${BK_COLS.map(([v,l])=>`<option value="${v}" ${v===g?'selected':''}>${l}</option>`).join('')}</select></th>`); }
+  const body=rows.map((rw,ri)=>`<tr style="${ri===0?'background:var(--sunken);font-weight:600':''}">${Array.from({length:cols},(_,i)=>`<td style="font-size:12.5px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(rw[i]||'')}</td>`).join('')}</tr>`).join('');
+  $('bkImpPreview').innerHTML=`<div class="muted" style="margin-bottom:6px">${r.data.total_rows} renglones · separador «${r.data.delimiter==='\t'?'tabulador':r.data.delimiter}». Asigna cada columna:</div>
+    <div style="overflow-x:auto;border:1px solid var(--line);border-radius:10px"><table style="min-width:520px"><thead><tr>${selects.join('')}</tr></thead><tbody>${body}</tbody></table></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px">
+      <label><input type="checkbox" id="bkImpHeader" checked> La primera fila es encabezado</label>
+      <label>Formato de fecha <select id="bkImpDate" class="sel" style="padding:5px 26px 5px 8px;font-size:12.5px"><option value="dmy" ${a.connection.country==='US'?'':'selected'}>día/mes/año (México)</option><option value="mdy" ${a.connection.country==='US'?'selected':''}>mes/día/año (EE. UU.)</option><option value="ymd">año-mes-día</option><option value="auto">detectar</option></select></label>
+      <label><input type="checkbox" id="bkImpNegate"> Los cargos vienen en positivo (invertir signo)</label>
+      <label>Saldo final <input id="bkImpClosing" placeholder="opcional" style="width:120px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:8px;font-size:12.5px"></label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="bkImpCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button><button class="btn" id="bkImpGo">Importar</button></div>`;
+  $('bkImpCancel').onclick=()=>bkModal(null);
+  $('bkImpGo').onclick=bkImpRun;
+}
+async function bkImpRun(){
+  const mapping={}; document.querySelectorAll('#bkImpPreview select[data-col]').forEach(s=>{ if(s.value) mapping[s.value]=Number(s.dataset.col); });
+  if(mapping.date==null) return bkNotice('Indica cuál columna es la fecha.','bad');
+  if(mapping.amount==null && mapping.debit==null && mapping.credit==null) return bkNotice('Indica la columna de importe (o cargo y abono).','bad');
+  const b=$('bkImpGo'); b.disabled=true; b.textContent='Importando…';
+  const r=await api('POST',`/api/bank/accounts/${BK.imp.id}/import`,{csv:BK.imp.text,mapping,options:{header:$('bkImpHeader').checked,date_format:$('bkImpDate').value,negate:$('bkImpNegate').checked,closing_balance:$('bkImpClosing').value}});
+  b.disabled=false; b.textContent='Importar';
+  if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo importar','bad');
+  const res=r.data.result||{};
+  bkModal(null);
+  bkNotice(`Importados ${res.imported} movimientos nuevos (${res.duplicates} ya estaban, ${res.skipped} renglones omitidos)${res.first_on?` · ${fdate(res.first_on)} → ${fdate(res.last_on)}`:''}${res.closing_balance!=null?' · saldo actualizado':''}${r.data.stripe_matched?` · Stripe: ${r.data.stripe_matched} emparejados`:''}${(res.errors&&res.errors.length)?' · avisos: '+res.errors.slice(0,3).join('; '):''}`, res.imported?'ok':'info');
+  BK.mv.loaded=false; bkLoad();
+}
+
+/* ---- Movimientos ---- */
+function bkMvParams(page,per){
+  const p=new URLSearchParams();
+  if($('bkMvAccount').value) p.set('account_id',$('bkMvAccount').value);
+  if($('bkMvKind').value) p.set('kind',$('bkMvKind').value);
+  if($('bkMvOnly').value) p.set('only',$('bkMvOnly').value);
+  if($('bkMvFrom').value) p.set('from',$('bkMvFrom').value); else p.set('from','all');
+  if($('bkMvTo').value) p.set('to',$('bkMvTo').value);
+  if($('bkMvQ').value.trim()) p.set('q',$('bkMvQ').value.trim());
+  p.set('page',page); p.set('per',per); return p.toString();
+}
+async function bkMovs(page){
+  BK.mv.page=page||1;
+  $('bkMvBody').innerHTML='<tr><td colspan="7" class="empty">Cargando…</td></tr>';
+  const r=await api('GET','/api/bank/transactions?'+bkMvParams(BK.mv.page,BK.mv.per));
+  if(!r.ok){ $('bkMvBody').innerHTML=`<tr><td colspan="7" class="empty">${esc((r.data&&r.data.error)||'Error')}</td></tr>`; return; }
+  BK.mv.loaded=true; BK.mv.rows=r.data.transactions||[]; BK.mv.total=r.data.total||0;
+  $('bkMvSums').innerHTML=(r.data.sums||[]).map(s=>`<b>${esc(s.currency)}</b>: entradas ${bkM(s.in,s.currency)} · salidas ${bkM(s.out,s.currency)} · neto ${bkM(s.in+s.out,s.currency)}`).join(' &nbsp;|&nbsp; ')+` &nbsp;·&nbsp; ${BK.mv.total} movimientos`;
+  if(!BK.mv.rows.length){ $('bkMvBody').innerHTML='<tr><td colspan="7" class="empty">Sin movimientos con esos filtros.</td></tr>'; $('bkMvPager').innerHTML=''; return; }
+  $('bkMvBody').innerHTML=BK.mv.rows.map(bkMvRow).join('');
+  $('bkMvBody').querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>bkExpenseForm(Number(b.dataset.exp)));
+  const pages=Math.max(1,Math.ceil(BK.mv.total/BK.mv.per));
+  $('bkMvPager').innerHTML=pages>1?`<span class="muted">Página ${BK.mv.page} de ${pages}</span> <button class="btn" ${BK.mv.page<=1?'disabled':''} onclick="bkMovs(${BK.mv.page-1})" style="background:#eef0f6;color:var(--navy)">‹ Anterior</button> <button class="btn" ${BK.mv.page>=pages?'disabled':''} onclick="bkMovs(${BK.mv.page+1})" style="background:#eef0f6;color:var(--navy)">Siguiente ›</button>`:'';
+}
+function bkMvRow(t){
+  const rec=[];
+  if(t.stripe_payout_id) rec.push(`<span class="pill p-appr" title="${esc(t.stripe_payout_id)}">Stripe ✓</span>`);
+  if(t.expense_id) rec.push(`<span class="pill p-other">Gasto #${t.expense_id}</span>`);
+  if(t.pending) rec.push('<span class="pill p-pend">Pendiente</span>');
+  const act=(t.amount<0&&!t.expense_id&&!t.pending)?`<button class="btn" data-exp="${t.id}" style="background:#eef0f6;color:var(--navy);padding:5px 9px;font-size:12px;white-space:nowrap">→ Gasto</button>`:'';
+  return `<tr><td class="mono" style="white-space:nowrap">${esc(fdate(t.posted_on))}<small>#${t.id}</small></td>
+    <td>${BK_FLAG[t.country]||''} ${esc(t.institution_name)}<small>${esc(t.account_label)}</small></td>
+    <td><b>${esc(t.merchant_name||t.description||'—')}</b>${t.merchant_name&&t.description&&t.description!==t.merchant_name?`<small>${esc(t.description)}</small>`:''}</td>
+    <td><span class="muted">${esc((t.category||'').replace(/_/g,' ').toLowerCase())}</span>${t.category_detail?`<small>${esc(t.category_detail.replace(/_/g,' ').toLowerCase())}</small>`:''}</td>
+    <td class="right">${bkM(t.amount,t.currency)}${t.currency!=='USD'?`<small>${esc(t.currency)}</small>`:''}</td>
+    <td>${rec.join(' ')||'<span class="muted">—</span>'}</td>
+    <td class="right">${act}</td></tr>`;
+}
+async function bkMovsCsv(){
+  const r=await api('GET','/api/bank/transactions?'+bkMvParams(1,5000));
+  if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo exportar','bad');
+  const rows=r.data.transactions||[];
+  const head=['fecha','banco','cuenta','pais','descripcion','comercio','categoria','importe','moneda','pendiente','stripe_payout','gasto_id','id'];
+  const csv=[head.join(',')].concat(rows.map(t=>[t.posted_on,t.institution_name,t.account_label,t.country,t.description||'',t.merchant_name||'',t.category||'',t.amount,t.currency,t.pending?'si':'no',t.stripe_payout_id||'',t.expense_id||'',t.id].map(v=>{v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`bancos_${$('bkMvFrom').value||'todo'}_a_${$('bkMvTo').value||'hoy'}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ---- Cargo → Gasto (Contabilidad) ---- */
+function bkExpenseForm(id){
+  const t=BK.mv.rows.find(x=>x.id===id); if(!t) return;
+  const cat=t.suggested_category||'otro';
+  bkModal(`<div class="stitle" style="padding:0 0 4px">Registrar gasto desde el banco</div>
+    <p class="muted" style="margin:0 0 12px">${esc(fdate(t.posted_on))} · ${esc(t.institution_name)} · ${esc(t.account_label)}<br><b>${esc(t.merchant_name||t.description)}</b> · ${bkM(t.amount,t.currency)}${t.currency==='MXN'?' <span style="color:var(--brand-ink)">(se convierte a USD con el tipo de cambio de ese día)</span>':''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">
+      <label class="muted">Categoría<select id="bkExCat" class="sel" style="width:100%;margin-top:4px">${Object.keys(BK_EXP_CATS).map(k=>`<option value="${k}" ${k===cat?'selected':''}>${BK_EXP_CATS[k]}</option>`).join('')}</select></label>
+      <label class="muted">Proveedor<input id="bkExVendor" value="${esc(t.merchant_name||'')}" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted" style="grid-column:1/-1">Descripción<input id="bkExDesc" value="${esc(t.description||'')}" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted">Contrato # (opcional)<input id="bkExContract" placeholder="id del contrato" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+      <label class="muted">Importe en USD (opcional, para registrar solo una parte)<input id="bkExAmount" placeholder="automático" style="width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;color:var(--ink)"></label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" id="bkExCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button><button class="btn" id="bkExGo">Registrar gasto</button></div>`);
+  $('bkExCancel').onclick=()=>bkModal(null);
+  $('bkExGo').onclick=async()=>{
+    const r=await api('POST',`/api/bank/transactions/${id}/expense`,{category:$('bkExCat').value,vendor:$('bkExVendor').value,description:$('bkExDesc').value,contract_id:$('bkExContract').value,amount:$('bkExAmount').value});
+    if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo registrar el gasto','bad');
+    bkModal(null); bkNotice(`Gasto #${r.data.expense.id} registrado: ${BK_EXP_CATS[r.data.expense.category]||r.data.expense.category} $${Number(r.data.expense.amount).toLocaleString('en-US',{minimumFractionDigits:2})} (ya aparece en Contabilidad → Gastos).`,'ok');
+    bkMovs(BK.mv.page);
+  };
+}
+
+/* ---- Conciliación Stripe ---- */
+async function bkStripe(){
+  $('bkSpBody').innerHTML='<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+  const r=await api('GET','/api/bank/stripe/payouts?days=120'+($('bkSpOnly').value?'&only=unmatched':''));
+  if(!r.ok){ $('bkSpBody').innerHTML=`<tr><td colspan="6" class="empty">${esc((r.data&&r.data.error)||'Error')}</td></tr>`; return; }
+  BK.sp=r.data.payouts||[];
+  if(!r.data.stripe_configured){ $('bkSpBody').innerHTML='<tr><td colspan="6" class="empty">Stripe no está configurado en el servidor (STRIPE_SECRET_KEY).</td></tr>'; return; }
+  if(!BK.sp.length){ $('bkSpBody').innerHTML='<tr><td colspan="6" class="empty">Sin depósitos en el periodo. Pulsa «Conciliar ahora» para traerlos de Stripe.</td></tr>'; return; }
+  $('bkSpBody').innerHTML=BK.sp.map(p=>{
+    const st={paid:['Pagado','p-appr'],in_transit:['En tránsito','p-pend'],pending:['Pendiente','p-pend'],canceled:['Cancelado','p-canc'],failed:['Falló','p-canc']}[p.status]||[p.status,'p-other'];
+    const tx=p.bank_transaction;
+    return `<tr><td class="mono" style="white-space:nowrap">${esc(fdate(p.arrival_on))}</td>
+      <td><b class="mono" style="font-size:12px">${esc(p.stripe_id)}</b><small>${esc(p.description||'')}${p.destination?' · '+esc(p.destination):''}</small></td>
+      <td class="right">${bkM(p.amount,p.currency)}</td>
+      <td><span class="pill ${st[1]}">${st[0]}</span></td>
+      <td>${tx?`<b>#${tx.id}</b> · ${esc(fdate(tx.posted_on))} · ${esc(tx.institution_name)} · ${esc(tx.account_label)}<small>${esc(tx.description||'')}</small>`:`<span class="muted">Sin identificar</span> <input id="bkSpTx${p.id}" placeholder="# movimiento" style="width:110px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:8px;font-size:12.5px;margin-left:6px">`}</td>
+      <td class="right">${tx?`<button class="btn" onclick="bkSpUnlink(${p.id})" style="background:#eef0f6;color:var(--navy);padding:5px 9px;font-size:12px">Desligar</button>`:`<button class="btn" onclick="bkSpLink(${p.id})" style="padding:5px 9px;font-size:12px">Ligar</button>`}</td></tr>`;
+  }).join('');
+}
+async function bkStripeRun(){
+  const b=$('bkSpRun'); b.disabled=true; b.textContent='Conciliando…';
+  const r=await api('POST','/api/bank/stripe/reconcile',{});
+  b.disabled=false; b.textContent='↻ Conciliar ahora';
+  if(!r.ok) bkNotice((r.data&&r.data.error)||'No se pudo conciliar','bad'); else bkNotice('Stripe: '+r.data.result,'ok');
+  bkStripe(); BK.mv.loaded=false;
+}
+async function bkSpLink(pid){
+  const v=$('bkSpTx'+pid).value.trim().replace('#',''); if(!v) return bkNotice('Escribe el número del movimiento (columna Fecha en Movimientos, junto a #).','bad');
+  const r=await api('POST',`/api/bank/stripe/payouts/${pid}/link`,{transaction_id:v});
+  if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo ligar','bad');
+  bkStripe(); BK.mv.loaded=false;
+}
+async function bkSpUnlink(pid){ const r=await api('POST',`/api/bank/stripe/payouts/${pid}/unlink`,{}); if(!r.ok) return bkNotice((r.data&&r.data.error)||'No se pudo desligar','bad'); bkStripe(); BK.mv.loaded=false; }
+
+/* ---- Configuración ---- */
+function bkConfig(){
+  const c=(BK.summary&&BK.summary.config)||{};
+  const ok=v=>v?'<span class="pill p-appr">configurado</span>':'<span class="pill p-canc">falta</span>';
+  $('bkCfg').innerHTML=`<div class="stitle" style="padding:0 0 8px">Plaid (bancos de EE. UU.) ${ok(c.plaid&&c.plaid.configured)} <span class="pill p-other">${esc(c.plaid?c.plaid.env:'')}</span></div>
+    <p class="muted" style="margin:0 0 10px">Variables en Render: <b>PLAID_CLIENT_ID</b>, <b>PLAID_SECRET</b> y <b>PLAID_ENV</b> (<code>sandbox</code> para probar con el banco ficticio de Plaid, <code>production</code> para tus bancos reales). Las llaves se pegan directamente en Render; nunca pasan por el panel.</p>
+    <p class="muted" style="margin:0 0 4px">En el dashboard de Plaid (Developers → API) agrega esta URL en <b>Allowed redirect URIs</b> (la usan los bancos con OAuth como Chase, Bank of America o Wells Fargo):</p>
+    <code style="display:block;background:var(--sunken);padding:8px 10px;border-radius:8px;font-size:12.5px;word-break:break-all">${esc(c.redirect_uri||'')}</code>
+    <p class="muted" style="margin:10px 0 4px">Webhook (se manda solo al conectar; Plaid avisa cuando hay movimientos nuevos y el servidor sincroniza en el siguiente tick de 15 min):</p>
+    <code style="display:block;background:var(--sunken);padding:8px 10px;border-radius:8px;font-size:12.5px;word-break:break-all">${esc(c.plaid_webhook_url||'')}</code>
+    <div class="stitle" style="padding:18px 0 8px">Stripe ${ok(c.stripe&&c.stripe.configured)}</div>
+    <p class="muted" style="margin:0">Los depósitos (payouts) se leen con la misma STRIPE_SECRET_KEY de los cobros. La conciliación corre después de cada sincronización y con el botón «Conciliar ahora».</p>
+    <div class="stitle" style="padding:18px 0 8px">Bancos de México</div>
+    <p class="muted" style="margin:0">Hoy se cargan con <b>Cuenta manual → Importar estado de cuenta</b> (CSV o Excel del portal del banco). La estructura ya está lista para un agregador mexicano con sincronización automática cuando se elija el proveedor.</p>
+    <div class="stitle" style="padding:18px 0 8px">Sincronización automática</div>
+    <p class="muted" style="margin:0">Cada 15 minutos el servidor revisa las conexiones que Plaid marcó con movimientos nuevos; una vez al día (6 am Monterrey) sincroniza todas; y siempre que quieras: «Actualizar» en la conexión o «Actualizar todo». Los movimientos nunca se borran: si el banco retira uno, aquí solo se oculta.</p>`;
 }
 
 </script>

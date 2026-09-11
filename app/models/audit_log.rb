@@ -53,7 +53,12 @@ class AuditLog < ApplicationRecord
     'accounting_settings_changed' => 'Cambió configuración contable',
     'payment_voided'       => '↩ Anuló pago (con o sin reembolso)',
     'payment_modified'     => '✏ Corrigió pago (corrección contable)',
-    'accounting_entry_deleted' => '⚠️ BORRÓ un renglón del libro (fase de pruebas)'
+    'accounting_entry_deleted' => '⚠️ BORRÓ un renglón del libro (fase de pruebas)',
+    'bank_connected'           => '🏦 Conectó una cuenta bancaria',
+    'bank_reconnected'         => '🏦 Reconectó una cuenta bancaria (re-login)',
+    'bank_disconnected'        => '🏦 Desconectó una cuenta bancaria (movimientos conservados)',
+    'bank_manual_account_created' => '🏦 Dio de alta una cuenta bancaria manual',
+    'bank_statement_imported'  => '🏦 Importó un estado de cuenta'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

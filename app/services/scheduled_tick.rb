@@ -98,6 +98,20 @@ class ScheduledTick
       end
     end
 
+    # 6) BANCOS: sincroniza las conexiones marcadas por webhook (cada tick), las que
+    #    llevan más de 20 h sin bajar y, a las 6 am de Monterrey, todas (full).
+    #    Después concilia los depósitos de Stripe contra los movimientos del banco.
+    #    Idempotente: cada movimiento se identifica por el id del banco.
+    if defined?(BankFeeds::Sync) && defined?(BankConnection) && BankConnection.table_exists?
+      begin
+        r = BankFeeds::Sync.run_due!(full: t.hour == 6)
+        out[:bank_feeds] = r if r.any?
+      rescue StandardError => e
+        out[:bank_feeds] = e.message
+        WaAlert.notify('Sincronización bancaria', e.message) if defined?(WaAlert)
+      end
+    end
+
     Rails.logger.info "[ScheduledTick] #{out.inspect}"
     puts out.inspect
     out

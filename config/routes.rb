@@ -241,6 +241,27 @@ Rails.application.routes.draw do
       post 'run_reminders', on: :collection
     end
 
+    # Bancos (solo master/admin/sistema): cuentas conectadas, saldos, movimientos,
+    # conciliación con los depósitos de Stripe e importación de estados de cuenta.
+    get  'bank/summary',                    to: 'api/bank_feeds#summary'
+    get  'bank/transactions',               to: 'api/bank_feeds#transactions'
+    post 'bank/plaid/link_token',           to: 'api/bank_feeds#plaid_link_token'
+    post 'bank/plaid/exchange',             to: 'api/bank_feeds#plaid_exchange'
+    post 'bank/plaid/relinked',             to: 'api/bank_feeds#plaid_relinked'
+    post 'bank/manual_accounts',            to: 'api/bank_feeds#create_manual_account'
+    put  'bank/accounts/:id',               to: 'api/bank_feeds#update_account'
+    post 'bank/accounts/:id/preview',       to: 'api/bank_feeds#preview_statement'
+    post 'bank/accounts/:id/import',        to: 'api/bank_feeds#import_statement'
+    post 'bank/connections/:id/sync',       to: 'api/bank_feeds#sync_connection'
+    post 'bank/connections/:id/disconnect', to: 'api/bank_feeds#disconnect'
+    post 'bank/sync_all',                   to: 'api/bank_feeds#sync_all'
+    post 'bank/transactions/:id/expense',   to: 'api/bank_feeds#create_expense_from_transaction'
+    get  'bank/stripe/payouts',             to: 'api/bank_feeds#stripe_payouts'
+    post 'bank/stripe/reconcile',           to: 'api/bank_feeds#stripe_reconcile'
+    post 'bank/stripe/payouts/:id/link',    to: 'api/bank_feeds#stripe_link'
+    post 'bank/stripe/payouts/:id/unlink',  to: 'api/bank_feeds#stripe_unlink'
+    post 'bank/webhooks/:provider/:token',  to: 'api/bank_feeds#webhook' # público; el token secreto va en la URL
+
     post 'autopay/run', to: 'api/autopay#run'
     # Tick programado (Cron Job de Render cada 15 min; corre lo recurrente)
     post 'ticks/run', to: 'api/ticks#run'

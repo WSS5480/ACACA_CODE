@@ -92,9 +92,11 @@ module Api
     # queda lista para pagos automáticos y cobros futuros (off-session).
     def setup_intent
       customer_id = ensure_stripe_customer!(@current_user)
+      # Solo TARJETA al guardar desde el Perfil: es lo que el autopago cobra
+      # después sin el cliente presente (Apple/Google Pay cuentan como tarjeta).
       si = StripeClient.request(:post, '/v1/setup_intents', {
         customer: customer_id,
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ['card'],
         usage: 'off_session',
         metadata: { user_id: @current_user.id, source: 'perfil' }
       })
@@ -129,29 +131,9 @@ module Api
       cid = @current_user.stripe_customer_id
       return render(json: { cards: [] }, status: :ok) if cid.blank?
 
-      res = StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' })
-      seen = {}
-      dupes = []
-      (res['data'] || []).each do |pm| # Stripe devuelve la más reciente primero
-        fp = pm.dig('card', 'fingerprint').presence ||
-             "#{pm.dig('card', 'brand')}-#{pm.dig('card', 'last4')}-#{pm.dig('card', 'exp_month')}-#{pm.dig('card', 'exp_year')}"
-        if seen.key?(fp)
-          dupes << pm['id']
-        else
-          seen[fp] = pm
-        end
-      end
-      dupes.each do |pm_id|
-        begin
-          StripeClient.request(:post, "/v1/payment_methods/#{pm_id}/detach", {})
-        rescue StripeClient::Error
-          nil # si no se pudo desprender, igual queda fuera de la lista
-        end
-      end
-      cards = seen.values.map do |pm|
-        { id: pm['id'], brand: pm.dig('card', 'brand'), last4: pm.dig('card', 'last4'),
-          exp_month: pm.dig('card', 'exp_month'), exp_year: pm.dig('card', 'exp_year') }
-      end
+      # Tarjetas Y Link (cualquier método reutilizable sin el cliente presente).
+      cards = StripeClient.saved_methods(cid)
+      Rails.logger.info "[stripe] métodos guardados de #{cid}: #{cards.size} (#{cards.map { |c| c[:type] }.join(', ')})"
       render json: { cards: cards }, status: :ok
     rescue StripeClient::Error => e
       render json: { error: e.message }, status: :unprocessable_entity
@@ -170,8 +152,7 @@ module Api
 
       pm = params[:payment_method_id].presence
       if pm.blank?
-        res = StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' })
-        pm = res.dig('data', 0, 'id')
+        pm = StripeClient.saved_methods(cid).first&.dig(:id)
         return render(json: { error: 'No hay tarjeta guardada' }, status: :unprocessable_entity) if pm.blank?
       end
 

@@ -43,6 +43,55 @@ class StripeClient
     body
   end
 
+  # MÉTODOS DE PAGO GUARDADOS de un cliente, de cualquier tipo reutilizable
+  # SIN el cliente presente (tarjeta o Link). Antes solo se listaban 'card':
+  # una tarjeta guardada a través de Link (Stripe la registra como tipo
+  # 'link') quedaba invisible — el Perfil decía "guarda una tarjeta primero" y
+  # el autopago "necesitas una tarjeta guardada" aunque el alta hubiera sido
+  # exitosa. Devuelve la más reciente primero y quita duplicados de la misma
+  # tarjeta física (fingerprint) o del mismo Link (correo).
+  REUSABLE_TYPES = %w[card link].freeze
+
+  def self.saved_methods(customer_id)
+    return [] if customer_id.blank?
+
+    res = request(:get, '/v1/payment_methods', { customer: customer_id, limit: 100 })
+    seen = {}
+    dupes = []
+    (res['data'] || []).each do |pm|
+      next unless REUSABLE_TYPES.include?(pm['type'])
+
+      key = if pm['type'] == 'card'
+              pm.dig('card', 'fingerprint').presence ||
+                "#{pm.dig('card', 'brand')}-#{pm.dig('card', 'last4')}-#{pm.dig('card', 'exp_month')}-#{pm.dig('card', 'exp_year')}"
+            else
+              "link-#{pm.dig('link', 'email').to_s.downcase}"
+            end
+      if seen.key?(key)
+        dupes << pm['id']
+      else
+        seen[key] = normalize_method(pm)
+      end
+    end
+    dupes.each do |id|
+      request(:post, "/v1/payment_methods/#{id}/detach", {})
+    rescue Error
+      nil # si no se pudo desprender, igual queda fuera de la lista
+    end
+    seen.values
+  end
+
+  def self.normalize_method(pm)
+    if pm['type'] == 'card'
+      { id: pm['id'], type: 'card', brand: pm.dig('card', 'brand'), last4: pm.dig('card', 'last4'),
+        exp_month: pm.dig('card', 'exp_month'), exp_year: pm.dig('card', 'exp_year'),
+        label: "#{pm.dig('card', 'brand').to_s.upcase} •••• #{pm.dig('card', 'last4')}" }
+    else
+      { id: pm['id'], type: 'link', brand: 'Link', last4: nil, exp_month: nil, exp_year: nil,
+        label: "Link (#{pm.dig('link', 'email')})" }
+    end
+  end
+
   # {a: {b: 1}, c: [..]} -> {"a[b]"=>1, ...} (formato form-encoded de Stripe)
   def self.flatten_params(params, prefix = nil, out = {})
     params.each do |k, v|

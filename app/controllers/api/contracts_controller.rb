@@ -312,8 +312,12 @@ module Api
         cid = contract.user&.stripe_customer_id
         has_card = false
         if cid.present? && StripeClient.configured?
-          pms = StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' }) rescue { 'data' => [] }
-          has_card = (pms['data'] || []).any?
+          # Tarjeta O Link guardados (cualquier método cobrable sin el cliente presente).
+          has_card = begin
+            StripeClient.saved_methods(cid).any?
+          rescue StandardError
+            false
+          end
         end
         return render(json: { error: 'Necesitas una tarjeta guardada: realiza un pago con tarjeta primero.' }, status: :unprocessable_entity) unless has_card
       end
@@ -336,12 +340,12 @@ module Api
         cid = @current_user.stripe_customer_id
         has_card = false
         if cid.present? && StripeClient.configured?
-          pms = begin
-            StripeClient.request(:get, '/v1/payment_methods', { customer: cid, type: 'card' })
+          # Tarjeta O Link guardados (cualquier método cobrable sin el cliente presente).
+          has_card = begin
+            StripeClient.saved_methods(cid).any?
           rescue StandardError
-            { 'data' => [] }
+            false
           end
-          has_card = (pms['data'] || []).any?
         end
         return render(json: { error: 'Guarda primero una tarjeta (Perfil → Tarjeta para pagos automáticos).' }, status: :unprocessable_entity) unless has_card
       end

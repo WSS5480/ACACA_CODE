@@ -37,8 +37,8 @@ class AutopayService
     waiver_pct = contract.orders.first&.waiver.to_f
     fee = waiver_pct > 0 ? (due * waiver_pct / 100.0).round(2) : 0.0
 
-    pms = StripeClient.request(:get, '/v1/payment_methods', { customer: user.stripe_customer_id, type: 'card' })
-    pm = pms.dig('data', 0, 'id')
+    # Tarjeta o Link guardados: el más reciente (mismo criterio que el Perfil).
+    pm = StripeClient.saved_methods(user.stripe_customer_id).first&.dig(:id)
     return :skipped if pm.blank?
 
     pi = StripeClient.request(:post, '/v1/payment_intents', {

@@ -128,6 +128,44 @@ class Contract < ApplicationRecord
     overdue? ? 'past_due' : 'current'
   end
 
+  # ----- recibos -----
+  # Datos del RECIBO de un pago (los mismos que muestra la tienda en "Recibos e
+  # impresión"): folio, concepto, desglose, número de pago "k de N" y saldo del
+  # contrato después de ESE pago. Se recorren los pagos en orden para que el
+  # acumulado y el saldo sean los de ese momento.
+  def receipt_data_for(payment)
+    fin = financed_amount.to_f
+    sched = contract_installments.order(:number).pluck(:amount).map(&:to_f)
+    cum = []
+    sched.each { |a| cum << ((cum.last || 0.0) + a).round(2) }
+    running = 0.0
+    covered = 0
+    payments.order(:paid_at, :id).each do |p|
+      running = (running + p.amount.to_f).round(2)
+      next unless p.id == payment.id
+
+      covered = cum.count { |s| s <= running + 0.009 }
+      break
+    end
+    base = payment.amount.to_f.round(2)
+    total = payment.try(:total_charged).to_f
+    {
+      id: payment.id, folio: "REC-#{payment.id}", paid_at: payment.paid_at,
+      kind: (payment.try(:kind).presence || 'renta'),
+      downpayment: downpayment.to_f.round(2),
+      amount: base,
+      extra_amount: payment.try(:extra_amount).to_f.round(2),
+      iva_amount: payment.try(:iva_amount).to_f.round(2),
+      total_charged: (total.positive? ? total : base).round(2),
+      method: payment.method,
+      reference: (payment.respond_to?(:stripe_payment_intent_id) ? payment.stripe_payment_intent_id : nil),
+      waiver_pct: orders.first.try(:waiver).to_f,
+      items_label: orders.map { |o| o.respond_to?(:product_title) ? o.product_title : nil }.compact.join(' + ').presence,
+      payment_seq: (sched.any? ? "#{covered}/#{sched.size}" : nil),
+      balance_after: [(fin - running).round(2), 0].max
+    }
+  end
+
   # ----- amortizacion -----
   # Genera la tabla semanal: N cuotas, cada una = pago semanal, sumando el monto financiado.
   FREQUENCIES = %w[weekly biweekly monthly].freeze

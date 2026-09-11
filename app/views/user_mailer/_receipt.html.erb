@@ -1,0 +1,56 @@
+<%# RECIBO DE PAGO — mismo contenido que el recibo de la tienda (Recibos e impresión). %>
+<% base = r[:amount].to_f; extra = r[:extra_amount].to_f; iva = r[:iva_amount].to_f %>
+<%# En el PAGO INICIAL los cargos adicionales son enganche + exención + cuota de procesamiento: se desglosan. %>
+<% waiver = r[:waiver_pct].to_f > 0 ? (base * r[:waiver_pct].to_f / 100).round(2) : 0.0 %>
+<% initial = %w[enganche contado].include?(r[:kind].to_s) && extra > 0 && r[:downpayment].to_f > 0 %>
+<% fee = initial ? (extra - r[:downpayment].to_f - waiver).round(2) : 0.0 %>
+<% initial = false if fee < -0.01 %>
+<% pct_label = r[:waiver_pct].to_f > 0 ? " (#{r[:waiver_pct].to_f.round(2).to_s.sub(/\.0+\z/, '')}%)" : '' %>
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:400px;margin:0 auto;border:1px solid #e5e5e5;border-radius:10px;background:#ffffff">
+  <tr><td style="padding:16px 18px;font-family:Helvetica,Arial,sans-serif;color:#333;">
+    <div style="text-align:center;font-weight:800;font-size:15px;border-top:2px solid #FF6B35;border-bottom:2px solid #FF6B35;padding:6px 0;margin-bottom:10px;">RECIBO DE PAGO · Folio <%= r[:folio] %></div>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:13px;line-height:20px;">
+      <tr><td style="padding:3px 0;white-space:nowrap;">Fecha</td><td style="text-align:right;padding:3px 0;"><%= mail_datetime(r[:paid_at]) %></td></tr>
+      <tr><td style="padding:3px 0;white-space:nowrap;">Cliente</td><td style="text-align:right;padding:3px 0;"><%= client_name.presence || '—' %></td></tr>
+      <tr><td style="padding:3px 0;white-space:nowrap;">Contrato</td><td style="text-align:right;padding:3px 0;"><%= num %></td></tr>
+      <% if r[:items_label].present? %>
+        <tr><td style="padding:3px 0;vertical-align:top;white-space:nowrap;">Artículo(s)</td><td style="text-align:right;padding:3px 0;font-size:11px;line-height:15px;"><%= r[:items_label] %></td></tr>
+      <% end %>
+      <tr><td style="padding:3px 0;white-space:nowrap;">Concepto</td><td style="text-align:right;padding:3px 0;"><%= mail_kind_label(r[:kind]) %></td></tr>
+      <% if r[:payment_seq].present? %>
+        <tr><td style="padding:3px 0;white-space:nowrap;">No. de pago</td><td style="text-align:right;padding:3px 0;"><%= r[:payment_seq].to_s.sub('/', ' de ') %></td></tr>
+      <% end %>
+      <tr><td style="padding:3px 0;white-space:nowrap;">Método</td><td style="text-align:right;padding:3px 0;"><%= mail_method_label(r[:method]) %></td></tr>
+      <% if r[:reference].present? %>
+        <tr><td style="padding:3px 0;white-space:nowrap;">Referencia</td><td style="text-align:right;padding:3px 0;font-size:10px;word-break:break-all;"><%= r[:reference] %></td></tr>
+      <% end %>
+    </table>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;"/>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:13px;line-height:20px;">
+      <% if initial %>
+        <tr><td style="padding:3px 0;white-space:nowrap;">Enganche</td><td style="text-align:right;padding:3px 0;"><%= mail_money(r[:downpayment]) %></td></tr>
+        <tr><td style="padding:3px 0;white-space:nowrap;">Primera cuota (abono al contrato)</td><td style="text-align:right;padding:3px 0;"><%= mail_money(base) %></td></tr>
+        <% if waiver > 0 %>
+          <tr><td style="padding:3px 0;white-space:nowrap;">Exención de responsabilidad<%= pct_label %></td><td style="text-align:right;padding:3px 0;"><%= mail_money(waiver) %></td></tr>
+        <% end %>
+        <% if fee > 0.005 %>
+          <tr><td style="padding:3px 0;white-space:nowrap;">Cuota de procesamiento</td><td style="text-align:right;padding:3px 0;"><%= mail_money(fee) %></td></tr>
+        <% end %>
+      <% else %>
+        <tr><td style="padding:3px 0;white-space:nowrap;">Abono al contrato</td><td style="text-align:right;padding:3px 0;"><%= mail_money(base) %></td></tr>
+        <% if extra > 0 %>
+          <tr><td style="padding:3px 0;white-space:nowrap;">Exención de responsabilidad<%= pct_label %></td><td style="text-align:right;padding:3px 0;"><%= mail_money(extra) %></td></tr>
+        <% end %>
+      <% end %>
+      <% if iva > 0 %>
+        <tr><td style="padding:3px 0;white-space:nowrap;">IVA<%= (base + extra) > 0 ? " (#{((iva / (base + extra)) * 100).round}%)" : '' %></td><td style="text-align:right;padding:3px 0;"><%= mail_money(iva) %></td></tr>
+      <% end %>
+      <tr><td style="padding:6px 0 3px;font-weight:800;">TOTAL PAGADO</td><td style="text-align:right;padding:6px 0 3px;font-weight:800;"><%= mail_money(r[:total_charged]) %></td></tr>
+    </table>
+    <hr style="border:none;border-top:1px dashed #999;margin:10px 0;"/>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:13px;line-height:20px;">
+      <tr><td style="padding:3px 0;white-space:nowrap;">Saldo del contrato después de este pago</td><td style="text-align:right;padding:3px 0;font-weight:800;"><%= mail_money(r[:balance_after]) %></td></tr>
+    </table>
+    <p style="text-align:center;font-size:11px;color:#666;margin:14px 0 0;line-height:16px;">Gracias por tu pago. Este recibo es tu comprobante.<br/>Dudas: WhatsApp +52 81 1824 7975 · clientes@acasamx.com</p>
+  </td></tr>
+</table>

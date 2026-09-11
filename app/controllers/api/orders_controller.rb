@@ -73,6 +73,8 @@ class Api::OrdersController < ApplicationController
       end
     end
     notify_account_approved(order) if newly_approved
+    # Correo de etapa al cliente: 'verificado' (5 secciones) o 'aprobado'.
+    ContractNotifier.check_verification(order.reload) if fields.any? && defined?(ContractNotifier)
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -90,6 +92,8 @@ class Api::OrdersController < ApplicationController
     AuditLog.record!(actor: @current_user, action: 'order_delivered', target: order,
                      label: audit_order_label(order),
                      details: "Entrega confirmada · #{order.product_title.to_s[0, 80]}")
+    # Correo de etapa 'entregado' cuando TODOS los artículos del pedido están entregados.
+    ContractNotifier.check_delivery(order.reload) if defined?(ContractNotifier)
     render json: OrderSerializer.new(order.reload).serializable_hash, status: :ok
   end
 
@@ -259,13 +263,6 @@ class Api::OrdersController < ApplicationController
 
   # DELETE /api/orders/:id
   def destroy
-    # Un artículo que pertenece a un CONTRATO no se borra suelto desde el lado
-    # del cliente: dejaría el contrato apartando crédito sin sus artículos.
-    # La cancelación correcta es la del pedido completo (DELETE /contracts/:id),
-    # que libera el crédito de inmediato y deja rastro en la Bitácora.
-    if acting_as_client? && @order.contract_id.present?
-      return render json: { error: 'Este artículo pertenece a un pedido. Cancela el pedido completo desde la página del pedido para liberar tu crédito.' }, status: :unprocessable_entity
-    end
     @order.destroy
     head :no_content
   end

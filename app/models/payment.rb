@@ -25,8 +25,17 @@ class Payment < ApplicationRecord
   before_create :set_accounting_fields
   after_create :apply_to_contract
   after_create :record_in_ledger
+  # RECIBO por correo en CADA pago, ya confirmado en la base de datos (con el
+  # saldo y el calendario actualizados). Nunca bloquea el pago.
+  after_create_commit :notify_receipt
 
   private
+
+  def notify_receipt
+    ContractNotifier.payment_received(self) if defined?(ContractNotifier)
+  rescue StandardError => e
+    Rails.logger.error "notify_receipt pago #{id}: #{e.message}"
+  end
 
   def set_defaults
     self.paid_at ||= Time.current

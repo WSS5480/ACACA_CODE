@@ -129,21 +129,6 @@ module Api
       return render(json: { error: 'Selecciona al menos un producto' }, status: :unprocessable_entity) if products.empty?
 
       total = products.sum { |p| p.total_price.to_f }.round(2)  # precio de contado
-      # CANDADO DE PRECIO: el contado que el cliente VIO en su carrito debe ser
-      # exactamente el que se cobra. Los precios en USD siguen al tipo de cambio
-      # (se actualiza a diario), así que si algún precio se movió entre armar el
-      # carrito y pagar, NO se crea nada: se le pide revisar los montos nuevos.
-      # (Sin este candado, el enganche se calculaba con el precio viejo y la
-      # diferencia se iba callada al financiamiento.)
-      if params[:quoted_total].present?
-        quoted = params[:quoted_total].to_f.round(2)
-        if (quoted - total).abs > 0.01
-          return render(json: {
-            error: "Los precios de tu carrito cambiaron con el tipo de cambio desde que lo armaste (antes $#{format('%.2f', quoted)}, ahora $#{format('%.2f', total)}). Revisa los montos y vuelve a intentar.",
-            quoted_total: quoted, total_now: total
-          }, status: :unprocessable_entity)
-        end
-      end
       cash_sale = ActiveModel::Type::Boolean.new.cast(params[:cash])
 
       beneficiary_id_cash = params[:beneficiary_id].present? ? user.beneficiaries.where(id: params[:beneficiary_id]).pick(:id) : nil
@@ -547,6 +532,8 @@ module Api
       rescue StandardError => e
         Rails.logger.warn "[contracts] pings: #{e.message}"
       end
+      # Correo de etapa 'datos recibidos' (una sola vez) si el expediente quedó completo.
+      ContractNotifier.check_datos(contract) if defined?(ContractNotifier)
       render json: { ok: true,
                      datos_complete: (contract.respond_to?(:datos_complete?) ? contract.reload.datos_complete? : true),
                      first_order_id: fo.id }, status: :ok
@@ -580,6 +567,8 @@ module Api
       AuditLog.record!(actor: @current_user, action: 'contract_signed', target: contract,
                        label: audit_contract_label(contract),
                        details: "Firmado por #{contract.signature_name} desde IP #{contract.signature_ip}")
+      # Correo de etapa 'firmado' con el calendario de pagos.
+      ContractNotifier.signed(contract) if defined?(ContractNotifier)
       render json: { ok: true, signed_at: contract.signed_at }, status: :ok
     rescue ActiveRecord::RecordNotFound
       render json: { error: 'Contrato no encontrado' }, status: :not_found

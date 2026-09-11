@@ -1,0 +1,24 @@
+Hola <%= @user&.name || '' %>,
+
+<%= @copy[:title] %>
+
+<%= @copy[:es] % { num: @num } %>
+
+<%= @copy[:step] %>
+
+Pedido / contrato: <%= @num %>
+Precio de contado: <%= mail_money(@contract.total_amount) %>
+Enganche: <%= mail_money(@contract.downpayment) %>
+Monto financiado: <%= mail_money(@contract.financed_amount) %>
+Plan de pago: <%= mail_freq_label(@contract.freq) %>
+Saldo actual: <%= mail_money(@contract.balance) %>
+<% if @show_schedule && @installments.any? %>
+CALENDARIO DE PAGOS
+<% @installments.each do |i| %>  <%= i.number.to_s.rjust(2) %>. <%= mail_date(i.due_date) %>  <%= mail_money(i.amount) %>  pagado: <%= i.paid_amount.to_f > 0 ? mail_money(i.paid_amount) : '—' %>  <%= i.status == 'paid' ? 'Pagado' : mail_status_label(i.status) %>
+<% end %>Pagado: <%= mail_money(@installments.sum { |i| i.paid_amount.to_f }) %> · Por pagar: <%= mail_money([@installments.sum { |i| i.amount.to_f } - @installments.sum { |i| i.paid_amount.to_f }, 0].max) %>
+<% end %><% if @next_due %>Próximo pago: <%= mail_money(@next_amount) %> el <%= mail_date(@next_due) %>.
+<% end %>
+Ver mi pedido: <%= @contract_url %>
+
+---
+English: <%= @copy[:en] % { num: @num } %>

@@ -1,0 +1,35 @@
+<% content_for :email_title do %>
+  <%= @copy[:title] %>
+<% end %>
+
+<p style="margin-bottom: 8px;">Hola <%= @user&.name || '' %>,</p>
+<p style="margin-bottom: 20px;"><%= @copy[:es] % { num: @num } %></p>
+
+<div style="margin:0 0 22px;padding:12px 16px;background:#fff5f0;border-radius:8px;font-weight:bold;color:#9a3c00;">
+  <%= @copy[:step] %>
+</div>
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;line-height:22px;border:1px solid #e5e5e5;border-radius:8px;">
+  <tr><td style="padding:10px 14px;">Pedido / contrato</td><td style="padding:10px 14px;text-align:right;"><strong><%= @num %></strong></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Precio de contado</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><%= mail_money(@contract.total_amount) %></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Enganche</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><%= mail_money(@contract.downpayment) %></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Monto financiado</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><%= mail_money(@contract.financed_amount) %></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Plan de pago</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><%= mail_freq_label(@contract.freq) %></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Saldo actual</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><strong><%= mail_money(@contract.balance) %></strong></td></tr>
+</table>
+
+<% if @show_schedule && @installments.any? %>
+  <%= render partial: 'user_mailer/schedule', locals: { contract: @contract, installments: @installments, num: @num, next_due: @next_due, next_amount: @next_amount } %>
+<% elsif @next_due %>
+  <p style="margin:18px 0 0;">Tu próximo pago: <strong><%= mail_money(@next_amount) %></strong> el <strong><%= mail_date(@next_due) %></strong>.</p>
+<% end %>
+
+<p style="margin: 24px 0 20px;">
+  <a href="<%= @contract_url %>" style="display: inline-block; background-color: #FF7517; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Ver mi pedido</a>
+</p>
+
+<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;"/>
+
+<p style="margin-bottom: 12px; color: #444; font-size: 14px;">
+  <strong>English:</strong> <%= @copy[:en] % { num: @num } %>
+</p>

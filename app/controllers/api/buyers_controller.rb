@@ -39,6 +39,7 @@ class Api::BuyersController < ApplicationController
     if @buyer.save
       backfill_kinship!(@buyer)
       enqueue_reference_pings(@buyer.order_id) unless quiet_save?
+      notify_datos(@buyer)
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :created
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
@@ -50,10 +51,19 @@ class Api::BuyersController < ApplicationController
     if @buyer.update(buyer_params.except(:order_id))
       backfill_kinship!(@buyer)
       enqueue_reference_pings(@buyer.order_id) unless quiet_save?
+      notify_datos(@buyer)
       render json: BuyerSerializer.new(@buyer).serializable_hash, status: :ok
     else
       render json: { errors: @buyer.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  # Si con este guardado el expediente quedó COMPLETO (comprador + 4 referencias)
+  # y el pago inicial ya está hecho, el cliente recibe el correo de la etapa.
+  def notify_datos(buyer)
+    ContractNotifier.check_datos(buyer.order&.contract) if defined?(ContractNotifier)
+  rescue StandardError => e
+    Rails.logger.warn "[buyers] notify_datos: #{e.message}"
   end
 
   # DELETE /api/buyers/:id

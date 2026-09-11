@@ -1,0 +1,44 @@
+<% content_for :email_title do %>
+  Recibo de pago <%= @r[:folio] %>
+<% end %>
+
+<p style="margin-bottom: 20px;">
+  Hola <%= @user&.name || '' %>, recibimos tu pago de <strong><%= mail_money(@r[:total_charged]) %></strong>
+  <%= @is_initial ? 'como pago inicial' : '' %> del <%= @contract.contract_number.present? ? 'contrato' : 'pedido' %> <strong><%= @num %></strong>. ¡Gracias!
+</p>
+
+<%= render partial: 'user_mailer/receipt', locals: { r: @r, num: @num, client_name: @client_name } %>
+
+<% if @paid_off %>
+  <div style="margin:22px 0;padding:14px 16px;background:#f0fdf4;border-radius:8px;color:#15803d;">
+    <strong>¡Liquidaste tu contrato! 🎉</strong> No tienes pagos pendientes. Gracias por confiar en acasa: tu línea de crédito queda disponible para tu próxima compra.
+  </div>
+<% elsif @is_initial && @needs_datos %>
+  <div style="margin:22px 0;padding:14px 16px;background:#fff5f0;border-radius:8px;">
+    <strong>Siguiente paso (3 de 6): completa tu orden.</strong> Captura tus datos de comprador y tus 4 referencias para que podamos verificar y aprobar tu compra.
+    <p style="margin:12px 0 0;">
+      <a href="<%= @contract_url %>/datos" style="display:inline-block;background-color:#FF7517;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">Completar mi orden</a>
+    </p>
+  </div>
+<% elsif @is_initial %>
+  <div style="margin:22px 0;padding:14px 16px;background:#fff5f0;border-radius:8px;">
+    <strong>Siguiente paso: verificamos tu información.</strong> Ya tenemos tus datos; nuestro equipo los revisa y te avisamos por correo en cada paso.
+  </div>
+<% elsif @next_due %>
+  <p style="margin:18px 0;">Tu próximo pago: <strong><%= mail_money(@next_amount) %></strong> el <strong><%= mail_date(@next_due) %></strong>.</p>
+<% end %>
+
+<% if @installments.any? %>
+  <%= render partial: 'user_mailer/schedule', locals: { contract: @contract, installments: @installments, num: @num, next_due: @next_due, next_amount: @next_amount } %>
+<% end %>
+
+<p style="margin: 24px 0 20px;">
+  <a href="<%= @contract_url %>" style="display: inline-block; background-color: #FF7517; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Ver mi contrato y mis recibos</a>
+</p>
+
+<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;"/>
+
+<p style="margin-bottom: 12px; color: #444; font-size: 14px;">
+  <strong>English:</strong> We received your payment of <strong><%= mail_money(@r[:total_charged]) %></strong> for <strong><%= @num %></strong>.
+  Your receipt <%= @r[:folio] %> and your payment schedule (paid and remaining) are above; you can reprint any receipt from your contract page.
+</p>

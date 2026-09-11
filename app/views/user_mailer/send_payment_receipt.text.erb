@@ -1,0 +1,34 @@
+Hola <%= @user&.name || '' %>,
+
+Recibimos tu pago de <%= mail_money(@r[:total_charged]) %><%= @is_initial ? ' como pago inicial' : '' %> del <%= @contract.contract_number.present? ? 'contrato' : 'pedido' %> <%= @num %>. ¡Gracias!
+
+RECIBO DE PAGO · Folio <%= @r[:folio] %>
+Fecha: <%= mail_datetime(@r[:paid_at]) %>
+Cliente: <%= @client_name.presence || '—' %>
+Contrato: <%= @num %>
+<% if @r[:items_label].present? %>Artículo(s): <%= @r[:items_label] %>
+<% end %>Concepto: <%= mail_kind_label(@r[:kind]) %>
+<% if @r[:payment_seq].present? %>No. de pago: <%= @r[:payment_seq].to_s.sub('/', ' de ') %>
+<% end %>Método: <%= mail_method_label(@r[:method]) %>
+<% if @r[:reference].present? %>Referencia: <%= @r[:reference] %>
+<% end %>
+Abono al contrato: <%= mail_money(@r[:amount]) %>
+<% if @r[:extra_amount].to_f > 0 %>Exención de responsabilidad: <%= mail_money(@r[:extra_amount]) %>
+<% end %><% if @r[:iva_amount].to_f > 0 %>IVA: <%= mail_money(@r[:iva_amount]) %>
+<% end %>TOTAL PAGADO: <%= mail_money(@r[:total_charged]) %>
+Saldo del contrato después de este pago: <%= mail_money(@r[:balance_after]) %>
+
+<% if @paid_off %>¡Liquidaste tu contrato! No tienes pagos pendientes. Gracias por confiar en acasa.
+<% elsif @is_initial && @needs_datos %>Siguiente paso (3 de 6): completa tu orden — captura tus datos de comprador y tus 4 referencias:
+<%= @contract_url %>/datos
+<% elsif @is_initial %>Siguiente paso: verificamos tu información. Te avisamos por correo en cada paso.
+<% elsif @next_due %>Tu próximo pago: <%= mail_money(@next_amount) %> el <%= mail_date(@next_due) %>.
+<% end %>
+<% if @installments.any? %>CALENDARIO DE PAGOS · <%= @num %> · Plan: <%= mail_freq_label(@contract.freq) %> · Financiado: <%= mail_money(@contract.financed_amount) %>
+<% @installments.each do |i| %>  <%= i.number.to_s.rjust(2) %>. <%= mail_date(i.due_date) %>  <%= mail_money(i.amount) %>  pagado: <%= i.paid_amount.to_f > 0 ? mail_money(i.paid_amount) : '—' %>  <%= i.status == 'paid' ? 'Pagado' : mail_status_label(i.status) %>
+<% end %>Pagado: <%= mail_money(@installments.sum { |i| i.paid_amount.to_f }) %> · Por pagar: <%= mail_money([@installments.sum { |i| i.amount.to_f } - @installments.sum { |i| i.paid_amount.to_f }, 0].max) %>
+<% end %>
+Ver mi contrato y mis recibos: <%= @contract_url %>
+
+---
+English: We received your payment of <%= mail_money(@r[:total_charged]) %> for <%= @num %>. Your receipt <%= @r[:folio] %> and your payment schedule (paid and remaining) are above.

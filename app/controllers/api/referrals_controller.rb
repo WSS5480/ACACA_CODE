@@ -32,6 +32,7 @@ class Api::ReferralsController < ApplicationController
 
     if @referral.save
       enqueue_reference_pings(@referral.order) unless quiet_save?
+      notify_datos(@referral)
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :created
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
@@ -42,10 +43,19 @@ class Api::ReferralsController < ApplicationController
   def update
     if @referral.update(referral_params.except(:order_id))
       enqueue_reference_pings(@referral.order) unless quiet_save?
+      notify_datos(@referral)
       render json: ReferralSerializer.new(@referral).serializable_hash, status: :ok
     else
       render json: { errors: @referral.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  # Si con esta referencia el expediente quedó COMPLETO (comprador + 4
+  # referencias) y el pago inicial ya está hecho, el cliente recibe el correo.
+  def notify_datos(referral)
+    ContractNotifier.check_datos(referral.order&.contract) if defined?(ContractNotifier)
+  rescue StandardError => e
+    Rails.logger.warn "[referrals] notify_datos: #{e.message}"
   end
 
   # quiet=1 (edición desde el PERFIL): guardar SIN disparar los WhatsApps.

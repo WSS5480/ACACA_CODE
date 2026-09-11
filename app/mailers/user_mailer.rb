@@ -1,5 +1,41 @@
 class UserMailer < ApplicationMailer
   include LogoAttachable
+  helper MailFormatHelper
+
+  # Textos de los correos de ETAPA (después del pago inicial). %{num} = número
+  # de pedido/contrato. Español primero y una línea en inglés al final.
+  STAGE_COPY = {
+    'datos_recibidos' => {
+      subject: 'Recibimos tu información', title: 'Recibimos tu información',
+      es: 'Ya tenemos tus datos de comprador y tus referencias para el pedido %{num}. Nuestro equipo los está verificando: no tienes que hacer nada más por ahora, te avisamos en cuanto termine.',
+      step: 'Paso 4 de 6 · Verificamos tu información',
+      en: 'We received your buyer details and references for order %{num}. Our team is verifying them now; nothing else is needed from you for the moment.'
+    },
+    'verificado' => {
+      subject: 'Tu información fue verificada', title: 'Información verificada ✓',
+      es: 'Verificamos tus datos y tus referencias del pedido %{num}. Solo falta la aprobación final de nuestro equipo.',
+      step: 'Paso 5 de 6 · Aprobación final',
+      en: 'Your details and references for order %{num} were verified. Only the final approval remains.'
+    },
+    'aprobado' => {
+      subject: '¡Aprobación final!', title: '¡Tu compra fue aprobada! 🎉',
+      es: 'Tu pedido %{num} recibió la aprobación final. En breve recibirás tu contrato para firmarlo desde tu celular o tu computadora (te llega por correo y por WhatsApp).',
+      step: 'Siguiente · Firma de tu contrato',
+      en: 'Order %{num} received final approval. You will shortly receive your contract to sign from your phone or computer (by email and WhatsApp).'
+    },
+    'firmado' => {
+      subject: 'Contrato firmado', title: 'Contrato firmado ✓',
+      es: 'Recibimos tu firma del contrato %{num}. Ya estamos preparando tu entrega en México; te avisamos en cuanto salga. Abajo está tu calendario de pagos.',
+      step: 'Paso 6 de 6 · Entrega',
+      en: 'We received your signature for contract %{num}. We are preparing your delivery in Mexico; your payment schedule is below.'
+    },
+    'entregado' => {
+      subject: '¡Entregado!', title: '¡Tu pedido fue entregado! 🚚',
+      es: 'Tu pedido %{num} ya fue entregado. Gracias por comprar con acasa. Abajo está tu calendario de pagos con lo pagado y lo que falta; cada pago te llegará con su recibo.',
+      step: 'Tu contrato está activo',
+      en: 'Order %{num} has been delivered. Thank you for shopping with acasa. Your payment schedule, with what is paid and what remains, is below.'
+    }
+  }.freeze
 
   # Subject can be set in your I18n file at config/locales/en.yml
   # with the following lookup:
@@ -104,6 +140,45 @@ class UserMailer < ApplicationMailer
     return if addresses.empty?
 
     mail to: addresses, subject: "Nueva orden ##{@order.id} - acasa"
+  end
+
+  # RECIBO por cada pago: el mismo recibo de la tienda (Recibos e impresión)
+  # más el calendario de pagos con lo pagado y lo que falta.
+  def send_payment_receipt
+    @user = params[:user]
+    @contract = params[:contract]
+    @payment = params[:payment]
+    @num = @contract.contract_number.presence || @contract.order_ref
+    @client_name = [@user.name, @user.last_name].compact.join(' ').strip
+    @r = @contract.receipt_data_for(@payment)
+    @installments = @contract.contract_installments.order(:number).to_a
+    @contract_url = "#{frontend_base_url}/contratos/#{@contract.id}"
+    @is_initial = %w[enganche contado].include?(@r[:kind])
+    @needs_datos = !@contract.datos_complete?
+    @paid_off = @contract.paid_off?
+    nxt = @contract.contract_installments.where.not(status: 'paid').order(:due_date).first
+    @next_due = nxt&.due_date
+    @next_amount = nxt ? (nxt.amount.to_f - nxt.paid_amount.to_f).round(2) : nil
+
+    mail to: @user.email, subject: "Recibo de pago #{@r[:folio]} · #{@num} — acasa"
+  end
+
+  # AVISO de cada etapa después del pago inicial (una vez por etapa).
+  def send_stage_update
+    @user = params[:user]
+    @contract = params[:contract]
+    @stage = params[:stage].to_s
+    @copy = STAGE_COPY.fetch(@stage)
+    @num = @contract.contract_number.presence || @contract.order_ref
+    @client_name = [@user.name, @user.last_name].compact.join(' ').strip
+    @contract_url = "#{frontend_base_url}/contratos/#{@contract.id}"
+    @show_schedule = %w[firmado entregado].include?(@stage)
+    @installments = @show_schedule ? @contract.contract_installments.order(:number).to_a : []
+    nxt = @contract.contract_installments.where.not(status: 'paid').order(:due_date).first
+    @next_due = nxt&.due_date
+    @next_amount = nxt ? (nxt.amount.to_f - nxt.paid_amount.to_f).round(2) : nil
+
+    mail to: @user.email, subject: "#{@copy[:subject]} · #{@num} — acasa"
   end
 
   private

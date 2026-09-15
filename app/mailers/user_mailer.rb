@@ -115,7 +115,7 @@ class UserMailer < ApplicationMailer
     @name = params[:name]
     @body = params[:body]
     @from_name = params[:from_name]
-    subject = params[:subject].presence || 'Mensaje de Ácasa'
+    subject = params[:subject].presence || 'Mensaje de acasa'
 
     mail to: @to, subject: subject
   end
@@ -179,6 +179,21 @@ class UserMailer < ApplicationMailer
     @next_amount = nxt ? (nxt.amount.to_f - nxt.paid_amount.to_f).round(2) : nil
 
     mail to: @user.email, subject: "#{@copy[:subject]} · #{@num} — acasa"
+  end
+
+  # El AUTOPAGO no pudo cobrar porque el banco del cliente exige que él
+  # confirme el cargo (3-D Secure/SCA, común fuera de EE. UU.). Se le pide
+  # entrar a Mis pagos y pagar desde ahí; el cargo es en dólares (USD).
+  def send_payment_action_required
+    @user = params[:user]
+    @contract = params[:contract]
+    @amount = params[:amount].to_f
+    @num = @contract.contract_number.presence || @contract.order_ref
+    @client_name = [@user.name, @user.last_name].compact.join(' ').strip
+    @contract_url = "#{frontend_base_url}/contratos/#{@contract.id}"
+    @pay_url = "#{frontend_base_url}/pagos"
+
+    mail to: @user.email, subject: "Tu banco pide confirmar tu pago · #{@num} — acasa"
   end
 
   private

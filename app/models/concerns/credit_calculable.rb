@@ -24,13 +24,20 @@ module CreditCalculable
   }.freeze
 
   def calculate_initial_credit(relationship: nil)
+    credit = points_to_credit(calculate_client_points(relationship: relationship))
+    # TOPE POR PAÍS (Configuración → Países): mientras un país nuevo no tiene
+    # historial de pago, su línea inicial puede limitarse (en USD). Sin tope = igual que EE. UU.
+    iso = respond_to?(:country_of_residence) ? country_of_residence.to_s : ''
+    cap = defined?(ServingCountries) && iso.present? ? ServingCountries.cap_for(iso) : nil
+    cap&.positive? && credit > cap ? cap.round(2) : credit
+  rescue StandardError
     points_to_credit(calculate_client_points(relationship: relationship))
   end
 
   def calculate_client_points(relationship: nil)
     c = risk_config
     housing_type_points(c) +
-      months_points(c, months_usa) +
+      months_points(c, months_usa) + # meses viviendo en el PAÍS DONDE VIVE (columna histórica)
       months_points(c, months_address) +
       months_points(c, months_job) +
       income_points(c) +

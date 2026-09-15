@@ -8,6 +8,7 @@
 # Un job cada 15 minutos envía las pendientes SOLO en horario local 8am–9pm:
 #   México:  10:00–18:59 hora del Centro  -> 8am–9pm en TODOS los husos de MX
 #   EE.UU.:  12:00–20:59 hora del Este    -> 8am–9pm del Este al de Alaska
+#   Otros países: 8am–9pm en la zona horaria del país de la lada (PhoneGeo).
 # Cada plantilla se envía únicamente cuando Meta ya la APROBÓ (si sigue en
 # revisión, el envío espera solo y se reintenta en el siguiente ciclo).
 class ReferencePing < ApplicationRecord
@@ -126,15 +127,25 @@ class ReferencePing < ApplicationRecord
     nil
   end
 
-  # ¿Es horario permitido para ESTE teléfono? (ver nota de husos arriba)
+  # ¿Es horario permitido para ESTE teléfono? Se manda solo entre las 8 am y las
+  # 9 pm LOCALES de la referencia, esté en el país que esté (zona horaria por la
+  # lada, PhoneGeo). México y EE. UU. conservan sus ventanas de siempre, que
+  # cubren todos sus husos; los demás países usan una zona representativa.
   def self.window_open?(digits)
-    if digits.to_s.start_with?('52')
+    d = digits.to_s.gsub(/\D/, '')
+    if d.start_with?('52') && d.length >= 12
       t = Time.now.in_time_zone('America/Mexico_City')
-      t.hour >= 10 && t.hour < 19
-    else
-      t = Time.now.in_time_zone('America/New_York')
-      t.hour >= 12 && t.hour < 21
+      return t.hour >= 10 && t.hour < 19
     end
+    if d.length == 10 || (d.start_with?('1') && d.length == 11)
+      t = Time.now.in_time_zone('America/New_York')
+      return t.hour >= 12 && t.hour < 21
+    end
+    tz = defined?(PhoneGeo) ? PhoneGeo.timezone_of("+#{d}") : 'UTC'
+    t = Time.now.in_time_zone(tz)
+    t.hour >= 8 && t.hour < 21
+  rescue StandardError
+    false
   end
 
   # Envía las pendientes que estén en ventana. Lo llama el job cada 15 min.

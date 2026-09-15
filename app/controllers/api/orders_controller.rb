@@ -371,7 +371,7 @@ class Api::OrdersController < ApplicationController
     }, status: :ok
   end
 
-  # Compara CP vs ciudad/estado del comprador (EUA) y del beneficiario (MX) contra datos reales.
+  # Compara CP vs ciudad/estado del comprador (país donde vive) y del beneficiario (MX) contra datos reales.
   # 🚨 TELÉFONOS REPETIDOS EN LA BASE: revisa cada número de la compra contra
   # clientes, compradores, referencias, beneficiarios y contactos de domicilio
   # de OTRAS compras. Nivel 'red' cuando el nombre registrado no coincide.
@@ -479,12 +479,15 @@ class Api::OrdersController < ApplicationController
     ben_rec = beneficiary || order.beneficiary
     if b_rec.present?
       b = b_rec
-      r = ZipLookup.check(country: 'US', zip: b.living_zip_code, city: b.living_city, state: b.living_state)
+      # País donde vive el comprador (cuentas anteriores: EE. UU.). Códigos no numéricos
+      # (Canadá, Reino Unido…) o países sin catálogo devuelven 'unknown' y no alertan.
+      b_country = (b.respond_to?(:living_country) && b.living_country.presence) || 'US'
+      r = ZipLookup.check(country: b_country, zip: b.living_zip_code, city: b.living_city, state: b.living_state)
       if r[:status] == 'mismatch'
         expected = [r[:expected_city], r[:expected_state]].compact.join(', ')
         entered  = [b.living_city, b.living_state].reject { |v| v.to_s.strip.empty? }.join(', ')
         alerts << { section: 'buyer', zip: b.living_zip_code, entered: entered, expected: expected,
-                    message: "El ZIP #{b.living_zip_code} (EUA) corresponde a #{expected}, pero el cliente escribió: #{entered}." }
+                    message: "El código postal #{b.living_zip_code} (#{b_country}) corresponde a #{expected}, pero el cliente escribió: #{entered}." }
       end
     end
     if ben_rec.present?

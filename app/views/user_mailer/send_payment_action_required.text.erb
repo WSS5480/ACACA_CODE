@@ -1,0 +1,18 @@
+Hola <%= @user&.name || '' %>,
+
+TU BANCO PIDE CONFIRMAR TU PAGO
+
+Intentamos hacer tu pago automático del contrato <%= @num %> con tu tarjeta guardada, pero tu banco pide que tú confirmes el cargo antes de aprobarlo. Es una medida de seguridad habitual de los bancos fuera de Estados Unidos; tu tarjeta no fue rechazada y no hay nada malo con tu cuenta.
+
+QUÉ HACER: entra a Mis pagos, elige el pago pendiente y confírmalo con tu banco cuando te lo pida (toma un minuto).
+
+Pedido / contrato: <%= @num %>
+Pago pendiente: <%= mail_money(@amount) %> USD
+Saldo actual: <%= mail_money(@contract.balance) %>
+
+Ir a Mis pagos: <%= @pay_url %>
+
+El cargo es en dólares (USD); tu banco lo convierte a tu moneda y puede aplicar una comisión. Si ya hiciste el pago, no tienes que hacer nada más.
+
+---
+English: We tried to charge your saved card for contract <%= @num %>, but your bank requires you to confirm the payment first (a common security step with cards issued outside the US). Your card was not declined. Please go to My payments (<%= @pay_url %>), choose the pending payment of <%= mail_money(@amount) %> USD and confirm it with your bank.

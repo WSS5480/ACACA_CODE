@@ -1,7 +1,7 @@
 class BuyerSerializer
   include JSONAPI::Serializer
 
-  attributes :id, :order_id, :name, :last_name, :nationality, :state_residence,
+  attributes :id, :order_id, :name, :last_name, :nationality, :living_country, :state_residence,
              :living_address1, :living_address2, :living_zip_code, :living_state,
              :living_city, :housing_type, :months_usa, :months_address, :job,
              :phone, :phone_work, :email, :weekly_income, :relationship_with_beneficiary,

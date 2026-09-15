@@ -302,8 +302,8 @@
         <button class="btn" id="cliClearF" style="background:#eef0f6;color:var(--navy);padding:8px 14px;font-size:13px" title="Quitar todos los filtros">Limpiar filtros</button>
       </div>
       <div class="sec"><div style="overflow-x:auto">
-        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th>Cuenta</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Utilizado</th><th class="right">Crédito Disponible</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
-        <tbody id="cliBody"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Correo</th><th>Número</th><th title="País donde vive (por su registro o la lada de su teléfono)">País</th><th>Cuenta</th><th class="right">Crédito Autorizado</th><th class="right">Crédito Utilizado</th><th class="right">Crédito Disponible</th><th>Registrado</th><th>Versión riesgo</th><th class="right">Acciones</th></tr></thead>
+        <tbody id="cliBody"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody></table>
       </div></div>
     </section>
 
@@ -556,7 +556,7 @@
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
           <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Lada</div>
-            <select id="waNewCc" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px"><option value="+1">EE.UU. +1</option><option value="+52">México +52</option><option value="">Otra (escríbela con +)</option></select></div>
+            <select id="waNewCc" title="Lada del país" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;max-width:150px"><option value="+1">🇺🇸 +1 Estados Unidos</option><option value="+52">🇲🇽 +52 México</option></select></div>
           <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Número</div>
             <input id="waNewPhone" placeholder="512 555 1234" style="padding:8px 10px;border:1px solid #dfe3ea;border-radius:8px;min-width:170px"></div>
           <div><div class="muted" style="font-size:11.5px;margin-bottom:3px">Nombre (opcional)</div>
@@ -821,7 +821,7 @@
         <div class="rk-card">
           <h2>Solicitante de prueba</h2>
           <div class="rk-f"><label>Tipo de vivienda</label><select id="housing"><option value="owner">Propietario</option><option value="tenant" selected>Inquilino</option></select></div>
-          <div class="rk-f"><label>Meses en Estados Unidos</label><input type="number" id="usa" value="24" min="0"></div>
+          <div class="rk-f"><label>Meses en el país donde vive</label><input type="number" id="usa" value="24" min="0"></div>
           <div class="rk-f"><label>Meses en el domicilio</label><input type="number" id="addr" value="12" min="0"></div>
           <div class="rk-f"><label>Meses en el empleo</label><input type="number" id="job" value="12" min="0"></div>
           <div class="rk-f"><label>Ingreso semanal (USD)</label><input type="number" id="income" value="400" min="0"></div>
@@ -1246,6 +1246,7 @@
       <div class="cfg-grid">
         <a class="cfg-card" data-goto="riesgo"><b>Motor de riesgo</b><span>Escala de crédito, versiones, simulador · gate de referencias y motor de decisión</span></a>
         <a class="cfg-card" data-goto="preguntas"><b>Preguntas de aprobación</b><span>Lista previa (registro) y lista final (verificación)</span></a>
+        <a class="cfg-card" data-goto="paises"><b>🌎 Países atendidos</b><span>Desde qué países se puede abrir cuenta y comprar · bloqueos · tope de línea por país (USD)</span></a>
         <a class="cfg-card" data-goto="security:rates"><b>Tasas e impuestos</b><span>Tasa anual, IVA, exención, cuota, pisos por categoría, tope de pago</span><br><em class="tag sign">requiere firma</em></a>
         <a class="cfg-card" data-goto="security:contract"><b>Documentos legales</b><span>Contrato, aviso de privacidad, exención de responsabilidad</span><br><em class="tag sign">requiere firma</em></a>
         <a class="cfg-card" data-goto="waresp"><b>Respuestas de WhatsApp</b><span>Plantillas y textos automáticos por evento</span></a>
@@ -1255,12 +1256,57 @@
         <a class="cfg-card danger" data-goto="security:golive"><b>🚀 Go live</b><span>Respaldo + borrado de datos de prueba + fecha de corte del motor</span><br><em class="tag danger">zona de peligro · solo master</em></a>
       </div>
     </section>
+
+    <!-- ---------- PAÍSES ATENDIDOS ---------- -->
+    <section class="view hide" data-v="paises">
+      <div class="head"><h1>Países atendidos</h1><div class="sp"></div>
+        <div class="search" style="max-width:260px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="psSearch" placeholder="Buscar país…"></div>
+        <button class="btn" id="psSave">Guardar cambios</button>
+      </div>
+      <p class="muted" style="margin:0 0 12px;max-width:80ch">Los compradores pueden vivir en <b>cualquier país</b>; la entrega sigue siendo en México y todo se cobra en dólares (USD). Lo que se guarde aquí aplica de inmediato al registro de la tienda (un país bloqueado no puede abrir cuenta), al motor de riesgo (tope de línea inicial por país) y queda en la Bitácora. <b>Cuba, Irán y Corea del Norte</b> están bloqueados siempre (sanciones integrales) y no se pueden desbloquear desde aquí.</p>
+      <div class="sec" style="margin-bottom:12px">
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+          <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="psMode" value="all"> <b>Todos los países</b> <span class="muted">(menos los bloqueados)</span></label>
+          <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="psMode" value="some"> <b>Solo los países marcados</b> <span class="muted">(lista blanca)</span></label>
+          <span class="sp"></span>
+          <span id="psSummary" class="muted"></span>
+        </div>
+        <div id="psMsg" class="muted" style="margin-top:8px"></div>
+      </div>
+      <div class="sec"><div style="overflow-x:auto">
+        <table><thead><tr><th>País</th><th>Lada</th><th>Estado</th><th title="Solo cuenta en el modo 'Solo los países marcados'">Permitido</th><th>Bloqueado</th><th class="right" title="Tope de la línea de crédito inicial para clientes de ese país, en dólares. Vacío = sin tope (aplica la escala normal del motor).">Tope línea inicial (USD)</th></tr></thead>
+        <tbody id="psBody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table>
+      </div></div>
+    </section>
   </main>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=null, EMAIL='admin@test.com';
+
+/* ---- PAÍSES (misma tabla que utils/countries.js en la tienda y PhoneGeo en el servidor):
+   [ISO, nombre, lada]. Compradores en cualquier país; la entrega sigue siendo en México. ---- */
+const CC_LIST=[["AF","Afganistán","+93"],["AL","Albania","+355"],["DE","Alemania","+49"],["AD","Andorra","+376"],["AO","Angola","+244"],["AG","Antigua y Barbuda","+1"],["SA","Arabia Saudita","+966"],["DZ","Argelia","+213"],["AR","Argentina","+54"],["AM","Armenia","+374"],["AW","Aruba","+297"],["AU","Australia","+61"],["AT","Austria","+43"],["AZ","Azerbaiyán","+994"],["BS","Bahamas","+1"],["BD","Bangladés","+880"],["BB","Barbados","+1"],["BH","Baréin","+973"],["BE","Bélgica","+32"],["BZ","Belice","+501"],["BJ","Benín","+229"],["BM","Bermudas","+1"],["BY","Bielorrusia","+375"],["BO","Bolivia","+591"],["BA","Bosnia y Herzegovina","+387"],["BW","Botsuana","+267"],["BR","Brasil","+55"],["BN","Brunéi","+673"],["BG","Bulgaria","+359"],["BF","Burkina Faso","+226"],["BI","Burundi","+257"],["BT","Bután","+975"],["CV","Cabo Verde","+238"],["KH","Camboya","+855"],["CM","Camerún","+237"],["CA","Canadá","+1"],["QA","Catar","+974"],["TD","Chad","+235"],["CL","Chile","+56"],["CN","China","+86"],["CY","Chipre","+357"],["CO","Colombia","+57"],["KM","Comoras","+269"],["CG","Congo","+242"],["CD","Congo (Rep. Dem.)","+243"],["KP","Corea del Norte","+850"],["KR","Corea del Sur","+82"],["CI","Costa de Marfil","+225"],["CR","Costa Rica","+506"],["HR","Croacia","+385"],["CU","Cuba","+53"],["CW","Curazao","+599"],["DK","Dinamarca","+45"],["DM","Dominica","+1"],["EC","Ecuador","+593"],["EG","Egipto","+20"],["SV","El Salvador","+503"],["AE","Emiratos Árabes Unidos","+971"],["ER","Eritrea","+291"],["SK","Eslovaquia","+421"],["SI","Eslovenia","+386"],["ES","España","+34"],["US","Estados Unidos","+1"],["EE","Estonia","+372"],["SZ","Esuatini","+268"],["ET","Etiopía","+251"],["PH","Filipinas","+63"],["FI","Finlandia","+358"],["FJ","Fiyi","+679"],["FR","Francia","+33"],["GA","Gabón","+241"],["GM","Gambia","+220"],["GE","Georgia","+995"],["GH","Ghana","+233"],["GI","Gibraltar","+350"],["GD","Granada","+1"],["GR","Grecia","+30"],["GU","Guam","+1"],["GT","Guatemala","+502"],["GN","Guinea","+224"],["GQ","Guinea Ecuatorial","+240"],["GW","Guinea-Bisáu","+245"],["GY","Guyana","+592"],["HT","Haití","+509"],["HN","Honduras","+504"],["HK","Hong Kong","+852"],["HU","Hungría","+36"],["IN","India","+91"],["ID","Indonesia","+62"],["IQ","Irak","+964"],["IR","Irán","+98"],["IE","Irlanda","+353"],["IS","Islandia","+354"],["KY","Islas Caimán","+1"],["VI","Islas Vírgenes (EE. UU.)","+1"],["IL","Israel","+972"],["IT","Italia","+39"],["JM","Jamaica","+1"],["JP","Japón","+81"],["JO","Jordania","+962"],["KZ","Kazajistán","+7"],["KE","Kenia","+254"],["KG","Kirguistán","+996"],["KI","Kiribati","+686"],["KW","Kuwait","+965"],["LA","Laos","+856"],["LS","Lesoto","+266"],["LV","Letonia","+371"],["LB","Líbano","+961"],["LR","Liberia","+231"],["LY","Libia","+218"],["LI","Liechtenstein","+423"],["LT","Lituania","+370"],["LU","Luxemburgo","+352"],["MK","Macedonia del Norte","+389"],["MG","Madagascar","+261"],["MY","Malasia","+60"],["MW","Malaui","+265"],["MV","Maldivas","+960"],["ML","Malí","+223"],["MT","Malta","+356"],["MA","Marruecos","+212"],["MU","Mauricio","+230"],["MR","Mauritania","+222"],["MX","México","+52"],["FM","Micronesia","+691"],["MD","Moldavia","+373"],["MC","Mónaco","+377"],["MN","Mongolia","+976"],["ME","Montenegro","+382"],["MZ","Mozambique","+258"],["MM","Myanmar","+95"],["NA","Namibia","+264"],["NR","Nauru","+674"],["NP","Nepal","+977"],["NI","Nicaragua","+505"],["NE","Níger","+227"],["NG","Nigeria","+234"],["NO","Noruega","+47"],["NZ","Nueva Zelanda","+64"],["OM","Omán","+968"],["NL","Países Bajos","+31"],["PK","Pakistán","+92"],["PW","Palaos","+680"],["PA","Panamá","+507"],["PG","Papúa Nueva Guinea","+675"],["PY","Paraguay","+595"],["PE","Perú","+51"],["PL","Polonia","+48"],["PT","Portugal","+351"],["PR","Puerto Rico","+1"],["GB","Reino Unido","+44"],["CF","República Centroafricana","+236"],["CZ","República Checa","+420"],["DO","República Dominicana","+1"],["RW","Ruanda","+250"],["RO","Rumania","+40"],["RU","Rusia","+7"],["WS","Samoa","+685"],["KN","San Cristóbal y Nieves","+1"],["SM","San Marino","+378"],["VC","San Vicente y las Granadinas","+1"],["LC","Santa Lucía","+1"],["ST","Santo Tomé y Príncipe","+239"],["SN","Senegal","+221"],["RS","Serbia","+381"],["SC","Seychelles","+248"],["SL","Sierra Leona","+232"],["SG","Singapur","+65"],["SY","Siria","+963"],["LK","Sri Lanka","+94"],["ZA","Sudáfrica","+27"],["SD","Sudán","+249"],["SS","Sudán del Sur","+211"],["SE","Suecia","+46"],["CH","Suiza","+41"],["SR","Surinam","+597"],["TH","Tailandia","+66"],["TW","Taiwán","+886"],["TZ","Tanzania","+255"],["TJ","Tayikistán","+992"],["TL","Timor Oriental","+670"],["TG","Togo","+228"],["TO","Tonga","+676"],["TT","Trinidad y Tobago","+1"],["TN","Túnez","+216"],["TM","Turkmenistán","+993"],["TR","Turquía","+90"],["TV","Tuvalu","+688"],["UA","Ucrania","+380"],["UG","Uganda","+256"],["UY","Uruguay","+598"],["UZ","Uzbekistán","+998"],["VU","Vanuatu","+678"],["VE","Venezuela","+58"],["VN","Vietnam","+84"],["YE","Yemen","+967"],["DJ","Yibuti","+253"],["ZM","Zambia","+260"],["ZW","Zimbabue","+263"]];
+const CC_BY_ISO=Object.fromEntries(CC_LIST.map(c=>[c[0],c]));
+const CC_FIRST=['MX','US','CA','ES','GB','FR','DE','IT','CO','PE','CL','AR','BR'];
+function ccFlag(iso){ iso=String(iso||'').toUpperCase(); if(!/^[A-Z]{2}$/.test(iso)) return ''; return String.fromCodePoint(...[...iso].map(c=>0x1F1E6+c.charCodeAt(0)-65)); }
+function ccName(iso){ const c=CC_BY_ISO[String(iso||'').toUpperCase()]; return c?c[1]:String(iso||''); }
+function ccDial(iso){ const c=CC_BY_ISO[String(iso||'').toUpperCase()]; return c?c[2]:''; }
+// Celda "bandera + ISO" con el nombre al pasar el cursor; '—' si aún no se conoce.
+function ccCell(iso){ iso=String(iso||'').toUpperCase(); if(!iso) return '<span class="muted">—</span>'; return `<span title="${esc(ccName(iso))}" style="white-space:nowrap">${ccFlag(iso)} <span class="mono">${esc(iso)}</span></span>`; }
+// País de un teléfono por su lada (la más larga que coincida). 10 dígitos sin '+' = EE. UU. (convención histórica).
+const CC_DIALS=[...new Set(CC_LIST.map(c=>c[2]))].sort((a,b)=>b.length-a.length);
+function ccOfPhone(p){ p=String(p||'').trim(); if(!p) return ''; if(!p.startsWith('+')){ const d=p.replace(/\D/g,''); return d.length===10?'US':(d.length===12&&d.startsWith('52')?'MX':''); }
+  const dial=CC_DIALS.find(d=>p.startsWith(d)); if(!dial) return ''; if(dial==='+1'){ const d=p.replace(/\D/g,''); return (d.length===11&&/^1(204|226|236|249|250|289|306|343|365|403|416|418|431|437|438|450|506|514|519|548|579|581|587|604|613|639|647|705|709|778|780|782|807|819|825|867|873|902|905)/.test(d))?'CA':'US'; }
+  const pri={'+7':'RU','+44':'GB','+61':'AU','+64':'NZ','+47':'NO','+358':'FI','+590':'GP','+599':'CW'}; if(pri[dial]) return pri[dial];
+  const c=CC_LIST.find(x=>x[2]===dial); return c?c[0]:''; }
+// Selector de lada con TODOS los países (México y EE. UU. primero).
+function ccOptions(cur){ const first=CC_FIRST.map(i=>CC_BY_ISO[i]).filter(Boolean), rest=CC_LIST.filter(c=>!CC_FIRST.includes(c[0]));
+  const opt=c=>`<option value="${c[2]}" data-iso="${c[0]}" ${cur===c[2]?'selected':''}>${ccFlag(c[0])} ${c[2]} ${esc(c[1])}</option>`;
+  return first.map(opt).join('')+'<option disabled>──────────</option>'+rest.map(opt).join(''); }
+// ISO del país de una referencia (columna country; si no, por su nacionalidad histórica).
+function refIso(rf){ return String((rf&&rf.country)||((rf&&rf.nationality==='mexican')?'MX':'US')).toUpperCase(); }
 
 /* ---------------- API + auth ---------------- */
 async function api(method,path,body){
@@ -1361,12 +1407,13 @@ function show(view){
   if(view==='waresp' && !loaded.war){ loadWaResponses(); loaded.war=1; }
   if(view==='soporte'){ stBack(); loadTickets(); }
   if(view==='bkbancos'){ bkLoad(); }
+  if(view==='paises'){ loadPaises(); }
 }
 
 // Miga sobre el título: grupo del menú (y el área, cuando el título de la pantalla no es el del área).
 const NAVGROUP={dashboard:'Operación',pipeline:'Operación',contratos:'Operación',ordenes:'Operación',crm:'Operación',clientes360:'Operación',clientes:'Operación',creditos:'Operación',
   cobranza:'Operación',gestion:'Operación',geswb:'Operación',bandeja:'Operación',whatsapp:'Operación',soporte:'Operación',conta:'Finanzas',pagos:'Finanzas',bkbancos:'Finanzas',
-  catalogo:'Producto',catalogos:'Producto',config:'Producto',marketing:'Producto',confighub:'Sistema',cfgindex:'Sistema',riesgo:'Sistema',preguntas:'Sistema',security:'Sistema',waresp:'Sistema'};
+  catalogo:'Producto',catalogos:'Producto',config:'Producto',marketing:'Producto',confighub:'Sistema',cfgindex:'Sistema',riesgo:'Sistema',preguntas:'Sistema',paises:'Sistema',security:'Sistema',waresp:'Sistema'};
 function setCrumb(view){
   try{
     const sec=document.querySelector(`.view[data-v="${view}"]`); const head=sec&&sec.querySelector('.head'); if(!head) return;
@@ -1399,7 +1446,7 @@ const AREAS={
   bancos:{title:'Bancos',tabs:[{l:'Cuentas y saldos',v:'bkbancos',after:()=>bkTab('cuentas')},{l:'Movimientos',v:'bkbancos',after:()=>bkTab('movs')},{l:'Conciliación Stripe',v:'bkbancos',after:()=>bkTab('stripe')},{l:'Configuración',v:'bkbancos',after:()=>bkTab('config')}]},
   catalogo:{title:'Catálogo y precios',tabs:[{l:'Productos',v:'catalogos'},{l:'Tipo de cambio e importación',v:'config'}]},
   confighub:{title:'Configuración',tabs:[
-    {l:'Índice',v:'cfgindex'},{l:'Motor de riesgo',v:'riesgo'},{l:'Preguntas',v:'preguntas'},
+    {l:'Índice',v:'cfgindex'},{l:'Motor de riesgo',v:'riesgo'},{l:'Preguntas',v:'preguntas'},{l:'Países',v:'paises'},
     {l:'Tasas e impuestos',v:'security',after:()=>secTab('rates')},{l:'Documentos legales',v:'security',after:()=>secTab('contract')},
     {l:'Respuestas WhatsApp',v:'waresp'},{l:'Equipo y accesos',v:'security',after:()=>secTab('users')},
     {l:'Bitácora',v:'security',after:()=>secTab('audit')},{l:'Go live',v:'security',after:()=>secTab('golive')}]}
@@ -1407,7 +1454,7 @@ const AREAS={
 // Pantalla -> área "dueña" (para resaltar el menú y mostrar la barra cuando se
 // llega por un enlace interno y no por el menú).
 const VIEW2AREA={contratos:'pipeline',ordenes:'pipeline',crm:'pipeline',clientes:'clientes360',creditos:'clientes360',gestion:'cobranza',geswb:'cobranza',
-  whatsapp:'bandeja',soporte:'bandeja',bkbancos:'bancos',catalogos:'catalogo',config:'catalogo',riesgo:'confighub',preguntas:'confighub',security:'confighub',waresp:'confighub',cfgindex:'confighub'};
+  whatsapp:'bandeja',soporte:'bandeja',bkbancos:'bancos',catalogos:'catalogo',config:'catalogo',riesgo:'confighub',preguntas:'confighub',paises:'confighub',security:'confighub',waresp:'confighub',cfgindex:'confighub'};
 let AREA_CUR=null, AREA_TAB={};
 function areaTabsFor(key){
   const adminOnly=['master','admin','sistema'].includes(MYROLE);
@@ -1875,7 +1922,7 @@ function renderGesWb(){
     ${['master','admin'].includes(MYROLE)?`<button class="btn" id="gwDelCli" style="background:#fdecec;color:#b00020;font-size:13px;padding:8px 13px" title="Función de PRUEBAS: elimina al cliente COMPLETO (cuenta, contratos, pedidos, historial y WhatsApp). Quitar al salir en vivo.">🗑 Eliminar cliente</button>`:''}`;
   $('gwWa').onclick=()=>convOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null, person_type:'customer'});
   $('gwMail').onclick=()=>mailOpen({user_id:GW.uid, name:GW.name, phone:GW.phone||null,
-    email:(GW.list[0]&&pick(GW.list[0],['client_email'],''))||'', subject:'Sobre tu cuenta en Ácasa', body:''});
+    email:(GW.list[0]&&pick(GW.list[0],['client_email'],''))||'', subject:'Sobre tu cuenta en acasa', body:''});
   if($('gwTel')) $('gwTel').onclick=()=>{ try{navigator.clipboard.writeText(GW.phone);}catch(e){} location.href='tel:+'+String(GW.phone).replace(/\D/g,''); };
   $('gwFicha').onclick=()=>{ loaded.con=1; show('contratos'); openClientSheet(GW.uid); };
   /* PURGE-CLIENTE (PRUEBAS): quitar este bloque al salir en vivo. */
@@ -2448,33 +2495,33 @@ async function openOrderVerify(id){
   const benInner = zBox('beneficiary') + (ben ? [vPerson('Nombre',benName,{phone:ben.phone,name:benName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'beneficiary'}),vField('Teléfono',ben.phone),vField('Email',ben.email),vField('Dirección',[ben.address1,ben.address2,ben.city,ben.state,ben.zip_code].filter(Boolean).join(', ')),vField('Parentesco',ben.relationship)].join('') : '');
   const buyInner = zBox('buyer') + (buy ? [vPerson('Nombre',buyName,{phone:buy.phone,name:buyName,user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'buyer'}),vField('Teléfono',buy.phone),vField('Email',buy.email),(buy.identification_url?`<div><div class="muted" style="font-size:11.5px">Identificación</div><a href="${esc(buy.identification_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Identificación',null))].join('') : '');
   // RESIDENCIA: domicilio + contacto del domicilio (¿renta o es dueño?) + comprobante.
-  const resInner = buy ? [vField('Dirección',[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Tipo de vivienda',{owner:'Propia',tenant:'Rentada'}[buy.housing_type]||buy.housing_type),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'},rchkTone(buy.home_contact_phone)):vField('Contacto de domicilio',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. domicilio',null))].join('') + (buy.home_contact_phone?rchkHtml(buy.home_contact_phone,['domicilio']):'') : '';
+  const resInner = buy ? [vField('Dirección'+(buy.living_country?(' · '+ccFlag(buy.living_country)+' '+ccName(buy.living_country)):''),[buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code].filter(Boolean).join(', ')),vField('Tipo de vivienda',{owner:'Propia',tenant:'Rentada'}[buy.housing_type]||buy.housing_type),(buy.home_contact_name||buy.home_contact_phone?vPerson('Contacto de domicilio',[buy.home_contact_name,buy.home_contact_phone].filter(Boolean).join(' · '),{phone:buy.home_contact_phone,name:buy.home_contact_name||'Contacto de domicilio',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'},rchkTone(buy.home_contact_phone)):vField('Contacto de domicilio',null)),(buy.proof_of_address_url?`<div><div class="muted" style="font-size:11.5px">Comp. domicilio</div><a href="${esc(buy.proof_of_address_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. domicilio',null))].join('') + (buy.home_contact_phone?rchkHtml(buy.home_contact_phone,['domicilio']):'') : '';
   // EMPLEO: trabajo + teléfono del trabajo + ingreso + comprobante.
   const empInner = buy ? [vField('¿En qué trabaja?',buy.job),(buy.phone_work?vPerson('Tel. del trabajo',buy.phone_work,{phone:buy.phone_work,name:(buyName||'Comprador')+' (trabajo)',user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'},rchkTone(buy.phone_work)):vField('Tel. del trabajo',null)),vField('Ingreso semanal',buy.weekly_income!=null?money(buy.weekly_income):null),(buy.proof_of_income_url?`<div><div class="muted" style="font-size:11.5px">Comp. ingresos</div><a href="${esc(buy.proof_of_income_url)}" target="_blank" rel="noopener" style="color:var(--brand-d);font-weight:700;font-size:13.5px">Ver documento</a></div>`:vField('Comp. ingresos',null))].join('') + (buy.phone_work?rchkHtml(buy.phone_work,['trabajo']):'') : '';
   // Referencias: editables y ampliables DURANTE la verificación. Cada orden
   // guarda su propia copia: editar aquí no toca órdenes anteriores.
   const refDataOrderId = (refs.length && refs[0].order_id) ? refs[0].order_id : o.id;
+  const refDataCountry = String((buy&&buy.living_country)||ccOfPhone(buy&&buy.phone)||'').toUpperCase(); // país donde vive el comprador
   const refFormHtml=(rf)=>{ const v=k=>esc(String((rf&&rf[k])||''));
     // Lada SIEMPRE explícita: si el teléfono guardado ya trae +lada, se separa
     // para mostrarla en el selector; al guardar se vuelve a unir.
     const splitPhone=(p)=>{ p=String(p||'').trim();
-      if(p.startsWith('+52')) return ['+52', p.slice(3).trim()];
-      if(p.startsWith('+1')) return ['+1', p.slice(2).trim()];
-      if(p.startsWith('+')) { const m=p.match(/^(\+\d{1,3})\s*(.*)$/); return m?[m[1],m[2]]:['',p]; }
+      if(p.startsWith('+')){ const dial=CC_DIALS.find(d=>p.startsWith(d)); return dial?[dial, p.slice(dial.length).trim()]:['', p]; }
+      const d=p.replace(/\D/g,''); if(d.length===10) return ['+1', p]; // histórico: 10 dígitos sin lada = EE. UU.
       return ['', p];
     };
-    const [pc,pn]=splitPhone(rf&&rf.phone), [wc,wn]=splitPhone(rf&&rf.phone_work);
-    const ccSel=(cls,cur)=>`<select class="${cls}" style="padding:7px 6px;border:1px solid #dfe3ea;border-radius:8px">
-      <option value="+52" ${cur==='+52'?'selected':''}>🇲🇽 +52</option>
-      <option value="+1" ${cur==='+1'?'selected':''}>🇺🇸 +1</option>
-      <option value="" ${!cur?'selected':''}>otra</option></select>`;
+    // Sin lada guardada: la del país donde vive el cliente (o México si la referencia es mexicana).
+    const defDial=(rf&&rf.nationality==='mexican')?'+52':(ccDial(refDataCountry)||'+1');
+    let [pc,pn]=splitPhone(rf&&rf.phone), [wc,wn]=splitPhone(rf&&rf.phone_work);
+    if(!pc) pc=defDial; if(!wc) wc=defDial;
+    const ccSel=(cls,cur)=>`<select class="${cls}" title="Lada del país" style="padding:7px 6px;border:1px solid #dfe3ea;border-radius:8px;max-width:118px">${ccOptions(cur)}</select>`;
     return `<div class="refform" id="refform-${rf?esc(String(rf.id)):'new'}" style="display:none;flex-basis:100%;background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div><div class="muted" style="font-size:11px">Nombre(s)</div><input class="rf-name" value="${v('name')}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:130px"></div>
         <div><div class="muted" style="font-size:11px">Apellido(s)</div><input class="rf-last" value="${v('last_name')}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:130px"></div>
         <div><div class="muted" style="font-size:11px">Lada · Teléfono</div><div style="display:flex;gap:4px">${ccSel('rf-cc',pc)}<input class="rf-phone" value="${esc(pn)}" placeholder="55 1234 5678" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:120px"></div></div>
         <div><div class="muted" style="font-size:11px">Lada · Tel. trabajo</div><div style="display:flex;gap:4px">${ccSel('rf-wcc',wc)}<input class="rf-pwork" value="${esc(wn)}" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px;width:120px"></div></div>
-        <div><div class="muted" style="font-size:11px">País</div><select class="rf-nat" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px"><option value="mexican" ${rf&&rf.nationality==='mexican'?'selected':''}>México</option><option value="american" ${(!rf||rf.nationality!=='mexican')?'selected':''}>EE.UU.</option></select></div>
+        <div><div class="muted" style="font-size:11px">País</div><select class="rf-nat" style="padding:7px 9px;border:1px solid #dfe3ea;border-radius:8px"><option value="mexican" ${rf&&rf.nationality==='mexican'?'selected':''}>México</option><option value="american" ${(!rf||rf.nationality!=='mexican')?'selected':''}>${esc(refDataCountry&&refDataCountry!=='MX'?('País del cliente · '+ccName(refDataCountry)):'País donde vive el cliente')}</option></select></div>
         <button class="btn refsave" data-rid="${rf?esc(String(rf.id)):''}" style="padding:7px 12px;font-size:12.5px">Guardar</button>
         ${rf?`<button class="btn refdel" data-rid="${esc(String(rf.id))}" style="background:#eef0f6;color:#c62828;padding:7px 12px;font-size:12.5px">Eliminar</button>`:''}
       </div></div>`; };
@@ -2482,7 +2529,7 @@ async function openOrderVerify(id){
     const rn=[rf.name,rf.last_name].filter(Boolean).join(' ');
     const rphone=rf.phone||((rf.phone_code||'')+(rf.phone_number||''))||null;
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-basis:100%">
-      ${vPerson(`Ref ${i+1} (${rf.nationality==='mexican'?'MX':'US'})`, rn+(rphone?(' · '+rphone):''), {phone:rphone,name:rn||('Referencia '+(i+1)),user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}, rchkTone(rphone))}
+      ${vPerson(`Ref ${i+1} (${refIso(rf)})`, rn+(rphone?(' · '+rphone):''), {phone:rphone,name:rn||('Referencia '+(i+1)),user_id:pick(o,['user_id'],null),order_id:o.id,person_type:'reference'}, rchkTone(rphone))}
       <button class="refedit" data-rid="${esc(String(rf.id))}" style="border:0;background:#eef0f6;color:var(--navy);padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer" title="Editar esta referencia">✎ Editar</button>
       ${refFormHtml(rf)}
       ${rchkHtml(rphone,null)}${rf.phone_work&&rtail(rf.phone_work)!==rtail(rphone)?rchkHtml(rf.phone_work,['trabajo']):''}
@@ -2540,14 +2587,16 @@ async function openOrderVerify(id){
   const raBtn=$('refAdd'); if(raBtn) raBtn.onclick=()=>{ const f=$('refform-new'); if(f) f.style.display=f.style.display==='none'?'':'none'; };
   d.querySelectorAll('.refsave').forEach(b=>b.onclick=async()=>{
     const f=b.closest('.refform');
-    // Unir lada + número. EE.UU. (+1) se guarda SIN lada: WhatsApp la agrega
-    // solo. México (+52) y otras sí se guardan explícitas.
+    // Unir lada + número en formato internacional (+lada número): compradores y
+    // referencias pueden estar en cualquier país. Un número escrito con + se respeta.
     const join=(ccCls,numCls)=>{ const n=f.querySelector(numCls).value.trim(); if(!n) return '';
       if(n.startsWith('+')) return n; const cc=f.querySelector(ccCls).value;
-      if(!cc||cc==='+1') return n; return cc+' '+n; };
+      return cc?(cc+' '+n):n; };
+    const natSel=f.querySelector('.rf-nat');
     const payload={ name:f.querySelector('.rf-name').value.trim(), last_name:f.querySelector('.rf-last').value.trim(),
                     phone:join('.rf-cc','.rf-phone'), phone_work:join('.rf-wcc','.rf-pwork'),
-                    nationality:f.querySelector('.rf-nat').value };
+                    nationality:natSel.value,
+                    country: natSel.value==='mexican' ? 'MX' : (refDataCountry || ccOfPhone(join('.rf-cc','.rf-phone')) || 'US') };
     if(!payload.name||!payload.phone){ alert('Nombre y teléfono son obligatorios.'); return; }
     b.disabled=true;
     let r2;
@@ -2773,7 +2822,8 @@ async function openClientSheet(uid){
 
   const solicitud =
     qaTxt('¿Vivienda propia o rentada?', QA_HOUSING[u.housing_type]||u.housing_type) +
-    qaTxt('¿Cuántos meses lleva en Estados Unidos?', u.months_usa) +
+    qaTxt('País donde vive', u.country_of_residence?(ccFlag(u.country_of_residence)+' '+ccName(u.country_of_residence)):null) +
+    qaTxt('¿Cuántos meses lleva en el país donde vive?', u.months_usa) +
     qaTxt('¿Cuántos meses en su domicilio actual?', u.months_address) +
     qaTxt('¿Cuántos meses en su empleo actual?', u.months_job) +
     qaTxt('¿Ingreso semanal estimado (USD)?', u.estimated_income) +
@@ -2799,13 +2849,14 @@ async function openClientSheet(uid){
         + qaTxt('¿Nacionalidad?', QA_NATION[buy.nationality]||buy.nationality)
         + qaTxt('¿Estado donde reside?', buy.state_residence)
         + qaTxt('¿Vivienda propia o rentada?', QA_HOUSING[buy.housing_type]||buy.housing_type)
-        + qaTxt('¿Meses viviendo en Estados Unidos?', buy.months_usa)
+        + qaTxt('País donde vive', buy.living_country?(ccFlag(buy.living_country)+' '+ccName(buy.living_country)):null)
+        + qaTxt('¿Meses viviendo en el país donde vive?', buy.months_usa)
         + qaTxt('¿Meses en el domicilio actual?', buy.months_address)
         + qaTxt('¿Dónde trabaja?', buy.job)
         + qaTxt('¿Ingreso semanal (USD)?', buy.weekly_income!=null?money(buy.weekly_income):null)
         + qaTxt('¿Parentesco con el quien recibe?', buy.relationship_with_beneficiary)
         + qaTxt('Teléfono', buy.phone) + qaTxt('Teléfono del trabajo', buy.phone_work) + qaTxt('Email', buy.email)
-        + qaTxt('Domicilio (EUA)', joinAddr([buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code]))
+        + qaTxt('Domicilio ('+(buy.living_country?ccName(buy.living_country):'país donde vive')+')', joinAddr([buy.living_address1,buy.living_address2,buy.living_city,buy.living_state,buy.living_zip_code,(buy.living_country&&buy.living_country!=='US')?ccName(buy.living_country):null]))
         + qaTxt('Dirección de entrega (México)', joinAddr([buy.delivery_address1,buy.delivery_address2,buy.delivery_city,buy.delivery_state,buy.delivery_zip_code]))
         + qaTxt('Teléfono del beneficiario', buy.phone_beneficiary)
         + qaRow('Copias entregadas (expediente)',
@@ -2830,7 +2881,7 @@ async function openClientSheet(uid){
     if(refs.length){
       inner += `<div style="font-weight:800;font-size:13px;color:var(--navy);margin:14px 0 4px">Referencias (${refs.length})</div>`
         + refs.map((rf,i)=>{ const rn=[rf.name,rf.last_name].filter(Boolean).join(' ')||('Ref '+(i+1));
-            return qaRow('Referencia '+(i+1)+(rf.nationality?(' ('+(rf.nationality==='mexican'?'MX':'US')+')'):''),
+            return qaRow('Referencia '+(i+1)+(rf.nationality||rf.country?(' ('+refIso(rf)+')'):''),
               esc(rn)+(rf.phone?(' · '+esc(rf.phone)):'')+(rf.phone_work?(' · trabajo: '+esc(rf.phone_work)):'')
               + (rf.phone?convBtnHtml({phone:rf.phone, name:rn, user_id:u.id, order_id:o.id, person_type:'reference'}):'')); }).join('');
     }
@@ -2934,11 +2985,12 @@ async function loadClients(){
       const line=pick(u,['credit_limit'],null), avail=pick(u,['credit_amount','available_credit','credit'],null);
       const bal=(line!=null&&avail!=null)?Math.round((Number(line)-Number(avail))*100)/100:pick(u,['account_balance'],null);
       return `<tr class="cli-row" data-uid="${esc(String(u.id||''))}"><td><button class="cliexp" data-id="${esc(String(u.id||''))}" title="Ver sus contratos aquí" style="border:0;background:none;cursor:pointer;font-size:12px;color:var(--brand-d);margin-right:4px">&#9654;</button><a href="#" onclick="event.preventDefault();goClientContracts('${esc(String(u.id||''))}')" style="color:var(--brand-d);font-weight:600;cursor:pointer">${esc(name)}</a>${pick(u,['phone_problem'],null)?`<span title="Teléfono mal capturado: ${esc(pick(u,['phone_problem'],''))} — WhatsApp nunca entregará ahí. Corrígelo en su perfil." style="margin-left:6px;cursor:help">⚠️</span>`:''}</td><td>${esc(email)}</td><td class="mono">${esc(num)}</td>
+        <td>${ccCell(pick(u,['country_of_residence'],null)||ccOfPhone(pick(u,['phone'],'')))}</td>
         <td>${cliStatePill(pick(u,['account_state'],null))}</td>
         <td class="right mono">${line!=null?money(line):'—'}</td><td class="right mono">${bal!=null?money(bal):'—'}</td><td class="right mono">${avail!=null?money(avail):'—'}</td><td>${fdate(pick(u,['created_at','registered_at'],null))}</td>
         <td>${pick(u,['risk_version'],null)!=null?('v'+u.risk_version):'—'}</td>
         <td class="right"><button class="convcli" data-id="${esc(id)}" data-name="${esc(name)}" data-phone="${esc(pick(u,['phone'],'')||'')}" title="Conversación / WhatsApp" style="border:0;background:#25D366;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;margin-right:8px">&#9990;</button><button class="setcredit" data-id="${esc(id)}" title="Fijar linea de credito (pruebas)" style="border:0;background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--brand-d);margin-right:8px">$</button><button class="recalccli" data-id="${esc(id)}" title="Recalcular crédito con la versión activa del motor" style="border:0;background:none;cursor:pointer;font-size:15px;margin-right:8px">↻</button><button class="delcli" data-id="${esc(id)}" data-name="${esc(name)}" title="Eliminar cliente" style="border:0;background:none;cursor:pointer;font-size:15px">🗑️</button></td></tr>`;
-    }).join('') : `<tr><td colspan="10" class="empty">No se encontraron clientes</td></tr>`;
+    }).join('') : `<tr><td colspan="11" class="empty">No se encontraron clientes</td></tr>`;
     $('cliBody').querySelectorAll('.cliexp').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); toggleClientContracts(b);});
     $('cliBody').querySelectorAll('.convcli').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.id, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
     $('cliBody').querySelectorAll('.delcli').forEach(b=>b.onclick=()=>deleteClient(b.dataset.id, b.dataset.name));
@@ -2957,7 +3009,7 @@ async function toggleClientContracts(btn){
   if(next && next.classList.contains('cli-sub')){ next.remove(); btn.innerHTML='&#9654;'; return; }
   btn.innerHTML='&#9660;';
   const sub=document.createElement('tr'); sub.className='cli-sub';
-  sub.innerHTML='<td colspan="10" style="background:#f7f8fb;padding:6px 14px 10px"><span class="muted">Cargando contratos…</span></td>';
+  sub.innerHTML='<td colspan="11" style="background:#f7f8fb;padding:6px 14px 10px"><span class="muted">Cargando contratos…</span></td>';
   tr.after(sub);
   const r=await api('GET','/api/contracts?user_id='+encodeURIComponent(btn.dataset.id));
   const list=r.ok?rows(r.data):[];
@@ -3119,8 +3171,8 @@ async function loadCrm(){
     convOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}); });
   body.querySelectorAll('.crmmail').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
     mailOpen({user_id:b.dataset.uid||null, name:b.dataset.name, phone:b.dataset.phone||null, email:b.dataset.email||'',
-              subject:'Tu compra en Ácasa te está esperando',
-              body:'Te escribimos de Ácasa para ayudarte a terminar tu compra. Solo falta el pago inicial y comenzamos el envío a tu familia en México.\n\n¿Te ayudamos a completarla? Responde este correo o escríbenos por WhatsApp.'}); });
+              subject:'Tu compra en acasa te está esperando',
+              body:'Te escribimos de acasa para ayudarte a terminar tu compra. Solo falta el pago inicial y comenzamos el envío a tu familia en México.\n\n¿Te ayudamos a completarla? Responde este correo o escríbenos por WhatsApp.'}); });
   body.querySelectorAll('.crmdel').forEach(b=>b.onclick=async(e)=>{ e.stopPropagation();
     if(!confirm('¿Eliminar el intento de compra de '+(b.dataset.name||'este cliente')+'?\n\nSe libera su crédito y los artículos vuelven a estar disponibles. No se puede deshacer.')) return;
     const r2=await api('DELETE','/api/contracts/'+encodeURIComponent(b.dataset.cid));
@@ -3192,10 +3244,10 @@ async function loadCrmLeads(){
   }).join('') : '<tr><td colspan="7" class="empty">Sin cuentas nuevas pendientes de seguimiento. 🎉</td></tr>';
   body.querySelectorAll('.leadwa').forEach(b=>b.onclick=()=>convOpen({user_id:b.dataset.uid, name:b.dataset.name, phone:b.dataset.phone||null, person_type:'customer'}));
   body.querySelectorAll('.leadmail').forEach(b=>b.onclick=()=>mailOpen({user_id:b.dataset.uid, name:b.dataset.name, phone:b.dataset.phone||null, email:b.dataset.email||'',
-    subject:'Tu cuenta de Ácasa te está esperando',
+    subject:'Tu cuenta de acasa te está esperando',
     body: b.dataset.conf
-      ? 'Vimos que creaste tu cuenta en Ácasa y queremos ayudarte a estrenarla. Elige lo que quieras regalarle a tu familia en México, tú lo pagas en pagos desde EE.UU. y nosotros lo entregamos en su puerta.\n\n¿Te ayudamos a hacer tu primer pedido? Responde este correo o escríbenos por WhatsApp.'
-      : 'Creaste tu cuenta en Ácasa pero falta un pasito: verificarla por WhatsApp con el botón de tu correo de bienvenida. En cuanto la actives podrás hacer tu primer pedido y nosotros lo entregamos directo a tu familia en México.\n\n¿Necesitas que te reenviemos el correo o tienes alguna duda? Responde por aquí con confianza.'}));
+      ? 'Vimos que creaste tu cuenta en acasa y queremos ayudarte a estrenarla. Elige lo que quieras regalarle a tu familia en México, tú lo pagas en pagos en dólares desde donde estés y nosotros lo entregamos en su puerta.\n\n¿Te ayudamos a hacer tu primer pedido? Responde este correo o escríbenos por WhatsApp.'
+      : 'Creaste tu cuenta en acasa pero falta un pasito: verificarla por WhatsApp con el botón de tu correo de bienvenida. En cuanto la actives podrás hacer tu primer pedido y nosotros lo entregamos directo a tu familia en México.\n\n¿Necesitas que te reenviemos el correo o tienes alguna duda? Responde por aquí con confianza.'}));
   body.querySelectorAll('.leadfree').forEach(b=>b.onclick=async()=>{
     if(!confirm('¿LIBERAR a '+(b.dataset.name||'este cliente')+' del seguimiento del CRM?\n\nSu cuenta NO se borra: si regresa y compra, entra al pipeline normal. Queda registrado en la Bitácora.')) return;
     const r2=await api('POST','/api/crm/leads/'+encodeURIComponent(b.dataset.uid)+'/dismiss');
@@ -3242,7 +3294,7 @@ async function waTplMgrOpen(){
         </select>
         <select class="sel" id="tmLang"><option value="es_MX">Español (MX)</option><option value="es">Español</option><option value="en_US">English (US)</option></select>
       </div>
-      <textarea id="tmBody" placeholder="Hola {{1}}, te escribimos de Ácasa sobre tu contrato {{2}}…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:110px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
+      <textarea id="tmBody" placeholder="Hola {{1}}, te escribimos de acasa sobre tu contrato {{2}}…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:110px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
         <button class="btn" id="tmVar" style="background:#eef0f6;color:var(--navy);font-size:12.5px;padding:7px 12px">＋ Variable {{n}}</button>
         <span class="muted" style="font-size:11.5px">Usa {{1}}, {{2}}… para los datos que cambian (nombre, monto, enlace).</span>
@@ -3410,7 +3462,7 @@ function mailOpen(p){
     <input id="mlTo" value="${esc(mail)}" placeholder="correo@cliente.com" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;margin-bottom:8px">
     <input id="mlSubj" value="${esc(p.subject||'')}" placeholder="Asunto" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:600;margin-bottom:8px">
     <textarea id="mlBody" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13.5px;min-height:170px;font-family:inherit;resize:vertical;line-height:1.5">${esc(p.body||'')}</textarea>
-    <p class="muted" style="font-size:11.5px;margin:7px 0 0">Se envía desde el correo de la plataforma con el diseño de Ácasa y queda registrado en la bitácora de esta persona.</p>
+    <p class="muted" style="font-size:11.5px;margin:7px 0 0">Se envía desde el correo de la plataforma con el diseño de acasa y queda registrado en la bitácora de esta persona.</p>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button class="btn" id="mlSend" style="flex:1">Enviar correo</button>
       <button class="btn" id="mlCancel" style="background:#eef0f6;color:var(--navy)">Cancelar</button>
@@ -3675,24 +3727,25 @@ if($('waNewContact')) $('waNewContact').addEventListener('change',()=>{
             last_dir:null, user_id:c.user_id||null };
   WA_THREADS.unshift(t); renderWaList(); openWaThread(tail);
 });
-if($('waNew')) $('waNew').onclick=()=>{ const b=$('waNewBox'); b.style.display=b.style.display==='none'?'':'none'; if(b.style.display===''){ loadWaContacts(); $('waNewPhone').focus(); } };
+if($('waNew')) $('waNew').onclick=()=>{ const b=$('waNewBox'); b.style.display=b.style.display==='none'?'':'none'; if(b.style.display===''){ if(!b.dataset.cc){ $('waNewCc').innerHTML=ccOptions('+1'); b.dataset.cc='1'; } loadWaContacts(); $('waNewPhone').focus(); } };
 if($('waNewGo')) $('waNewGo').onclick=()=>{
   const cc=$('waNewCc').value;
   let raw=$('waNewPhone').value.trim();
   if(!raw){ $('waNewMsg').textContent='Escribe el número.'; return; }
-  // REGLA: nunca agregar el "1" de EE.UU. (WhatsApp lo pone solo). +52 sí se
-  // agrega, salvo que el número ya la traiga. Un número escrito con + se respeta.
+  // Lada de cualquier país. EE. UU. (+1) se guarda SIN lada (convención histórica de
+  // los hilos: WhatsApp la agrega solo); +52 y las demás se guardan explícitas. Un
+  // número escrito con + se respeta tal cual.
   let digits=raw.replace(/\D/g,''), phone;
   if(raw.startsWith('+')){
     phone='+'+digits;
-  } else if(cc==='+52'){
-    if(!digits.startsWith('52')) digits='52'+digits;
-    phone='+'+digits;
-  } else { // EE.UU. u otra: sin lada; si escribieron el 1 inicial (11 díg.), se quita
+  } else if(cc==='+1'){ // EE. UU.: sin lada; si escribieron el 1 inicial (11 díg.), se quita
     if(digits.length===11&&digits.startsWith('1')) digits=digits.slice(1);
     phone=digits;
+  } else {
+    const code=cc.replace('+',''); if(!digits.startsWith(code)) digits=code+digits;
+    phone='+'+digits;
   }
-  if(digits.length<10){ $('waNewMsg').textContent='Número incompleto (mínimo 10 dígitos).'; return; }
+  if(digits.length<8){ $('waNewMsg').textContent='Número incompleto.'; return; }
   const tail=digits.length>10?digits.slice(-10):digits;
   $('waNewMsg').textContent='';
   const existing=WA_THREADS.find(x=>String(x.tail)===tail);
@@ -5671,6 +5724,75 @@ async function bkSyncAll(){
   if(!r.ok) bkNotice((r.data&&r.data.error)||'No se pudo actualizar','bad');
   else { const o=r.data.result||{}; const parts=Object.keys(o).map(k=>`${k==='stripe'?'Stripe':k.replace('conn_','conexión #')}: ${o[k]}`); bkNotice(parts.length?parts.join(' · '):'No había conexiones automáticas pendientes.','ok'); }
   BK.mv.loaded=false; bkLoad();
+}
+
+/* ---------------- PAÍSES ATENDIDOS (Configuración → Países) ----------------
+   GET/PUT /api/settings/countries: { allowed: [], blocked: [...], caps: {ISO: USD} }.
+   allowed vacío = todos los países menos los bloqueados. CU/IR/KP siempre bloqueados. */
+let PS={cfg:null, always:[], all:[], mode:'all', allowed:new Set(), blocked:new Set(), caps:{}};
+async function loadPaises(){
+  const r=await api('GET','/api/settings/countries');
+  if(!r.ok){ $('psBody').innerHTML=`<tr><td colspan="6" class="empty">${esc((r.data&&r.data.error)||'No se pudo cargar la configuración de países.')}</td></tr>`; return; }
+  const d=r.data||{}; const cfg=d.config||{};
+  PS.cfg=cfg; PS.always=d.always_blocked||[]; PS.all=d.all||[];
+  PS.allowed=new Set(cfg.allowed||[]); PS.blocked=new Set(cfg.blocked||[]); PS.caps=Object.assign({},cfg.caps||{});
+  PS.mode=PS.allowed.size?'some':'all';
+  document.querySelectorAll('input[name="psMode"]').forEach(x=>{ x.checked=(x.value===PS.mode); x.onchange=()=>{ PS.mode=x.value; psRender(); }; });
+  $('psSearch').oninput=psRender;
+  $('psSave').onclick=savePaises;
+  $('psMsg').textContent='';
+  psRender();
+}
+function psState(iso){
+  if(PS.always.includes(iso)) return ['p-canc','Siempre bloqueado'];
+  if(PS.blocked.has(iso)) return ['p-canc','Bloqueado'];
+  if(PS.mode==='some' && !PS.allowed.has(iso)) return ['p-pend','No atendido'];
+  return ['p-appr','Atendido'];
+}
+function psRender(){
+  const term=($('psSearch').value||'').trim().toLowerCase();
+  const list=PS.all.slice().sort((a,b)=>{ const ia=CC_FIRST.indexOf(a.iso), ib=CC_FIRST.indexOf(b.iso); if(ia>=0||ib>=0) return (ia<0?99:ia)-(ib<0?99:ib); return String(a.name).localeCompare(String(b.name),'es'); })
+    .filter(c=>!term || (c.name+' '+c.iso+' '+c.dial).toLowerCase().includes(term));
+  const some=PS.mode==='some';
+  $('psBody').innerHTML = list.length ? list.map(c=>{
+    const iso=c.iso, always=PS.always.includes(iso), [tone,label]=psState(iso);
+    const cap=PS.caps[iso]!=null?PS.caps[iso]:'';
+    return `<tr data-iso="${esc(iso)}" style="${always?'opacity:.6':''}">
+      <td>${ccFlag(iso)} ${esc(c.name)} <span class="mono muted" style="font-size:11px;margin-left:4px">${esc(iso)}</span></td>
+      <td class="mono">${esc(c.dial)}</td>
+      <td><span class="pill ${tone}">${label}</span></td>
+      <td><input type="checkbox" class="ps-allow" ${PS.allowed.has(iso)?'checked':''} ${(!some||always)?'disabled':''} title="${some?'Permitir abrir cuenta desde este país':'Activa el modo «Solo los países marcados» para usar esta casilla'}"></td>
+      <td><input type="checkbox" class="ps-block" ${(always||PS.blocked.has(iso))?'checked':''} ${always?'disabled':''} title="${always?'Sanciones integrales: no se puede desbloquear':'Nadie de este país podrá abrir cuenta'}"></td>
+      <td class="right"><input type="number" class="ps-cap mono" min="0" step="50" value="${esc(String(cap))}" placeholder="sin tope" ${always?'disabled':''} style="width:110px;padding:5px 8px;border:1px solid #dfe3ea;border-radius:8px;text-align:right"></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">Ningún país coincide con la búsqueda.</td></tr>';
+  $('psBody').querySelectorAll('tr[data-iso]').forEach(tr=>{
+    const iso=tr.dataset.iso;
+    const a=tr.querySelector('.ps-allow'), b=tr.querySelector('.ps-block'), k=tr.querySelector('.ps-cap');
+    if(a) a.onchange=()=>{ if(a.checked) PS.allowed.add(iso); else PS.allowed.delete(iso); psRow(tr); };
+    if(b) b.onchange=()=>{ if(b.checked) PS.blocked.add(iso); else PS.blocked.delete(iso); psRow(tr); };
+    if(k) k.onchange=()=>{ const v=parseFloat(k.value); if(v>0) PS.caps[iso]=v; else delete PS.caps[iso]; psSummary(); };
+  });
+  psSummary();
+}
+function psRow(tr){ const iso=tr.dataset.iso, [tone,label]=psState(iso); const p=tr.querySelector('.pill'); if(p){ p.className='pill '+tone; p.textContent=label; } psSummary(); }
+function psSummary(){
+  const total=PS.all.length, blocked=[...PS.blocked].filter(i=>!PS.always.includes(i)).length+PS.always.length;
+  const served=PS.mode==='some'?[...PS.allowed].filter(i=>!PS.blocked.has(i)).length:(total-blocked);
+  $('psSummary').textContent=`${served} países atendidos · ${blocked} bloqueados · ${Object.keys(PS.caps).length} con tope`;
+}
+async function savePaises(){
+  const allowed=PS.mode==='some'?[...PS.allowed]:[];
+  if(PS.mode==='some' && !allowed.length){ $('psMsg').textContent='En el modo «Solo los países marcados» marca al menos un país permitido (o cambia a «Todos los países»).'; return; }
+  const blocked=[...PS.blocked].filter(i=>!PS.always.includes(i));
+  const caps={}; Object.keys(PS.caps).forEach(i=>{ if(PS.caps[i]>0) caps[i]=PS.caps[i]; });
+  const summary=`${allowed.length?('Solo: '+allowed.join(', ')):'Todos los países'}\nBloqueados: ${blocked.length?blocked.join(', '):'ninguno'} (+ ${PS.always.join(', ')} siempre)\nTopes: ${Object.keys(caps).length?Object.entries(caps).map(([k,v])=>k+' $'+v).join(', '):'ninguno'}`;
+  if(!confirm('Guardar países atendidos?\n\n'+summary+'\n\nAplica de inmediato al registro de la tienda y al motor de riesgo; queda en la Bitácora.')) return;
+  $('psSave').disabled=true; $('psMsg').textContent='Guardando…';
+  const r=await api('PUT','/api/settings/countries',{allowed, blocked, caps});
+  $('psSave').disabled=false;
+  if(r.ok&&r.data&&r.data.ok){ await loadPaises(); $('psMsg').textContent='Guardado ✓ · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+' · queda en la Bitácora'; }
+  else { $('psMsg').textContent=(r.data&&(r.data.error||(r.data.errors&&r.data.errors.join(', '))))||'No se pudo guardar.'; }
 }
 
 /* ---- Plaid Link (EE. UU.) ---- */

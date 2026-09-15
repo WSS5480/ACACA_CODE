@@ -10,7 +10,35 @@ class Api::SettingsController < ApplicationController
   # La lectura del aviso de privacidad es PÚBLICA (la página /privacidad del sitio la muestra).
   # La lectura de las preguntas de aprobación también: el REGISTRO (público) la
   # usa para mostrar/ocultar sus preguntas informativas según la lista maestra.
-  skip_before_action :authenticate_entity!, only: [:rates, :privacy, :approval_questions], raise: false
+  skip_before_action :authenticate_entity!, only: [:rates, :privacy, :approval_questions, :serving_countries], raise: false
+
+  # GET /api/settings/serving_countries  (público) — países donde se puede abrir cuenta
+  # (para el selector del registro) con nombre y lada.
+  def serving_countries
+    render json: { countries: ServingCountries.public_list, blocked: ServingCountries.config['blocked'] }, status: :ok
+  end
+
+  # GET /api/settings/countries  (master/admin/sistema) — configuración completa
+  def countries
+    role = @current_user&.role&.name
+    return render(json: { error: 'No autorizado' }, status: :forbidden) unless %w[master admin sistema].include?(role)
+
+    render json: { config: ServingCountries.config, always_blocked: PhoneGeo::DEFAULT_BLOCKED,
+                   all: PhoneGeo::COUNTRIES.map { |iso, (es, _en, dial, tz)| { iso: iso, name: es, dial: dial, tz: tz } } }, status: :ok
+  end
+
+  # PUT /api/settings/countries { allowed: [...] | "US, CA", blocked: [...], caps: { "ES": 500 } }
+  def update_countries
+    role = @current_user&.role&.name
+    return render(json: { error: 'Solo master, admin o sistema pueden cambiar los países atendidos' }, status: :forbidden) unless %w[master admin sistema].include?(role)
+
+    before = ServingCountries.config
+    caps = params[:caps].respond_to?(:to_unsafe_h) ? params[:caps].to_unsafe_h : {}
+    cfg = ServingCountries.save!(allowed: params[:allowed], blocked: params[:blocked], caps: caps)
+    AuditLog.record!(actor: @current_user, action: 'countries_updated', target: nil, label: 'Países atendidos',
+                     details: "permitidos: #{before['allowed'].presence&.join(',') || 'todos'} → #{cfg['allowed'].presence&.join(',') || 'todos'} · bloqueados: #{before['blocked'].join(',')} → #{cfg['blocked'].join(',')} · topes: #{cfg['caps'].to_json}")
+    render json: { ok: true, config: cfg }, status: :ok
+  end
 
   # GET /api/settings/rates  (público)
   # Tasas configurables + factores derivados de la tasa de interés:
@@ -245,7 +273,7 @@ class Api::SettingsController < ApplicationController
   DEFAULT_QUESTIONS = {
     'pre' => [
       '¿Tu vivienda es propia o rentada?',
-      '¿Cuántos meses llevas viviendo en Estados Unidos?',
+      '¿Cuántos meses llevas viviendo en el país donde vives?',
       '¿Cuántos meses llevas en tu domicilio actual?',
       '¿Cuántos meses llevas en tu empleo actual?',
       '¿Cuál es tu ingreso semanal estimado?',
@@ -254,12 +282,12 @@ class Api::SettingsController < ApplicationController
     ],
     'final' => [
       'Datos del comprador: nombre, nacionalidad y estado donde vive',
-      'Domicilio completo en EE.UU. y tipo de vivienda (propia o rentada)',
+      'Domicilio completo en el país donde vives y tipo de vivienda (propia o rentada)',
       'Contacto de tu domicilio (casero o conocido) y su teléfono',
       'Empleo, teléfono del trabajo e ingreso semanal',
       'Identificación oficial, comprobante de domicilio y de ingresos',
       '2 referencias en México (nombre, teléfono y tel. de trabajo)',
-      '2 referencias en Estados Unidos (nombre, teléfono y tel. de trabajo)',
+      '2 referencias en el país donde vives (nombre, teléfono y tel. de trabajo)',
       'Quien recibe en México: nombre, teléfono y dirección'
     ]
   }.freeze

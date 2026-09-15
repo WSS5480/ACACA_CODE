@@ -278,7 +278,18 @@ class Api::UsersController < ApplicationController
       return render json: { error: "Teléfono: #{bad}" }, status: :unprocessable_entity
     end
 
+    # PAÍS DONDE VIVE: el que eligió o, si no vino, el de la lada. Países no
+    # atendidos (sancionados o fuera de la lista de Configuración → Países) se rechazan aquí.
+    residence = params.dig(:user, :country_of_residence).to_s.upcase.presence || PhoneGeo.country_of(params.dig(:user, :phone))
+    if (why = ServingCountries.problem(residence, phone: params.dig(:user, :phone)))
+      return render json: { error: why }, status: :unprocessable_entity
+    end
+
     @user = User.new(user_params)
+    @user.country_of_residence = residence if residence.present? && User.column_names.include?('country_of_residence')
+    if User.column_names.include?('timezone') && @user.timezone.blank? && residence.present?
+      @user.timezone = PhoneGeo.timezone_for_country(residence)
+    end
     @user.role = client_role
     @user.number = generate_client_number
     # SEGURIDAD: el cliente define su propia contraseña (login por email + contraseña).
@@ -545,7 +556,9 @@ class Api::UsersController < ApplicationController
       :months_job,
       :estimated_income,
       :delivery_country,
-      :shared_income
+      :shared_income,
+      :country_of_residence,
+      :timezone
     )
   end
 

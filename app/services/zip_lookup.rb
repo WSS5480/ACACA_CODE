@@ -6,7 +6,7 @@ require 'json'
 # Verifica que un CP/ZIP corresponda a la ciudad y estado capturados,
 # CONTRA DATOS REALES: primero la tabla zip_codes (SEPOMEX / caché),
 # y si el código no está, lo consulta en api.zippopotam.us (datos oficiales
-# de correos de EUA y México) y guarda el resultado en zip_codes como caché.
+# de correos de EUA, México y otros países) y guarda el resultado en zip_codes como caché.
 #
 # Devuelve:
 #   { status: 'match' }
@@ -14,11 +14,13 @@ require 'json'
 #   { status: 'unknown' }   (CP no encontrado o sin datos suficientes; no se alerta)
 class ZipLookup
   TIMEOUT = 6
+  # Países con código postal de 5 dígitos (misma lista que ZIP_LOOKUP_COUNTRIES en la tienda).
+  FIVE_DIGIT = %w[US MX ES DE FR IT PR GT DO CR TR FI HR SK LT EE RS].freeze
 
   def self.check(country:, zip:, city:, state:)
     z = zip.to_s.gsub(/\D/, '')
     return { status: 'unknown' } if z.length < 4
-    z = z.rjust(5, '0') if z.length == 4 # CP de México con cero inicial perdido
+    z = z.rjust(5, '0') if z.length == 4 && FIVE_DIGIT.include?(country.to_s.upcase) # cero inicial perdido (02134, 08001…); otros países sí usan 4 dígitos
     return { status: 'unknown' } if city.blank? && state.blank?
 
     rows = ZipCode.where(code: z).where('upper(country) = ?', country.to_s.upcase).to_a

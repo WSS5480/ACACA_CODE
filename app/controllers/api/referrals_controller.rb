@@ -113,6 +113,7 @@ class Api::ReferralsController < ApplicationController
     params.require(:referral).permit(
       :order_id,
       :nationality,
+      :country,
       :name,
       :last_name,
       :phone,

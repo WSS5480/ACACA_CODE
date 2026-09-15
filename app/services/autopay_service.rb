@@ -72,12 +72,48 @@ class AutopayService
       :failed
     end
   rescue StripeClient::Error => e
-    contract.update_column(:autopay_last_error, "#{e.message.to_s.truncate(120)} #{Time.current.strftime('%Y-%m-%d')}")
-    Rails.logger.error "[Autopay] contrato #{contract.id}: #{e.message}"
+    if e.authentication_required?
+      # El banco del cliente exige que ÉL confirme el cargo (3-D Secure/SCA):
+      # frecuente con tarjetas emitidas fuera de EE. UU. No es un rechazo; se le
+      # avisa para que entre a Mis pagos y pague con su confirmación.
+      contract.update_column(:autopay_last_error, "Tu banco pide confirmar el pago: entra a Mis pagos y págalo desde ahí #{Time.current.strftime('%Y-%m-%d')}")
+      notify_action_required(contract, user, (due + fee).round(2))
+      Rails.logger.info "[Autopay] contrato #{contract.id}: el banco pide autenticación del cliente"
+    else
+      contract.update_column(:autopay_last_error, "#{e.message.to_s.truncate(120)} #{Time.current.strftime('%Y-%m-%d')}")
+      Rails.logger.error "[Autopay] contrato #{contract.id}: #{e.message}"
+    end
     :failed
   rescue StandardError => e
     Rails.logger.error "[Autopay] contrato #{contract.id}: #{e.class} #{e.message}"
     :failed
+  end
+
+  # Aviso al cliente (correo + bitácora) de que debe confirmar el pago con su
+  # banco. Una vez al día por contrato, aunque el cobro se reintente.
+  def self.notify_action_required(contract, user, amount)
+    return if user&.email.blank?
+
+    # Ya avisado hoy (la bitácora es la memoria: sobrevive reinicios y varios workers).
+    return if already_notified_today?(contract)
+
+    UserMailer.with(user: user, contract: contract, amount: amount).send_payment_action_required.deliver_now
+    if defined?(AuditLog)
+      AuditLog.record!(actor: nil, action: 'autopay_auth_required', target: contract,
+                       label: contract.contract_number.presence || "Contrato #{contract.id}",
+                       details: "Autopago: el banco del cliente pide que confirme el cargo · $#{'%.2f' % amount} USD · se le avisó por correo")
+    end
+  rescue StandardError => e
+    Rails.logger.error "[Autopay] aviso de autenticación contrato #{contract.id}: #{e.class} #{e.message}"
+  end
+
+  def self.already_notified_today?(contract)
+    return false unless defined?(AuditLog) && AuditLog.table_exists?
+
+    AuditLog.where(action: 'autopay_auth_required', target_type: 'Contract', target_id: contract.id)
+            .where('created_at >= ?', Time.current.beginning_of_day).exists?
+  rescue StandardError
+    false
   end
 
   # Comisión de Stripe del cargo (misma consulta que en StripeController). Nunca bloquea.

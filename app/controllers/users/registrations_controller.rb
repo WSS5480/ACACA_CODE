@@ -43,7 +43,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def configure_sign_up_params
-    devise_parameter_sanitizer.permit(:sign_up, keys: [:name, :last_name, :number, :email, :password, :password_confirmation, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income])
+    devise_parameter_sanitizer.permit(:sign_up, keys: [:name, :last_name, :number, :email, :password, :password_confirmation, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :country_of_residence, :timezone])
   end
 end
 

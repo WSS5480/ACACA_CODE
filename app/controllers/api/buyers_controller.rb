@@ -33,7 +33,7 @@ class Api::BuyersController < ApplicationController
 
     fill_record_from_user(
       @buyer,
-      %w[name last_name phone email housing_type months_usa months_address weekly_income:estimated_income]
+      %w[name last_name phone email housing_type months_usa months_address weekly_income:estimated_income living_country:country_of_residence]
     )
 
     if @buyer.save
@@ -138,6 +138,7 @@ class Api::BuyersController < ApplicationController
       :home_contact_name,
       :home_contact_phone,
       :nationality,
+      :living_country,
       :state_residence,
       :living_address1,
       :living_address2,

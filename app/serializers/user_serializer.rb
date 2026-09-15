@@ -7,7 +7,7 @@ class UserSerializer
   end
 
   include JSONAPI::Serializer
-  attributes :id, :email, :name, :last_name, :number, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :role_id, :credit_amount
+  attributes :id, :email, :name, :last_name, :number, :phone, :housing_type, :months_usa, :months_address, :months_job, :estimated_income, :delivery_country, :shared_income, :country_of_residence, :timezone, :role_id, :credit_amount
 
   # Si el teléfono está mal capturado, aquí viene el motivo (nil = correcto)
   attribute :phone_problem do |user|

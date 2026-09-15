@@ -58,7 +58,9 @@ class AuditLog < ApplicationRecord
     'bank_reconnected'         => '🏦 Reconectó una cuenta bancaria (re-login)',
     'bank_disconnected'        => '🏦 Desconectó una cuenta bancaria (movimientos conservados)',
     'bank_manual_account_created' => '🏦 Dio de alta una cuenta bancaria manual',
-    'bank_statement_imported'  => '🏦 Importó un estado de cuenta'
+    'bank_statement_imported'  => '🏦 Importó un estado de cuenta',
+    'countries_updated'        => '🌎 Cambió los países atendidos (permitidos/bloqueados/topes)',
+    'autopay_auth_required'    => '🔐 Autopago: el banco del cliente pide que confirme el cargo (se le avisó)'
   }.freeze
 
   def self.record!(actor:, action:, target: nil, label: nil, details: nil)

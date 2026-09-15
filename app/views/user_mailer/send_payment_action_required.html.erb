@@ -1,0 +1,40 @@
+<% content_for :email_title do %>
+  Tu banco pide confirmar tu pago
+<% end %>
+
+<p style="margin-bottom: 8px;">Hola <%= @user&.name || '' %>,</p>
+<p style="margin-bottom: 20px;">
+  Intentamos hacer tu pago automático del contrato <strong><%= @num %></strong> con tu tarjeta guardada,
+  pero <strong>tu banco pide que tú confirmes el cargo</strong> antes de aprobarlo. Es una medida de seguridad
+  habitual de los bancos fuera de Estados Unidos; tu tarjeta no fue rechazada y no hay nada malo con tu cuenta.
+</p>
+
+<div style="margin:0 0 22px;padding:12px 16px;background:#fff5f0;border-radius:8px;font-weight:bold;color:#9a3c00;">
+  Entra a Mis pagos, elige el pago pendiente y confírmalo con tu banco cuando te lo pida (toma un minuto).
+</div>
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;line-height:22px;border:1px solid #e5e5e5;border-radius:8px;">
+  <tr><td style="padding:10px 14px;">Pedido / contrato</td><td style="padding:10px 14px;text-align:right;"><strong><%= @num %></strong></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Pago pendiente</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><strong><%= mail_money(@amount) %> USD</strong></td></tr>
+  <tr><td style="padding:10px 14px;border-top:1px solid #e5e5e5;">Saldo actual</td><td style="padding:10px 14px;border-top:1px solid #e5e5e5;text-align:right;"><%= mail_money(@contract.balance) %></td></tr>
+</table>
+
+<p style="margin: 24px 0 8px;">
+  <a href="<%= @pay_url %>" style="display: inline-block; background-color: #FF7517; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Ir a Mis pagos</a>
+</p>
+<p style="margin: 0 0 20px; font-size: 13px; color: #666;">
+  Si el botón no funciona, abre este enlace: <a href="<%= @pay_url %>" style="color:#FF7517;"><%= @pay_url %></a>
+</p>
+
+<p style="margin: 0 0 12px; font-size: 14px; color: #444;">
+  El cargo es en dólares (USD); tu banco lo convierte a tu moneda y puede aplicar una comisión.
+  Si ya hiciste el pago, no tienes que hacer nada más.
+</p>
+
+<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;"/>
+
+<p style="margin-bottom: 12px; color: #444; font-size: 14px;">
+  <strong>English:</strong> We tried to charge your saved card for contract <%= @num %>, but your bank requires you to confirm
+  the payment first (a common security step with cards issued outside the US). Your card was not declined. Please go to
+  <a href="<%= @pay_url %>" style="color:#FF7517;">My payments</a>, choose the pending payment of <%= mail_money(@amount) %> USD and confirm it with your bank.
+</p>

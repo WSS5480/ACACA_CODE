@@ -57,6 +57,11 @@ Rails.application.routes.draw do
     get 'settings/wa_responses',       to: 'api/settings#wa_responses'
     put 'settings/wa_responses',       to: 'api/settings#update_wa_responses'
 
+    # Países atendidos (compradores en cualquier país; entrega en México)
+    get 'settings/serving_countries', to: 'api/settings#serving_countries' # público: lista para la tienda
+    get 'settings/countries',         to: 'api/settings#countries'         # admin: permitidos/bloqueados/topes
+    put 'settings/countries',         to: 'api/settings#update_countries'
+
     # Soporte con tickets (pagina bajo la linea)
     get  'support/tickets',           to: 'api/support_tickets#index'
     post 'support/tickets',           to: 'api/support_tickets#create'

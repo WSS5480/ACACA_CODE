@@ -10,7 +10,25 @@ require 'openssl'
 class StripeClient
   BASE = 'https://api.stripe.com'
 
-  class Error < StandardError; end
+  # Error de Stripe con su código: el autopago distingue "la tarjeta fue
+  # rechazada" de "el banco pide que el cliente confirme el cargo" (3-D Secure /
+  # SCA, habitual en tarjetas europeas y de otros países fuera de EE. UU.).
+  class Error < StandardError
+    attr_reader :code, :decline_code, :http_status
+
+    def initialize(msg = nil, code: nil, decline_code: nil, http_status: nil)
+      super(msg)
+      @code = code
+      @decline_code = decline_code
+      @http_status = http_status
+    end
+
+    # El banco emisor exige autenticación del titular: no es un rechazo, el
+    # cliente debe entrar a la tienda y confirmar el pago con su banco.
+    def authentication_required?
+      code == 'authentication_required' || decline_code == 'authentication_required'
+    end
+  end
 
   def self.configured?
     ENV['STRIPE_SECRET_KEY'].present?
@@ -38,7 +56,7 @@ class StripeClient
     body = JSON.parse(res.body) rescue {}
     unless res.is_a?(Net::HTTPSuccess)
       msg = body.dig('error', 'message') || "Stripe HTTP #{res.code}"
-      raise Error, msg
+      raise Error.new(msg, code: body.dig('error', 'code'), decline_code: body.dig('error', 'decline_code'), http_status: res.code.to_i)
     end
     body
   end

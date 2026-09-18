@@ -211,9 +211,9 @@ class Product < ApplicationRecord
   # Plazos disponibles (solo los que superan $20 semanales) para un enganche dado
   def available_payment_plans(downpayment = nil)
     dp = downpayment || min_downpayment
-    TERMS.map do |weeks, months|
-      { weeks: weeks, months: months, weekly_payment: calculate_weekly_payment(weeks: weeks, downpayment: dp) }
-    end.select { |p| p[:weekly_payment] > Product.min_weekly_for(p[:weeks]) }
+    # (Aquí había un TERMS.map cuyo resultado se tiraba a la basura: calculaba
+    # los cuatro plazos y no los usaba. Era un tercio del cálculo del catálogo
+    # hecho de más en CADA producto.)
     if plans_empty_fallback?(dp)
       fin = (total_price - dp).round(2)
       weeks_r = [(fin / 10.0).ceil, 1].max

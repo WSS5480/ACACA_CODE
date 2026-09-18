@@ -12,7 +12,11 @@ class Api::ProductsController < ApplicationController
   before_action :authorize_master!, only: [:reset, :manage_collection]
 
   def index
-    render_paginated(filtered_products(Product.all), ProductSerializer, 'title')
+    # PRECARGA: sin esto, cada producto pedía por su cuenta sus categorías y sus
+    # fotos (una consulta por producto, por cosa). Con 380 productos eran más de
+    # mil consultas extra solo para pintar la tienda.
+    base = Product.includes(:categories, images_attachments: :blob)
+    render_paginated(filtered_products(base), ProductSerializer, 'title')
   end
 
   def show

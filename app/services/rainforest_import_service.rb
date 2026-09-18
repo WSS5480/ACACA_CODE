@@ -410,11 +410,13 @@ class RainforestImportService
     # enseñaba la lista de ofertas de Amazon. Los artículos en promoción se van
     # a la vista 0 solos (Product#effective_view) sin perder su vista.
     promocionados = 0
+    Rails.logger.info "[rainforest/import] asins=#{asins.inspect} pasaron=#{passing.size} promo=#{promo.inspect}"
     if promo.is_a?(Hash) && promo[:percent_off].to_f.positive? && passing.any?
       asins_ok = passing.map { |x| x['id'] }.compact
       Product.where(asin: asins_ok).find_each do |p|
         p.apply_promo!(list_price: promo[:list_price], percent_off: promo[:percent_off], badge: promo[:badge])
         promocionados += 1
+        Rails.logger.info "[rainforest/import] #{p.asin} marcado en promocion #{promo[:percent_off]}%"
       end
     end
 

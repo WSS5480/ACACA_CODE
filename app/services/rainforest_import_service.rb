@@ -229,12 +229,13 @@ class RainforestImportService
 
   # Importa SOLO los ASINs elegidos (1 crédito c/u) como BORRADOR (inactive), con
   # detalle completo (fotos reales, buybox) usando el pipeline probado.
-  def import_selected(asins:, amazon_domain: 'amazon.com.mx', sold_only: false, delivered_only: false, keywords: nil)
+  def import_selected(asins:, amazon_domain: 'amazon.com.mx', sold_only: false, delivered_only: false, keywords: nil, promo: nil)
     return { ok: false, error: 'No hay API key de Rainforest configurada.' } unless configured?
     list = Array(asins).map { |a| a.to_s.strip }.reject(&:blank?).uniq
     return { ok: false, error: 'Selecciona al menos un producto.' } if list.blank?
 
-    import_asins(list, amazon_domain, sold_only: sold_only, delivered_only: delivered_only, keywords: keywords.presence)
+    import_asins(list, amazon_domain, sold_only: sold_only, delivered_only: delivered_only,
+                                      keywords: keywords.presence, promo: promo)
   rescue StandardError => e
     { ok: false, error: e.message }
   end
@@ -374,7 +375,7 @@ class RainforestImportService
 
   # Descarga el detalle de cada ASIN e importa como BORRADOR (inactive) usando el
   # pipeline probado (MXN->USD, hasta 7 fotos, categorías, pago semanal). Aditivo.
-  def import_asins(asins, amazon_domain, sold_only: true, delivered_only: true, keywords: nil)
+  def import_asins(asins, amazon_domain, sold_only: true, delivered_only: true, keywords: nil, promo: nil)
     passing = []
     skipped = 0
 
@@ -397,7 +398,20 @@ class RainforestImportService
     end
 
     ManageJson::ProcessProductsJob.new.perform(passing, false, 'active') if passing.any?
-    { ok: true, checked: asins.size, imported: passing.size, skipped: skipped }
+
+    # PROMOCIÓN: se marca DESPUÉS de crear/actualizar el producto, con lo que
+    # enseñaba la lista de ofertas de Amazon. Los artículos en promoción se van
+    # a la vista 0 solos (Product#effective_view) sin perder su vista.
+    promocionados = 0
+    if promo.is_a?(Hash) && promo[:percent_off].to_f.positive? && passing.any?
+      asins_ok = passing.map { |x| x['id'] }.compact
+      Product.where(asin: asins_ok).find_each do |p|
+        p.apply_promo!(list_price: promo[:list_price], percent_off: promo[:percent_off], badge: promo[:badge])
+        promocionados += 1
+      end
+    end
+
+    { ok: true, checked: asins.size, imported: passing.size, skipped: skipped, promos: promocionados }
   end
 
   # Amazon es el VENDEDOR (no un tercero). Campos reales de Rainforest:

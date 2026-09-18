@@ -27,6 +27,67 @@ class Product < ApplicationRecord
     price_with_discount.present? && price_with_discount > 0 ? price_with_discount : price
   end
 
+  # ---- PROMOCIONES Y ORDEN DEL CATÁLOGO ----------------------------------
+  # Un artículo en promoción cuenta como VISTA 0 (va primero) sin perder la
+  # vista que el equipo le puso: cuando la oferta se acaba vuelve a su lugar.
+  VIEW_MIN = 1
+  VIEW_MAX = 6
+  PROMO_VIEW = 0
+  PROMO_MIN_PCT = 3 # menos de esto no es oferta, es redondeo
+
+  def promo?
+    has_attribute?(:promo) ? !!self[:promo] : false
+  end
+
+  def effective_view
+    return PROMO_VIEW if promo?
+
+    v = respond_to?(:catalog_view) ? catalog_view.to_i : VIEW_MIN
+    v.between?(VIEW_MIN, VIEW_MAX) ? v : VIEW_MIN
+  end
+
+  # Precio de lista EN DÓLARES para tachar en la tienda. Se deriva del % de
+  # descuento y no del tipo de cambio, así siempre cuadra con el precio que se
+  # está mostrando (aunque el catálogo se repreció por tipo de cambio).
+  def promo_list_price_usd
+    return nil unless promo?
+
+    pct = promo_percent_off.to_f
+    base = effective_price.to_f
+    return nil unless pct.positive? && pct < 100 && base.positive?
+
+    (base / (1 - (pct / 100.0))).round(2)
+  end
+
+  def apply_promo!(list_price: nil, percent_off: nil, badge: nil)
+    pct = percent_off.to_f.round
+    return clear_promo! if pct < PROMO_MIN_PCT
+
+    update_columns(
+      promo: true,
+      promo_list_price: (list_price.presence && list_price.to_f.round(2)),
+      promo_percent_off: pct,
+      promo_badge: badge.presence&.to_s&.slice(0, 120),
+      promo_checked_at: Time.current
+    )
+    true
+  end
+
+  def clear_promo!
+    return false unless promo?
+
+    update_columns(promo: false, promo_list_price: nil, promo_percent_off: nil,
+                   promo_badge: nil, promo_checked_at: Time.current)
+    false
+  end
+
+  # Orden del catálogo: promos primero, luego por vista y por el orden que el
+  # equipo le dio dentro de la vista.
+  scope :catalog_ordered, lambda {
+    order(Arel.sql('CASE WHEN products.promo THEN 0 ELSE products.catalog_view END ASC, products.catalog_order ASC, products.id ASC'))
+  }
+  scope :in_promo, -> { where(promo: true) }
+
   TERMS = { 52 => 12, 39 => 9, 26 => 6, 13 => 3 }.freeze  # semanas => meses (12/9/6/3)
   MIN_WEEKLY = 20                                          # pago semanal minimo estandar
 

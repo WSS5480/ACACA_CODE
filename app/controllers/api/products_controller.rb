@@ -133,7 +133,11 @@ class Api::ProductsController < ApplicationController
       amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
       sold_only: params[:sold_only].to_s == 'true',
       delivered_only: params[:delivered_only].to_s == 'true',
-      keywords: params[:keywords]
+      keywords: params[:keywords],
+      # PROMOCIÓN: lo que enseñaba la lista de ofertas de Amazon al descargarlo.
+      # Si el ASIN ya estaba en el catálogo, esto ACTUALIZA su promoción sin
+      # tocar turns, factor ni el estatus de tienda.
+      promo: promo_params
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end
@@ -294,6 +298,16 @@ class Api::ProductsController < ApplicationController
     # APLICAR AL GRUPO (admin): turns y/o factor sobre los ids filtrados.
     updates[:turns] = params[:turns].to_f.round(2) if params[:turns].present? && params[:turns].to_f.positive?
     updates[:decimal_factor] = params[:decimal_factor].to_f.round(2) if params[:decimal_factor].present? && params[:decimal_factor].to_f.positive?
+    # VISTA (1-6) y ORDEN dentro de la vista. La vista 0 es solo de las promociones
+    # y la pone el sistema, no se asigna a mano.
+    if params[:catalog_view].present?
+      v = params[:catalog_view].to_i
+      unless v.between?(Product::VIEW_MIN, Product::VIEW_MAX)
+        return render json: { error: "Vista invalida (#{Product::VIEW_MIN} a #{Product::VIEW_MAX})" }, status: :unprocessable_entity
+      end
+      updates[:catalog_view] = v
+    end
+    updates[:catalog_order] = params[:catalog_order].to_i if params[:catalog_order].present?
     return render json: { error: 'Nada que actualizar.' }, status: :bad_request if updates.empty?
 
     count = scope.update_all(updates.merge(updated_at: Time.current))
@@ -408,12 +422,27 @@ class Api::ProductsController < ApplicationController
     render json: { error: 'Producto no encontrado' }, status: :not_found
   end
 
+  # Datos de la oferta que manda el scraper al descargar en modo Promociones.
+  def promo_params
+    raw = params[:promo]
+    raw = raw.to_unsafe_h if raw.respond_to?(:to_unsafe_h)
+    return nil unless raw.is_a?(Hash)
+
+    pct = raw['percent_off'].presence || raw[:percent_off]
+    return nil if pct.to_f <= 0
+
+    { percent_off: pct.to_f.round,
+      list_price: (raw['list_price'] || raw[:list_price]).presence&.to_f,
+      badge: (raw['badge'] || raw[:badge]).presence.to_s }
+  end
+
   def product_params
     params.require(:product).permit(
       :title, :keywords, :asin, :original_link, :brand, :rating,
       :feature_bullets, :price, :price_with_discount, :currency, :color, :material,
       :dimensions, :model_number, :external_id, :status,
       :min_weekly_payment, :turns, :decimal_factor, :original_price,
+      :catalog_view, :catalog_order,
       category_ids: []
     )
   end

@@ -98,6 +98,30 @@ class ScheduledTick
       end
     end
 
+    # 5.5) PRECIOS Y PROMOCIONES (Rainforest, 1 crédito por artículo).
+    #    A las 3 am de Monterrey:
+    #      · TODOS LOS DÍAS los artículos en promoción — las ofertas se acaban
+    #        rápido y esta pasada es la que los REGRESA a precio normal solos.
+    #      · LOS DOMINGOS, además, el catálogo activo completo.
+    #    Una llave por día en AppSetting evita repetir si hay varios ticks dentro
+    #    de la misma hora.
+    if t.hour == 3 && defined?(PriceRefresh) && defined?(Product) && Product.table_exists?
+      begin
+        hoy = t.to_date.to_s
+        if AppSetting.get(PriceRefresh::DAILY_KEY).to_s != hoy
+          AppSetting.set(PriceRefresh::DAILY_KEY, hoy)
+          out[:promo_refresh] = PriceRefresh.run_promos!
+        end
+        if t.sunday? && AppSetting.get(PriceRefresh::WEEKLY_KEY).to_s != hoy
+          AppSetting.set(PriceRefresh::WEEKLY_KEY, hoy)
+          out[:price_refresh] = PriceRefresh.run_all!
+        end
+      rescue StandardError => e
+        out[:price_refresh] = e.message
+        WaAlert.notify('Actualización automática de precios', e.message) if defined?(WaAlert)
+      end
+    end
+
     # 6) BANCOS: sincroniza las conexiones marcadas por webhook (cada tick), las que
     #    llevan más de 20 h sin bajar y, a las 6 am de Monterrey, todas (full).
     #    Después concilia los depósitos de Stripe contra los movimientos del banco.

@@ -761,10 +761,18 @@
           <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="catSearch" placeholder="Buscar producto o ASIN…"></div>
           <select class="sel" id="cfCat" title="Categoría"><option value="">Categoría</option></select>
           <select class="sel" id="cfSub" title="Subcategoría"><option value="">Subcategoría</option></select>
+          <select class="sel" id="cfView" title="Vista del catálogo. Las promociones van SIEMPRE en la vista 0 y se muestran primero; el resto se acomoda en las vistas 1 a 6.">
+            <option value="">Todas las vistas</option>
+            <option value="0">⚡ Vista 0 · Promociones</option>
+            <option value="1">Vista 1</option><option value="2">Vista 2</option><option value="3">Vista 3</option>
+            <option value="4">Vista 4</option><option value="5">Vista 5</option><option value="6">Vista 6</option>
+          </select>
           <span style="display:inline-flex;align-items:center;gap:6px;background:#fff8f4;border:1px dashed #ffd2bd;border-radius:10px;padding:5px 10px">
             <span class="muted" style="font-size:12px;font-weight:700">Grupo:</span>
             <input id="bulkTurns" type="number" step="0.1" min="0" placeholder="Turns" title="Turns a aplicar a TODO el grupo filtrado" style="width:64px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
             <input id="bulkFactor" type="number" step="0.01" min="0" placeholder="Factor" title="Factor a aplicar a TODO el grupo filtrado" style="width:64px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+            <input id="bulkView" type="number" min="1" max="6" step="1" placeholder="Vista" title="Mandar TODO el grupo filtrado a esta vista (1 a 6)" style="width:60px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+            <input id="bulkOrder" type="number" min="0" step="1" placeholder="Orden" title="Orden dentro de la vista para TODO el grupo filtrado (menor = primero)" style="width:60px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
             <button class="btn" id="bulkApply" style="background:var(--brand);color:#fff;padding:6px 12px;font-size:13px">Aplicar al grupo</button>
           </span>
           <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="ACTUALIZACIÓN SEMANAL (manual): trae el precio actual de Amazon de cada producto y recalcula pesos→dólares y el Desde $X/sem. 1 crédito de Rainforest por producto.">$ Actualizar precios (semanal)</button>
@@ -789,10 +797,12 @@
               <th class="right" title="Financiado = Al Contado menos enganche mínimo (10%)">Financiado</th>
               <th data-sort="min_weekly_payment" class="right" style="cursor:pointer">Pago x sem</th>
               <th class="right" title="Net Turns = Al Contado (cash) / Costo (Precio USD) = turns x factor">Net Turns</th>
+              <th data-sort="effective_view" class="right" style="cursor:pointer" title="Vista del catálogo (1 a 6). Las promociones se muestran como vista 0 y van primero; al terminar la oferta el artículo regresa a su vista.">Vista</th>
+              <th data-sort="catalog_order" class="right" style="cursor:pointer" title="Orden dentro de la vista: menor = primero.">Orden</th>
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-          </thead><tbody id="catBody"><tr><td colspan="17" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="19" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -4154,6 +4164,7 @@ async function loadCatalog(){
   $('catSearch').oninput=renderCat;
   $('cfCat').onchange=()=>{ cfFillSubs(); renderCat(); };
   $('cfSub').onchange=renderCat;
+  if($('cfView')) $('cfView').onchange=renderCat;
   renderCat();
 }
 // ---- Filtro del catálogo: sale de las categorías REALES de Amazon de cada producto ----
@@ -4178,9 +4189,21 @@ function catInp(v,key,id,extra){ return `<input data-id="${id}" data-key="${key}
 function prodCats(p){ return (pick(p,['categories'],[])||[]).map(c=>String(c.id)); }
 let SORT={key:null,dir:1};
 function catNames(p){ return (pick(p,['categories'],[])||[]).map(c=>c.name).join(', '); }
-function sortVal(p,k){ return k==='category'?catNames(p):pick(p,[k],''); }
+function prodView(p){ return pick(p,['promo'],false) ? 0 : (parseInt(pick(p,['catalog_view'],1),10)||1); }
+function prodOrder(p){ const v=parseInt(pick(p,['catalog_order'],100),10); return isNaN(v)?100:v; }
+function sortVal(p,k){
+  if(k==='category') return catNames(p);
+  if(k==='effective_view') return prodView(p);
+  if(k==='catalog_order') return prodOrder(p);
+  return pick(p,[k],'');
+}
 function sortList(list){
-  if(!SORT.key) return list;
+  // SIN orden elegido: manda el catálogo — promociones (vista 0) primero, luego
+  // vista 1..6 y el orden que el equipo puso dentro de cada vista.
+  if(!SORT.key){
+    return [...list].sort((a,b)=> (prodView(a)-prodView(b)) || (prodOrder(a)-prodOrder(b))
+      || String(pick(a,['title','name'],'')).localeCompare(String(pick(b,['title','name'],''))));
+  }
   const k=SORT.key,d=SORT.dir;
   return [...list].sort((a,b)=>{ const av=sortVal(a,k),bv=sortVal(b,k),na=parseFloat(av),nb=parseFloat(bv);
     if(!isNaN(na)&&!isNaN(nb)&&av!==''&&bv!=='') return (na-nb)*d;
@@ -4192,6 +4215,8 @@ function currentList(){
   const cat=$('cfCat').value, sub=$('cfSub').value;   // Categoría = 1er nivel; Subcategoría = nivel profundo
   if(sub) list=list.filter(p=>prodCatList(p).includes(sub));
   else if(cat) list=list.filter(p=>prodTop(p)===cat);
+  const vista=$('cfView')?$('cfView').value:'';       // '' = todas · 0 = solo promociones
+  if(vista!=='') list=list.filter(p=>prodView(p)===parseInt(vista,10));
   if(term) list=list.filter(p=>JSON.stringify(p).toLowerCase().includes(term));
   const f=colFilters();
   if(f.title) list=list.filter(p=>String(pick(p,['title','name'],'')).toLowerCase().includes(f.title));
@@ -4214,7 +4239,7 @@ function catBadges(asin){
 }
 function renderCat(){
   const list=currentList();
-  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="15" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
+  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="19" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
   $('catBody').innerHTML=list.map(p=>{
     const id=String(pick(p,['id'],'')), asin=pick(p,['asin'],'—'), title=pick(p,['title','name'],'—');
     const img=(pick(p,['image_urls'],[])||[])[0]||'';
@@ -4224,10 +4249,19 @@ function renderCat(){
     const chip=(okv,lbl)=> okv===null||okv===undefined ? '' : `<span style="display:inline-block;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;margin-right:3px;${okv?'background:#e6f4ea;color:#137333':'background:#fde8e8;color:#b91c1c'}">${lbl} ${okv?'✓':'✗'}</span>`;
     const amzTag=(sAmz===null&&dAmz===null&&fOk===null)?'':`<div style="margin-top:2px">${chip(sAmz,'Vende Amazon')}${chip(dAmz,'Entrega Amazon')}${chip(fOk,'Foto principal')}</div>`;
     const fotoBad=false, gone=false, badSeller=(sAmz===false||dAmz===false);
-    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':((fotoBad||badSeller)?' style="background:#fff4e0"':'')}>
+    // PROMOCIÓN vigente: precio de lista tachado, % de descuento y la etiqueta de Amazon.
+    const enPromo=!!pick(p,['promo'],false), pOff=pick(p,['promo_percent_off'],null);
+    const pLista=pick(p,['promo_list_price_usd'],null), pBadge=pick(p,['promo_badge'],'');
+    const promoTag=enPromo?`<div style="margin-top:3px">
+      <span style="display:inline-block;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;background:#fde8e8;color:#b91c1c">⚡ PROMO${pOff?(' −'+pOff+'%'):''}</span>
+      ${pLista?`<span class="muted" style="font-size:10px;text-decoration:line-through;margin-left:4px">$${Number(pLista).toFixed(2)}</span>`:''}
+      ${pBadge?`<span class="muted" style="font-size:10px;margin-left:4px">${esc(pBadge)}</span>`:''}
+    </div>`:'';
+    const vista=pick(p,['catalog_view'],1), orden=pick(p,['catalog_order'],100);
+    return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':((fotoBad||badSeller)?' style="background:#fff4e0"':(enPromo?' style="background:#fff7f7"':''))}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}</td>
-      <td style="max-width:210px">${esc(title)}${amzTag}</td>
+      <td style="max-width:210px">${esc(title)}${promoTag}${amzTag}</td>
       <td class="mono">${esc(asin)}</td>
       <td class="mono" style="max-width:130px;font-size:12.5px;white-space:normal;word-break:break-word">${esc(pick(p,['model_number','model'],'—')||'—')}</td>
       <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>
@@ -4240,6 +4274,10 @@ function renderCat(){
       <td class="right mono cell-fin">—</td>
       <td class="right mono cell-pago">—</td>
       <td class="right mono cell-net">—</td>
+      <td class="right">${enPromo
+        ? '<span title="En promoción: se muestra primero. Al terminar la oferta regresa a la vista '+esc(String(vista))+'." style="display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:#fde8e8;color:#b91c1c">0 ⚡</span>'
+        : catInp(vista,'catalog_view',id,'type="number" min="1" max="6" step="1"')}</td>
+      <td class="right">${catInp(orden,'catalog_order',id,'type="number" min="0" step="1"')}</td>
       <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
         <option value="active" ${st==='active'?'selected':''}>En tienda</option>
         <option value="inactive" ${st!=='active'?'selected':''}>Borrador</option></select></td>
@@ -4281,14 +4319,20 @@ $('catVerify').onclick=verifyCatalogAmazon;
 if($('bulkApply')) $('bulkApply').onclick=async()=>{
   const list=currentList(); if(!list.length){ alert('No hay productos en el grupo filtrado.'); return; }
   const turns=parseFloat($('bulkTurns').value), factor=parseFloat($('bulkFactor').value);
-  if(!(turns>0)&&!(factor>0)){ alert('Escribe Turns y/o Factor para aplicar.'); return; }
-  const cambios=[turns>0?('turns = '+turns):null, factor>0?('factor = '+factor):null].filter(Boolean).join(' y ');
+  const vista=parseInt(($('bulkView')||{}).value,10), orden=parseInt(($('bulkOrder')||{}).value,10);
+  const vistaOk=!isNaN(vista), ordenOk=!isNaN(orden);
+  if(vistaOk && (vista<1||vista>6)){ alert('La vista va de 1 a 6. La vista 0 es solo de las promociones y la pone el sistema.'); return; }
+  if(!(turns>0)&&!(factor>0)&&!vistaOk&&!ordenOk){ alert('Escribe Turns, Factor, Vista y/o Orden para aplicar.'); return; }
+  const cambios=[turns>0?('turns = '+turns):null, factor>0?('factor = '+factor):null,
+                 vistaOk?('vista = '+vista):null, ordenOk?('orden = '+orden):null].filter(Boolean).join(', ');
   if(!confirm('¿Aplicar '+cambios+' a los '+list.length+' producto(s) del grupo filtrado?\n\nSolo afecta lo que se ve abajo AHORA (con los filtros actuales). El "Desde $X /sem" se recalcula solo.')) return;
   const body={ids:list.map(p=>String(pick(p,['id'],'')))};
   if(turns>0) body.turns=turns;
   if(factor>0) body.decimal_factor=factor;
+  if(vistaOk) body.catalog_view=vista;
+  if(ordenOk) body.catalog_order=orden;
   const r=await api('POST','/api/products/bulk_update',body);
-  if(r.ok&&r.data&&r.data.ok){ $('bulkTurns').value=''; $('bulkFactor').value=''; loaded.cat=0; await loadCatalog(); $('catMsg').textContent='Aplicado a '+r.data.updated+' producto(s).'; }
+  if(r.ok&&r.data&&r.data.ok){ $('bulkTurns').value=''; $('bulkFactor').value=''; if($('bulkView'))$('bulkView').value=''; if($('bulkOrder'))$('bulkOrder').value=''; loaded.cat=0; await loadCatalog(); $('catMsg').textContent='Aplicado a '+r.data.updated+' producto(s).'; }
   else alert((r.data&&r.data.error)||'No se pudo aplicar.');
 };
 // Vista ampliada de la miniatura al pasar el mouse (overlay fijo, no lo recorta la tabla).
@@ -4430,11 +4474,15 @@ function rfSetBadge(asin,v){
 function renderRf(){
   rfBuildCatSet();
   rfStage=1;   // un solo paso: descargar directamente (las respuestas se guardan al descargar)
+  const promos=(rfMode()==='deals');   // en promociones se permite re-descargar lo que ya tenemos
   $('rfGrid').innerHTML=RF.map(p=>{
-    const inCat=rfInCat(p.asin);
-    const slash = inCat
-      ? '<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, transparent calc(50% - 1.5px), #d11 calc(50% - 1.5px), #d11 calc(50% + 1.5px), transparent calc(50% + 1.5px))"></div>'
-        + '<div style="position:absolute;top:6px;left:6px;background:#d11;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px">Ya en catálogo</div>'
+    const yaEsta=rfInCat(p.asin);
+    const inCat=yaEsta && !promos;      // solo BLOQUEA fuera del modo promociones
+    const slash = yaEsta
+      ? (inCat
+          ? '<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, transparent calc(50% - 1.5px), #d11 calc(50% - 1.5px), #d11 calc(50% + 1.5px), transparent calc(50% + 1.5px))"></div>'
+            + '<div style="position:absolute;top:6px;left:6px;background:#d11;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px">Ya en catálogo</div>'
+          : '<div style="position:absolute;top:6px;left:6px;background:#0a7d32;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px" title="Ya está en el catálogo: al descargarlo se ACTUALIZA su promoción y su precio, sin tocar turns, factor ni estatus.">Ya en catálogo · actualiza la promo</div>')
       : '';
     return `
     <label style="border:1px solid var(--line);border-radius:10px;padding:8px;cursor:${inCat?'not-allowed':'pointer'};display:block;background:#fff;position:relative;${inCat?'opacity:.6':''}">
@@ -4585,13 +4633,24 @@ async function rfDownload(){
   const prog=$('rfProg'), fill=$('rfProgFill');
   prog.style.display=''; fill.style.width='0%';
   const subTag=rfCategoryName();   // etiqueta con la categoría de Amazon elegida (la más profunda)
-  let imported=0, skipped=0, errors=0, done=0; const importedAsins=[];
+  const porAsin={}; RF.forEach(x=>{ porAsin[String(x.asin)]=x; });
+  let imported=0, skipped=0, errors=0, done=0, promos=0; const importedAsins=[];
   for(const asin of asins){
     $('rfMsg').textContent='Descargando '+(done+1)+' de '+total+'…';
-    const r=await api('POST','/api/products/import_selected',{asins:[asin], amazon_domain:rfDom(), sold_only:sold, delivered_only:deliv, keywords:subTag});
+    const body={asins:[asin], amazon_domain:rfDom(), sold_only:sold, delivered_only:deliv, keywords:subTag};
+    // PROMOCIÓN: lo que Amazon enseñaba en la tarjeta (descuento, precio de
+    // lista y su etiqueta). Si el ASIN ya estaba en el catálogo, esto ACTUALIZA
+    // su promoción sin tocar turns, factor ni estatus.
+    const it=porAsin[String(asin)]||{};
+    if(it.percent_off){
+      body.promo={ percent_off:it.percent_off, list_price:(it.list_price_value||null),
+                   badge:(it.deal_badge||'')+(it.is_lightning?' ⚡':'') };
+    }
+    const r=await api('POST','/api/products/import_selected',body);
     if(r.ok && r.data && r.data.ok){
       if(r.data.imported){ imported+=r.data.imported; importedAsins.push(asin); }
       skipped+=(r.data.skipped||0);
+      promos+=(r.data.promos||0);
     } else { errors++; }
     done++;
     fill.style.width=Math.round(done/total*100)+'%';
@@ -4600,7 +4659,8 @@ async function rfDownload(){
   RF=RF.filter(p=>!importedAsins.includes(p.asin));
   const skip=skipped?(' · '+skipped+' omitido(s) por filtro Amazon (siguen en la lista)'):'';
   const err=errors?(' · '+errors+' con error'):'';
-  $('rfMsg').textContent='Listo: '+imported+' importado(s) como borrador'+skip+err+'. Publícalos abajo cuando quieras.';
+  const pr=promos?(' · '+promos+' marcado(s) en promoción (vista 0, se muestran primero)'):'';
+  $('rfMsg').textContent='Listo: '+imported+' importado(s) como borrador'+pr+skip+err+'. Publícalos abajo cuando quieras.';
   loaded.cat=0; loadCatalog();
   $('rfImport').disabled=false;
   // Deja ver la barra llena un instante, luego la limpia y refresca el grid (los importados desaparecen).
@@ -4785,7 +4845,7 @@ document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(th=>{ th
   th.textContent=th.dataset.label+(SORT.dir>0?' ↑':' ↓'); renderCat();
 };});
 document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>el.addEventListener('input',renderCat));
-function cfActive(){ return !!($('cfCat').value || $('cfSub').value); }
+function cfActive(){ return !!($('cfCat').value || $('cfSub').value || ($('cfView')&&$('cfView').value!=='')); }
 function updateCatActions(){
   const filterActive=cfActive(), n=SEL.size;
   if(n===0 && !filterActive){ $('catActions').style.display='none'; return; }
@@ -4835,18 +4895,42 @@ async function saveCatalog(){
   $('catBody').querySelectorAll('[data-dirty="1"]').forEach(el=>{ const id=el.dataset.id; (changed[id]=changed[id]||{}) [el.dataset.key]=el.value; });
   const ids=Object.keys(changed);
   if(!ids.length){ $('catMsg').textContent='No hay cambios para guardar.'; return; }
+
+  // VISTA Y ORDEN no van en el CSV (sus columnas son fijas): se guardan directo
+  // en cada producto. Lo demás (precio, turns, factor, estatus) sigue por CSV.
+  const CSV_KEYS=['price','price_with_discount','turns','decimal_factor','status'];
+  const conVista=ids.filter(id=>changed[id].catalog_view!=null||changed[id].catalog_order!=null);
+  let vistasOk=0, vistasMal=0;
+  if(conVista.length){
+    $('catMsg').textContent='Guardando vista y orden…';
+    for(const id of conVista){
+      const c=changed[id], body={};
+      if(c.catalog_view!=null&&c.catalog_view!==''){ const v=parseInt(c.catalog_view,10);
+        if(isNaN(v)||v<1||v>6){ vistasMal++; continue; } body.catalog_view=v; }
+      if(c.catalog_order!=null&&c.catalog_order!==''){ const n=parseInt(c.catalog_order,10); if(!isNaN(n)) body.catalog_order=n; }
+      if(!Object.keys(body).length) continue;
+      const r=await api('PUT','/api/products/'+encodeURIComponent(id),{product:body});
+      if(r.ok) vistasOk++; else vistasMal++;
+    }
+  }
+  const idsCsv=ids.filter(id=>CSV_KEYS.some(k=>changed[id][k]!=null));
+  if(!idsCsv.length){
+    loaded.cat=0; await loadCatalog();
+    $('catMsg').textContent='Guardado: '+vistasOk+' cambio(s) de vista/orden'+(vistasMal?(' · '+vistasMal+' no se pudieron (la vista va de 1 a 6)'):'')+'.';
+    return;
+  }
   const byId={}; CAT.forEach(p=>byId[String(pick(p,['id'],''))]=p);
   const stMap={active:'Activo',inactive:'Desactivado'};
   const headers=['ID','ASIN','Precio USD','Precio con descuento USD','Turns','Factor decimal','Estatus'];
   const lines=[headers.join(',')];
-  ids.forEach(id=>{ const c=changed[id], p=byId[id]||{};
+  idsCsv.forEach(id=>{ const c=changed[id], p=byId[id]||{};
     const row=[ id, pick(p,['asin'],''),
       (c.price!=null?c.price:pick(p,['price'],'')), (c.price_with_discount!=null?c.price_with_discount:pick(p,['price_with_discount'],'')),
       (c.turns!=null?c.turns:pick(p,['turns'],'')), (c.decimal_factor!=null?c.decimal_factor:pick(p,['decimal_factor'],'')),
       (c.status?stMap[c.status]:(stMap[String(pick(p,['status'],'active'))]||'Activo')) ];
     lines.push(row.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(','));
   });
-  $('catMsg').textContent='Guardando '+ids.length+' cambio(s)…';
+  $('catMsg').textContent='Guardando '+idsCsv.length+' cambio(s)…';
   const fd=new FormData(); fd.append('file', new Blob([lines.join('\n')],{type:'text/csv'}), 'update.csv');
   const h={}; if(TOKEN) h.Authorization=TOKEN;
   const r=await fetch('/api/products/update_csv',{method:'POST',headers:h,body:fd});

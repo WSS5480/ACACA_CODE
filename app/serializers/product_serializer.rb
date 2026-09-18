@@ -17,6 +17,35 @@ class ProductSerializer
     p.respond_to?(:main_photo_ok) ? p.main_photo_ok : nil
   end
 
+  # PROMOCIÓN VIGENTE (se llena al descargar del modo Promociones y se revisa a
+  # diario). promo_list_price_usd es el precio tachado que ve el cliente.
+  attribute :promo do |p|
+    p.respond_to?(:promo) ? !!p.promo : false
+  end
+  attribute :promo_percent_off do |p|
+    p.respond_to?(:promo_percent_off) ? p.promo_percent_off : nil
+  end
+  attribute :promo_badge do |p|
+    p.respond_to?(:promo_badge) ? p.promo_badge : nil
+  end
+  attribute :promo_list_price do |p|
+    p.respond_to?(:promo_list_price) ? p.promo_list_price : nil
+  end
+  attribute :promo_list_price_usd do |p|
+    p.respond_to?(:promo_list_price_usd) ? p.promo_list_price_usd : nil
+  end
+
+  # Vista (1-6) y orden dentro de la vista. Las promos cuentan como vista 0.
+  attribute :catalog_view do |p|
+    p.respond_to?(:catalog_view) ? p.catalog_view : nil
+  end
+  attribute :catalog_order do |p|
+    p.respond_to?(:catalog_order) ? p.catalog_order : nil
+  end
+  attribute :effective_view do |p|
+    p.respond_to?(:effective_view) ? p.effective_view : nil
+  end
+
   attribute :min_weekly_payment do |product|
     product.recalculated_min_weekly_payment
   end

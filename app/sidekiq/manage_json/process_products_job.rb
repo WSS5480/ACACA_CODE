@@ -37,7 +37,12 @@ class ManageJson::ProcessProductsJob
         product_data_with_status = product_data.merge(status: default_status)
 
         if product
-          product.update!(product_data_with_status)
+          # YA ESTABA EN EL CATÁLOGO: se refrescan los datos de Amazon (precio,
+          # título, fotos, categorías…) pero NO se le pisa el estatus de tienda
+          # que el equipo le puso. Turns y factor nunca vienen en el payload, así
+          # que el trabajo de precios del catálogo se respeta igual.
+          datos = product.status.present? ? product_data : product_data_with_status
+          product.update!(datos)
           updated_count += 1
         else
           product = Product.create!(product_data_with_status)

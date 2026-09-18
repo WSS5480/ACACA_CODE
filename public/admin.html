@@ -775,7 +775,7 @@
             <input id="bulkOrder" type="number" min="0" step="1" placeholder="Orden" title="Orden dentro de la vista para TODO el grupo filtrado (menor = primero)" style="width:60px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
             <button class="btn" id="bulkApply" style="background:var(--brand);color:#fff;padding:6px 12px;font-size:13px">Aplicar al grupo</button>
           </span>
-          <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="ACTUALIZACIÓN SEMANAL (manual): trae el precio actual de Amazon de cada producto y recalcula pesos→dólares y el Desde $X/sem. 1 crédito de Rainforest por producto.">$ Actualizar precios (semanal)</button>
+          <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="ACTUALIZACIÓN SEMANAL (manual): trae el precio actual de Amazon de cada producto, recalcula pesos→dólares y el Desde $X/sem, y marca o quita la PROMOCIÓN según lo que Amazon esté enseñando hoy. 1 crédito de Rainforest por producto. Ya corre solo: promociones a diario y todo el catálogo los domingos a las 3 am.">$ Actualizar precios (semanal)</button>
           <span class="muted" id="catVerMsg"></span>
           <span class="muted" id="catMsg"></span>
         </div>
@@ -4139,22 +4139,28 @@ async function verifyCatalogAmazon(){
   // las respuestas (vendido/entregado por Amazon y foto principal) quedan
   // guardadas EN el producto desde que se descarga.
   const list=currentList().filter(p=>pick(p,['asin'],'')); if(!list.length){ $('catVerMsg').textContent='No hay productos (con ASIN).'; return; }
-  if(!confirm('¿Actualizar el PRECIO de '+list.length+' producto(s) desde Amazon?\n\nUsa 1 crédito de Rainforest por producto. Actualiza el precio en pesos, la conversión a dólares con el tipo de cambio del día y el "Desde $X /sem". Pensado para hacerse UNA vez por semana.')) return;
+  if(!confirm('¿Actualizar el PRECIO de '+list.length+' producto(s) desde Amazon?\n\nUsa 1 crédito de Rainforest por producto. Actualiza el precio, el "Desde $X /sem" y marca o quita la PROMOCIÓN según lo que Amazon enseñe hoy.\n\nYa corre solo (promociones a diario, todo el catálogo los domingos a las 3 am); esto es para no esperar.')) return;
   const btn=$('catVerify'); btn.disabled=true;
-  let ok=0, cambios=0, sin=0, done=0;
+  let ok=0, cambios=0, sin=0, done=0, nuevas=0, terminadas=0;
   for(const p of list){
     const id=String(pick(p,['id'],''));
     $('catVerMsg').textContent='Actualizando precio '+(done+1)+' de '+list.length+'…';
     try{
       const r=await api('POST','/api/products/'+encodeURIComponent(id)+'/refresh_price');
-      if(r.ok&&r.data&&r.data.ok){ ok++; if(Number(r.data.old_price).toFixed(2)!==Number(r.data.new_price).toFixed(2)) cambios++; }
+      if(r.ok&&r.data&&r.data.ok){ ok++;
+        if(Number(r.data.old_price).toFixed(2)!==Number(r.data.new_price).toFixed(2)) cambios++;
+        if(r.data.promo_started) nuevas++;
+        if(r.data.promo_ended) terminadas++;
+      }
       else sin++;
     }catch(e){ sin++; }
     done++;
   }
   btn.disabled=false;
   await loadCatalog();
-  $('catVerMsg').textContent='Precios actualizados: '+ok+' de '+list.length+(cambios?(' · '+cambios+' cambiaron'):'')+(sin?(' · '+sin+' sin datos (revisar a mano)'):'')+'.';
+  $('catVerMsg').textContent='Precios actualizados: '+ok+' de '+list.length+(cambios?(' · '+cambios+' cambiaron'):'')
+    +(nuevas?(' · '+nuevas+' entraron en promoción'):'')+(terminadas?(' · '+terminadas+' salieron de promoción'):'')
+    +(sin?(' · '+sin+' sin datos (revisar a mano)'):'')+'.';
 }
 async function loadCatalog(){
   const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
@@ -4317,7 +4323,12 @@ $('catVerify').onclick=verifyCatalogAmazon;
 // APLICAR AL GRUPO: turns y/o factor a TODOS los productos actualmente
 // filtrados (lo que se ve abajo en este momento). Recalcula el Desde $/sem.
 if($('bulkApply')) $('bulkApply').onclick=async()=>{
-  const list=currentList(); if(!list.length){ alert('No hay productos en el grupo filtrado.'); return; }
+  // Si hay productos PALOMEADOS, se aplica solo a ésos. Si no hay ninguno,
+  // se aplica a todo el grupo que está filtrado abajo.
+  const filtrados=currentList();
+  const list = SEL.size ? filtrados.filter(p=>SEL.has(String(pick(p,['id'],'')))) : filtrados;
+  const aQuien = SEL.size ? 'seleccionado(s)' : 'del grupo filtrado';
+  if(!list.length){ alert(SEL.size?'Los productos seleccionados no están en el filtro actual.':'No hay productos en el grupo filtrado.'); return; }
   const turns=parseFloat($('bulkTurns').value), factor=parseFloat($('bulkFactor').value);
   const vista=parseInt(($('bulkView')||{}).value,10), orden=parseInt(($('bulkOrder')||{}).value,10);
   const vistaOk=!isNaN(vista), ordenOk=!isNaN(orden);
@@ -4325,14 +4336,16 @@ if($('bulkApply')) $('bulkApply').onclick=async()=>{
   if(!(turns>0)&&!(factor>0)&&!vistaOk&&!ordenOk){ alert('Escribe Turns, Factor, Vista y/o Orden para aplicar.'); return; }
   const cambios=[turns>0?('turns = '+turns):null, factor>0?('factor = '+factor):null,
                  vistaOk?('vista = '+vista):null, ordenOk?('orden = '+orden):null].filter(Boolean).join(', ');
-  if(!confirm('¿Aplicar '+cambios+' a los '+list.length+' producto(s) del grupo filtrado?\n\nSolo afecta lo que se ve abajo AHORA (con los filtros actuales). El "Desde $X /sem" se recalcula solo.')) return;
+  if(!confirm('¿Aplicar '+cambios+' a '+list.length+' producto(s) '+aQuien+'?\n\n'
+    +(SEL.size?'Solo a los que tienes palomeados.':'A TODO lo que se ve abajo con los filtros de ahora.')
+    +' El "Desde $X /sem" se recalcula solo.')) return;
   const body={ids:list.map(p=>String(pick(p,['id'],'')))};
   if(turns>0) body.turns=turns;
   if(factor>0) body.decimal_factor=factor;
   if(vistaOk) body.catalog_view=vista;
   if(ordenOk) body.catalog_order=orden;
   const r=await api('POST','/api/products/bulk_update',body);
-  if(r.ok&&r.data&&r.data.ok){ $('bulkTurns').value=''; $('bulkFactor').value=''; if($('bulkView'))$('bulkView').value=''; if($('bulkOrder'))$('bulkOrder').value=''; loaded.cat=0; await loadCatalog(); $('catMsg').textContent='Aplicado a '+r.data.updated+' producto(s).'; }
+  if(r.ok&&r.data&&r.data.ok){ $('bulkTurns').value=''; $('bulkFactor').value=''; if($('bulkView'))$('bulkView').value=''; if($('bulkOrder'))$('bulkOrder').value=''; loaded.cat=0; await loadCatalog(); $('catMsg').textContent='Aplicado a '+r.data.updated+' producto(s) '+aQuien+'.'; }
   else alert((r.data&&r.data.error)||'No se pudo aplicar.');
 };
 // Vista ampliada de la miniatura al pasar el mouse (overlay fijo, no lo recorta la tabla).
@@ -4689,16 +4702,18 @@ function rfCatType(){ const m=rfMode(); return m==='best'?'bestsellers':(m==='de
 // vuelve a llamar a Rainforest.
 const RF_CACHE={};
 function rfCatKey(pid,tipo){ return rfDom()+'|'+(tipo||rfCatType())+'|'+(pid||'RAIZ'); }
+let RF_ULTIMO_ERROR='';
 async function rfFetchCats(pid,tipo){
   const t=tipo||rfCatType(), key=rfCatKey(pid,t);
   if(RF_CACHE[key]) return RF_CACHE[key];
-  let list=[];
+  let list=[]; RF_ULTIMO_ERROR='';
   try{
     const qs='?amazon_domain='+encodeURIComponent(rfDom())+'&type='+encodeURIComponent(t)
       +(pid?('&parent_id='+encodeURIComponent(pid)):'');
     const r=await api('GET','/api/products/rainforest_categories'+qs);
     if(r.ok && r.data && r.data.ok && r.data.categories) list=r.data.categories.filter(c=>String(c.id)!==String(pid||''));
-  }catch(e){}
+    else RF_ULTIMO_ERROR=(r.data&&r.data.error)||('HTTP '+r.status);   // qué contestó Amazon, textual
+  }catch(e){ RF_ULTIMO_ERROR=String(e&&e.message||e); }
   RF_CACHE[key]=list;
   return list;
 }
@@ -4756,9 +4771,10 @@ async function rfFillCatTop(){
   let list=await rfFetchCats(''), nota='';
   if(!list.length){
     // Amazon no dio ese catálogo: no dejamos el desplegable vacío.
+    const porque=RF_ULTIMO_ERROR?(': '+RF_ULTIMO_ERROR):'';
     list=await rfFetchCats('','bestsellers');
     if(!list.length) list=RF_BEST_FALLBACK;
-    nota=' (Amazon no dio el catálogo de este modo; se muestran las de más vendidos)';
+    nota=' (Amazon no dio el catálogo de este modo'+porque+'; se muestran las de más vendidos)';
   }
   rfPaintTop(list);
   if(sel.value) await rfDrill(sel,2);
@@ -4848,6 +4864,7 @@ document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>el.addEventL
 function cfActive(){ return !!($('cfCat').value || $('cfSub').value || ($('cfView')&&$('cfView').value!=='')); }
 function updateCatActions(){
   const filterActive=cfActive(), n=SEL.size;
+  if($('bulkApply')) $('bulkApply').textContent = n>0 ? ('Aplicar a '+n+' seleccionado(s)') : 'Aplicar al grupo';
   if(n===0 && !filterActive){ $('catActions').style.display='none'; return; }
   $('catActions').style.display='flex';
   $('catSelInfo').textContent = n>0 ? (n+' seleccionado(s)') : ('Filtro activo ('+currentList().length+')');

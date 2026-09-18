@@ -222,7 +222,16 @@ class Api::ProductsController < ApplicationController
       )
     end
 
-    render json: { ok: true, old_price: old_usd, new_price: usd }, status: :ok
+    # PROMOCIÓN: la MISMA lectura que hace la pasada automática, para que el
+    # botón manual y el refresco de las 3 am nunca digan cosas distintas. Si
+    # Amazon ya no enseña precio de lista arriba del de venta, el artículo
+    # REGRESA a precio normal (sale de la vista 0) solo.
+    estaba = product.promo?
+    sigue = (defined?(PriceRefresh) ? PriceRefresh.apply_offer!(product, detail, value.to_f) : estaba)
+
+    render json: { ok: true, old_price: old_usd, new_price: usd,
+                   promo: sigue, promo_started: (!estaba && sigue), promo_ended: (estaba && !sigue),
+                   promo_percent_off: product.reload.promo_percent_off }, status: :ok
   rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end

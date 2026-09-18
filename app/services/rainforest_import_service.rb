@@ -258,10 +258,17 @@ class RainforestImportService
     return { ok: false, error: 'No hay API key de Rainforest configurada.' } unless configured?
 
     kind = CATEGORY_TYPES.include?(type.to_s) ? type.to_s : 'standard'
-    params = { type: kind, domain: amazon_domain }
+    # OJO: el árbol NORMAL de Amazon es lo que Rainforest devuelve por OMISIÓN.
+    # Mandar type=standard lo rechaza (422); 'bestsellers' y 'deals' sí son
+    # valores válidos. Por eso para el árbol normal no se manda type.
+    params = { domain: amazon_domain }
+    params[:type] = kind unless kind == 'standard'
     params[:parent_id] = parent_id if parent_id.present?
     res = fetch_categories(params)
-    return { ok: false, error: res[:error] } unless res[:ok]
+    unless res[:ok]
+      Rails.logger.warn "[rainforest/categories] type=#{kind} domain=#{amazon_domain} parent=#{parent_id.inspect} -> #{res[:error]}"
+      return { ok: false, error: res[:error], type: kind }
+    end
 
     cats = (res[:body]['categories'] || res[:body]['bestsellers'] || []).filter_map do |c|
       id = c['id'] || c['category_id']

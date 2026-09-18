@@ -4526,18 +4526,24 @@ function renderRf(){
   $('rfGrid').innerHTML=RF.map(p=>{
     const yaEsta=rfInCat(p.asin);
     const inCat=yaEsta && !promos;      // solo BLOQUEA fuera del modo promociones
-    const slash = yaEsta
+    // La raya diagonal solo va cuando el artículo NO se puede elegir. El aviso
+    // de "ya en catálogo" va DENTRO de la tarjeta (antes iba encima y tapaba la
+    // casilla: no se veía qué estaba seleccionado).
+    const slash = inCat
+      ? '<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, transparent calc(50% - 1.5px), #d11 calc(50% - 1.5px), #d11 calc(50% + 1.5px), transparent calc(50% + 1.5px))"></div>'
+      : '';
+    const yaTag = yaEsta
       ? (inCat
-          ? '<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, transparent calc(50% - 1.5px), #d11 calc(50% - 1.5px), #d11 calc(50% + 1.5px), transparent calc(50% + 1.5px))"></div>'
-            + '<div style="position:absolute;top:6px;left:6px;background:#d11;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px">Ya en catálogo</div>'
-          : '<div style="position:absolute;top:6px;left:6px;background:#0a7d32;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px" title="Ya está en el catálogo: al descargarlo se ACTUALIZA su promoción y su precio, sin tocar turns, factor ni estatus.">Ya en catálogo · actualiza la promo</div>')
+          ? '<span style="display:inline-block;background:#d11;color:#fff;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:5px">Ya en catálogo</span>'
+          : '<span title="Ya está en el catálogo: al descargarlo se ACTUALIZA su promoción y su precio, sin tocar turns, factor ni estatus." style="display:inline-block;background:#0a7d32;color:#fff;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:5px">Ya en catálogo · actualiza la promo</span>')
       : '';
     return `
     <label style="border:1px solid var(--line);border-radius:10px;padding:8px;cursor:${inCat?'not-allowed':'pointer'};display:block;background:#fff;position:relative;${inCat?'opacity:.6':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
-        <input type="checkbox" class="rfChk" data-asin="${esc(p.asin)}" ${inCat?'disabled':''}>
+        <input type="checkbox" class="rfChk" data-asin="${esc(p.asin)}" ${inCat?'disabled':''} style="width:17px;height:17px;accent-color:#FF7517;cursor:${inCat?'not-allowed':'pointer'};flex:0 0 auto;margin:1px 0 0">
         <span style="font-size:11px;color:var(--mut);text-align:right">${p.price_raw?esc(p.price_raw):(p.price_value?('$'+esc(p.price_value)):'—')}${(p.list_price_raw&&p.list_price_value&&p.price_value&&p.list_price_value>p.price_value)?`<br><s style="opacity:.65">${esc(p.list_price_raw)}</s>`:''}</span>
       </div>
+      ${yaTag?`<div style="margin:5px 0 0">${yaTag}</div>`:''}
       ${(p.percent_off||p.deal_badge)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 0">
         ${p.percent_off?`<span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:#d11;color:#fff">-${esc(p.percent_off)}%</span>`:''}
         ${p.deal_badge?`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#fff3e0;color:#9a3c00">${esc(p.deal_badge)}${p.is_lightning?' ⚡':''}</span>`:''}

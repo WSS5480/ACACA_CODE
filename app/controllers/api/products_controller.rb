@@ -138,12 +138,15 @@ class Api::ProductsController < ApplicationController
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end
 
-  # GET /api/products/rainforest_categories  { parent_id? }
-  # Lista las categorías de más-vendidos válidas para poblar el dropdown.
+  # GET /api/products/rainforest_categories  { parent_id?, type? }
+  # Árbol de categorías de Amazon para los desplegables del scraper. type elige el
+  # catálogo: standard (búsqueda, el árbol real del sitio), bestsellers (ranking)
+  # o deals (ofertas). Sin parent_id: departamentos raíz; con parent_id: sus hijos.
   def rainforest_categories
-    result = RainforestImportService.new.bestseller_categories(
+    result = RainforestImportService.new.amazon_categories(
       amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
-      parent_id: params[:parent_id].presence
+      parent_id: params[:parent_id].presence,
+      type: params[:type].presence || 'standard'
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end

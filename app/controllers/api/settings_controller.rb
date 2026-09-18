@@ -56,7 +56,10 @@ class Api::SettingsController < ApplicationController
       pti_max: (Product.respond_to?(:pti_max) ? Product.pti_max : 0),
       pti_max_variable: (Product.respond_to?(:pti_max_variable) ? Product.pti_max_variable : 0),
       category_down_floors: (defined?(CategoryFloor) ? CategoryFloor.floors : {}),
-      category_floor_base: (defined?(CategoryFloor) ? CategoryFloor::BASE_PCT : 10)
+      category_floor_base: (defined?(CategoryFloor) ? CategoryFloor::BASE_PCT : 10),
+      # Departamentos REALES de Amazon que hoy tienen productos: con esto el
+      # admin dibuja un campo por departamento en vez de una lista fija.
+      category_departments: (defined?(CategoryFloor) ? CategoryFloor.departments : [])
     }, status: :ok
   end
 
@@ -118,13 +121,19 @@ class Api::SettingsController < ApplicationController
 
     raw = params[:floors].respond_to?(:to_unsafe_h) ? params[:floors].to_unsafe_h : {}
     clean = {}
-    CategoryFloor::DEPTS.keys.each do |d|
-      v = raw[d].to_f
+    raw.each do |d, val|
+      nombre = d.to_s.strip
+      next if nombre.blank? || nombre.length > 120
+
+      v = val.to_f
       next if v <= CategoryFloor::BASE_PCT # 10 o menos = piso base, no se guarda
 
-      return render(json: { error: "Valor invalido para #{d} (entre 10 y 90)" }, status: :unprocessable_entity) if v > 90
+      if v > CategoryFloor::MAX_PCT
+        return render(json: { error: "Valor invalido para #{nombre} (entre 10 y #{CategoryFloor::MAX_PCT.to_i})" },
+                      status: :unprocessable_entity)
+      end
 
-      clean[d] = v.round(2)
+      clean[nombre] = v.round(2)
     end
     AppSetting.set('category_down_floors', clean.to_json)
     AuditLog.record!(actor: @current_user, action: 'rates_updated',

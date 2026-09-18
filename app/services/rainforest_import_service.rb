@@ -239,12 +239,25 @@ class RainforestImportService
     { ok: false, error: e.message }
   end
 
-  # Lista las categorías de "más vendidos" VÁLIDAS para el dominio (endpoint /categories
-  # de Rainforest). Sin parent_id devuelve los departamentos de nivel superior.
-  def bestseller_categories(amazon_domain: 'amazon.com.mx', parent_id: nil)
+  # Rainforest publica VARIOS catálogos de categorías y cada modo del scraper
+  # necesita EL SUYO:
+  #   standard    -> árbol real de Amazon (el de la barra del sitio). Es el único
+  #                  que sirve para buscar dentro de una categoría (type=search),
+  #                  y el único que baja hasta Videojuegos > PlayStation 5.
+  #   bestsellers -> el de las listas de ranking (type=bestsellers).
+  #   deals       -> el de las ofertas vigentes (type=deals).
+  # Mezclarlos da "categoría no válida" o cero resultados.
+  CATEGORY_TYPES = %w[standard bestsellers deals].freeze
+
+  # Categorías de Amazon para los desplegables del scraper. Sin parent_id devuelve
+  # los departamentos raíz; con parent_id, los hijos de ese nodo (así se baja de
+  # Videojuegos a PlayStation 5 y a lo que haya debajo). has_children dice si ese
+  # nodo todavía tiene otro nivel; nil = Amazon no lo informó.
+  def amazon_categories(amazon_domain: 'amazon.com.mx', parent_id: nil, type: 'standard')
     return { ok: false, error: 'No hay API key de Rainforest configurada.' } unless configured?
 
-    params = { type: 'bestsellers', domain: amazon_domain }
+    kind = CATEGORY_TYPES.include?(type.to_s) ? type.to_s : 'standard'
+    params = { type: kind, domain: amazon_domain }
     params[:parent_id] = parent_id if parent_id.present?
     res = fetch_categories(params)
     return { ok: false, error: res[:error] } unless res[:ok]
@@ -252,11 +265,20 @@ class RainforestImportService
     cats = (res[:body]['categories'] || res[:body]['bestsellers'] || []).filter_map do |c|
       id = c['id'] || c['category_id']
       next if id.blank?
-      { id: id, name: c['name'] || id }
+      { id: id, name: c['name'] || id,
+        has_children: c['has_children'].nil? ? nil : !!c['has_children'],
+        path: c['path'] }
     end
-    { ok: true, categories: cats }
+    padre = res[:body]['current_category'] || res[:body]['parent_category']
+    { ok: true, type: kind, categories: cats,
+      parent: padre.is_a?(Hash) ? { id: padre['id'], name: padre['name'], path: padre['path'] } : nil }
   rescue StandardError => e
     { ok: false, error: e.message }
+  end
+
+  # Nombre anterior: seguía pidiendo SOLO el catálogo de más vendidos.
+  def bestseller_categories(amazon_domain: 'amazon.com.mx', parent_id: nil)
+    amazon_categories(amazon_domain: amazon_domain, parent_id: parent_id, type: 'bestsellers')
   end
 
   # Verifica vendedor/envío de una lista de ASINs SIN importar (1 crédito c/u).

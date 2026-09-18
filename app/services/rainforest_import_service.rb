@@ -385,6 +385,7 @@ class RainforestImportService
   def import_asins(asins, amazon_domain, sold_only: true, delivered_only: true, keywords: nil, promo: nil)
     passing = []
     skipped = 0
+    detalles = {}   # asin => detalle de Amazon, para leerle la oferta sin gastar otro crédito
 
     asins.each do |asin|
       product_data = fetch_product_detail(asin, amazon_domain)
@@ -401,22 +402,37 @@ class RainforestImportService
         next
       end
 
+      detalles[product_data['asin']] = product_data
       passing << { 'success' => true, 'id' => product_data['asin'], 'result' => { 'product' => product_data } }
     end
 
     ManageJson::ProcessProductsJob.new.perform(passing, false, 'active') if passing.any?
 
-    # PROMOCIÓN: se marca DESPUÉS de crear/actualizar el producto, con lo que
-    # enseñaba la lista de ofertas de Amazon. Los artículos en promoción se van
-    # a la vista 0 solos (Product#effective_view) sin perder su vista.
+    # PROMOCIÓN: se decide con EL DETALLE QUE AMAZON YA NOS DIO (precio de lista
+    # contra precio de venta), no con lo que traía la pantalla. Así queda marcada
+    # venga de donde venga la descarga —Promociones, Búsqueda o Más vendidos— y
+    # con el MISMO criterio que la revisión automática de las 3 am.
+    # Si Amazon no mandó precio de lista en el detalle (pasa en las ofertas
+    # relámpago) pero la tarjeta sí lo enseñaba, se usa lo de la tarjeta.
     promocionados = 0
-    Rails.logger.info "[rainforest/import] asins=#{asins.inspect} pasaron=#{passing.size} promo=#{promo.inspect}"
-    if promo.is_a?(Hash) && promo[:percent_off].to_f.positive? && passing.any?
+    if passing.any?
       asins_ok = passing.map { |x| x['id'] }.compact
       Product.where(asin: asins_ok).find_each do |p|
-        p.apply_promo!(list_price: promo[:list_price], percent_off: promo[:percent_off], badge: promo[:badge])
-        promocionados += 1
-        Rails.logger.info "[rainforest/import] #{p.asin} marcado en promocion #{promo[:percent_off]}%"
+        d = detalles[p.asin]
+        marcado = false
+        if d.present?
+          venta = ((d['buybox_winner'] || {})['price'] || {})['value'].to_f
+          marcado = PriceRefresh.apply_offer!(p, d, venta) if venta.positive? && defined?(PriceRefresh)
+        end
+        if !marcado && promo.is_a?(Hash) && promo[:percent_off].to_f >= Product::PROMO_MIN_PCT
+          p.apply_promo!(list_price: promo[:list_price], percent_off: promo[:percent_off], badge: promo[:badge])
+          marcado = true
+        end
+        promocionados += 1 if marcado
+        bb = (d || {})['buybox_winner'] || {}
+        Rails.logger.info "[rainforest/import] #{p.asin} promo=#{marcado} pct=#{p.promo_percent_off.inspect} " \
+                          "rrp=#{(bb['rrp'] || {})['value'].inspect} save=#{(bb['save'] || {})['value'].inspect} " \
+                          "tarjeta=#{promo.inspect}"
       end
     end
 

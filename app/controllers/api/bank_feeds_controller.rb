@@ -400,7 +400,12 @@ module Api
 
     def config_json
       { plaid: { configured: BankFeeds::PlaidClient.configured?, env: BankFeeds::PlaidClient.env },
-        stripe: { configured: StripeClient.configured? },
+        stripe: { configured: StripeClient.configured?('us'),
+                  us: StripeClient.configured?('us'), mx: StripeClient.configured?('mx'),
+                  currencies: (defined?(PayCurrency) ? PayCurrency.available : ['usd']),
+                  fx_markup_pct: (defined?(PayCurrency) ? PayCurrency.markup_pct : nil),
+                  fx_rate_mxn: (defined?(PayCurrency) ? PayCurrency.rate('mxn') : nil) },
+        stripe_webhook_url: "#{request.base_url}/api/stripe/webhook",
         redirect_uri: admin_url, plaid_webhook_url: webhook_url('plaid') }
     end
 

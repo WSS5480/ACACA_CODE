@@ -170,6 +170,7 @@ Rails.application.routes.draw do
     post 'stripe/multi_payment_intent', to: 'api/stripe#multi_payment_intent' # un pago que cubre varios contratos
     delete 'stripe/payment_methods/:id', to: 'api/stripe#detach_payment_method'
     get  'stripe/config',          to: 'api/stripe#publishable_config'
+    post 'stripe/pay_currency',    to: 'api/stripe#pay_currency'      # moneda preferida del cliente (USD / MXN)
     post 'stripe/webhook',         to: 'api/stripe#webhook'
 
     # Contabilidad (solo master/admin): registro, estado de resultados, gastos,

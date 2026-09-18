@@ -19,17 +19,33 @@ module BankFeeds
       "#{n} depósitos revisados · #{m} emparejados"
     end
 
+    # Depósitos de LAS DOS cuentas: EE. UU. (dólares) y México (pesos). Cada
+    # uno se empareja después contra un movimiento del banco de su MISMA moneda
+    # (la cuenta de México se lleva hoy como cuenta manual con su estado de cuenta).
     def self.refresh_payouts!(days: DAYS_BACK)
+      StripeClient::ACCOUNTS.sum do |acct|
+        next 0 unless StripeClient.configured?(acct)
+
+        begin
+          refresh_account_payouts!(acct, days: days)
+        rescue StripeClient::Error => e
+          Rails.logger.error "[StripeReconciler] cuenta #{acct}: #{e.message}"
+          0
+        end
+      end
+    end
+
+    def self.refresh_account_payouts!(acct, days: DAYS_BACK)
       since = (Date.current - days).to_time.to_i
       starting_after = nil
       n = 0
       loop do
         params = { limit: 100, arrival_date: { gte: since } }
         params[:starting_after] = starting_after if starting_after
-        res = StripeClient.request(:get, '/v1/payouts', params)
+        res = StripeClient.request(:get, '/v1/payouts', params, account: acct)
         rows = res['data'] || []
         rows.each do |p|
-          upsert_payout!(p)
+          upsert_payout!(p, acct)
           n += 1
         end
         break unless res['has_more'] && rows.any?
@@ -39,7 +55,7 @@ module BankFeeds
       n
     end
 
-    def self.upsert_payout!(p)
+    def self.upsert_payout!(p, acct = 'us')
       sp = StripePayout.find_or_initialize_by(stripe_id: p['id'])
       dest = p['destination'].is_a?(Hash) ? p['destination']['id'] : p['destination']
       sp.assign_attributes(
@@ -50,6 +66,7 @@ module BankFeeds
         destination: dest, method: p['method'],
         raw: p.slice('id', 'amount', 'currency', 'arrival_date', 'created', 'status', 'description', 'statement_descriptor', 'method', 'type', 'automatic')
       )
+      sp.account = acct if sp.respond_to?(:account=)
       sp.save!
       sp
     end

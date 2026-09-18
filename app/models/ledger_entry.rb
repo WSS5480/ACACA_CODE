@@ -37,6 +37,12 @@ class LedgerEntry < ApplicationRecord
       client_name: [u&.name, u&.last_name].compact.join(' ').presence,
       payment_id: p.id, contract_id: p.contract_id, user_id: u&.id
     }
+    # MONEDA DEL COBRO: el renglón va en dólares; si la tarjeta se cobró en
+    # pesos (Stripe México) queda constancia del importe y la moneda reales.
+    if column_names.include?('charge_currency')
+      attrs[:charge_currency] = p.try(:charge_currency).presence || 'USD'
+      attrs[:charge_amount] = (p.try(:charge_amount).presence || p.try(:total_charged).presence || p.amount).to_f.round(2)
+    end
     # Datos del RECIBO (artículos, % de exención y no. de pago) — defensivo por
     # si la migración de recibos aún no ha corrido en producción.
     if column_names.include?('items_label') && c

@@ -2163,21 +2163,26 @@ async function gwPay(){
 async function gwCardStart(cid,amt,ap){
   $('gwPayMsg').textContent='Preparando formulario de tarjeta…';
   const cfg=await api('GET','/api/stripe/config');
-  const pk=cfg.data&&cfg.data.publishable_key;
-  if(!pk){ $('gwPayMsg').textContent='Falta STRIPE_PUBLISHABLE_KEY en Render (Environment) para poder capturar tarjetas aquí.'; return; }
+  const C=(cfg.data)||{};
+  // MONEDAS disponibles: dólares (Stripe EE. UU.) y, si están sus llaves en
+  // Render, pesos (Stripe México). El contrato sigue en dólares; la moneda solo
+  // decide con qué cuenta y con qué importe se cobra la tarjeta.
+  const CURS=(C.currencies&&C.currencies.length)?C.currencies:['usd'];
+  const PK=c=>((c==='mxn'?(C.accounts&&C.accounts.mx&&C.accounts.mx.publishable_key):(C.accounts&&C.accounts.us&&C.accounts.us.publishable_key))||C.publishable_key||'');
+  const RATE=c=>((C.fx&&C.fx.rates&&Number(C.fx.rates[c]))||(c==='usd'?1:0));
+  if(!PK(CURS[0])){ $('gwPayMsg').textContent='Falta STRIPE_PUBLISHABLE_KEY en Render (Environment) para poder capturar tarjetas aquí.'; return; }
   if(!window.Stripe){
     try{ await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://js.stripe.com/v3/'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
     catch(e){ $('gwPayMsg').textContent='No se pudo cargar Stripe.js.'; return; }
   }
-  const r=await api('POST','/api/stripe/payment_intent',{contract_id:cid,base_amount:amt,apply_to:ap,kind:'staff'});
-  if(!r.ok||!r.data||!r.data.client_secret){ $('gwPayMsg').textContent=(r.data&&r.data.error)||'No se pudo iniciar el cobro.'; return; }
-  const cs=r.data.client_secret;
   const ov=document.createElement('div');
   ov.id='gwCardOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:1000;display:flex;align-items:center;justify-content:center';
   ov.innerHTML=`<div style="background:#fff;border-radius:14px;padding:22px 24px;width:min(430px,92vw)">
-    <div style="font-weight:800;color:var(--navy);font-size:16px;margin-bottom:4px">💳 Cobro con tarjeta — ${money(amt)} + IVA</div>
+    <div style="font-weight:800;color:var(--navy);font-size:16px;margin-bottom:4px">💳 Cobro con tarjeta — ${money(amt)} USD + IVA</div>
     <p class="muted" style="font-size:12px;margin:0 0 12px">Captura los datos de la tarjeta del cliente. Van directo a Stripe (formulario seguro); no se guardan en la plataforma.</p>
+    ${CURS.length>1?`<div id="gwCurRow" style="display:flex;gap:8px;margin:0 0 10px">${CURS.map(c=>`<button class="btn gwCur" data-c="${c}" style="flex:1;background:#eef0f6;color:var(--navy)">${c==='mxn'?'Pesos (MXN)':'Dólares (USD)'}</button>`).join('')}</div>
+    <p id="gwCurNote" class="muted" style="font-size:12px;margin:0 0 10px"></p>`:''}
     <div id="gwCardEl" style="border:1px solid var(--line);border-radius:10px;padding:12px"></div>
     <p id="gwCardErr" style="color:#c62828;font-size:12.5px;margin:8px 0 0;min-height:16px"></p>
     <div style="display:flex;gap:10px;margin-top:12px">
@@ -2186,15 +2191,37 @@ async function gwCardStart(cid,amt,ap){
     </div>
   </div>`;
   document.body.appendChild(ov);
-  const stripe=Stripe(pk);
-  const card=stripe.elements().create('card',{hidePostalCode:true});
-  card.mount('#gwCardEl');
   $('gwCardCancel').onclick=()=>{ ov.remove(); $('gwPayMsg').textContent='Cobro cancelado.'; };
+
+  let cur=CURS[0], stripe=null, card=null, cs=null;
+  // (Re)crea el cargo en la moneda elegida y vuelve a montar el formulario.
+  async function prepare(c){
+    cur=c;
+    $('gwCardGo').disabled=true; $('gwCardErr').textContent='';
+    if(card){ try{ card.unmount(); }catch(e){} card=null; }
+    $('gwCardEl').innerHTML='';
+    if(CURS.length>1){
+      [...ov.querySelectorAll('.gwCur')].forEach(b=>{ const on=b.dataset.c===cur; b.style.background=on?'var(--orange,#FF7517)':'#eef0f6'; b.style.color=on?'#fff':'var(--navy)'; });
+    }
+    const r=await api('POST','/api/stripe/payment_intent',{contract_id:cid,base_amount:amt,apply_to:ap,kind:'staff',currency:cur});
+    if(!r.ok||!r.data||!r.data.client_secret){ $('gwCardErr').textContent=(r.data&&r.data.error)||'No se pudo iniciar el cobro.'; return; }
+    cs=r.data.client_secret;
+    if($('gwCurNote')) $('gwCurNote').textContent=(cur==='mxn'&&r.data.amount_native)?('Se cobrará MXN $'+Number(r.data.amount_native).toFixed(2)+' (1 USD = '+Number(r.data.fx_rate||RATE('mxn')).toFixed(2)+' MXN).'):'Se cobrará en dólares.';
+    $('gwCardGo').textContent='Cobrar ahora'+((cur==='mxn'&&r.data.amount_native)?(' — MXN $'+Number(r.data.amount_native).toFixed(2)):(r.data.amount_usd?(' — USD $'+Number(r.data.amount_usd).toFixed(2)):''));
+    stripe=Stripe(PK(cur));
+    card=stripe.elements().create('card',{hidePostalCode:true});
+    card.mount('#gwCardEl');
+    $('gwCardGo').disabled=false;
+  }
+  if(CURS.length>1){ [...ov.querySelectorAll('.gwCur')].forEach(b=>{ b.onclick=()=>prepare(b.dataset.c); }); }
+  await prepare(cur);
+
   $('gwCardGo').onclick=async()=>{
+    if(!cs||!stripe||!card) return;
     $('gwCardGo').disabled=true; $('gwCardErr').textContent='';
     const res=await stripe.confirmCardPayment(cs,{payment_method:{card:card,billing_details:{name:GW.name||undefined}}});
     if(res.error){ $('gwCardErr').textContent=res.error.message||'La tarjeta fue rechazada.'; $('gwCardGo').disabled=false; return; }
-    const fin=await api('POST','/api/stripe/finalize',{payment_intent_id:res.paymentIntent.id});
+    const fin=await api('POST','/api/stripe/finalize',{payment_intent_id:res.paymentIntent.id,currency:cur});
     ov.remove();
     if(fin.ok&&fin.data&&fin.data.ok){ CLIENTS=[]; loaded.cli=0; $('gwPayMsg').textContent='✓ Cobro con tarjeta realizado.'; openGesWb(GW.uid,GW.name,GW.phone); }
     else $('gwPayMsg').textContent=(fin.data&&fin.data.error)||'El cargo pasó en Stripe; refresca para confirmar el registro.';
@@ -6060,8 +6087,14 @@ function bkConfig(){
     <code style="display:block;background:var(--sunken);padding:8px 10px;border-radius:8px;font-size:12.5px;word-break:break-all">${esc(c.redirect_uri||'')}</code>
     <p class="muted" style="margin:10px 0 4px">Webhook (se manda solo al conectar; Plaid avisa cuando hay movimientos nuevos y el servidor sincroniza en el siguiente tick de 15 min):</p>
     <code style="display:block;background:var(--sunken);padding:8px 10px;border-radius:8px;font-size:12.5px;word-break:break-all">${esc(c.plaid_webhook_url||'')}</code>
-    <div class="stitle" style="padding:18px 0 8px">Stripe ${ok(c.stripe&&c.stripe.configured)}</div>
-    <p class="muted" style="margin:0">Los depósitos (payouts) se leen con la misma STRIPE_SECRET_KEY de los cobros. La conciliación corre después de cada sincronización y con el botón «Conciliar ahora».</p>
+    <div class="stitle" style="padding:18px 0 8px">Stripe EE. UU. — cobros en dólares ${ok(c.stripe&&c.stripe.us)}</div>
+    <p class="muted" style="margin:0 0 10px">Variables en Render: <b>STRIPE_SECRET_KEY</b>, <b>STRIPE_PUBLISHABLE_KEY</b> y <b>STRIPE_WEBHOOK_SECRET</b>. Los depósitos (payouts) se leen con la misma llave de los cobros.</p>
+    <div class="stitle" style="padding:8px 0 8px">Stripe México — cobros en pesos ${ok(c.stripe&&c.stripe.mx)}</div>
+    <p class="muted" style="margin:0 0 6px">Variables en Render: <b>STRIPE_MX_SECRET_KEY</b>, <b>STRIPE_MX_PUBLISHABLE_KEY</b> y <b>STRIPE_MX_WEBHOOK_SECRET</b>. Mientras falten, la tienda solo ofrece dólares y nada cambia.</p>
+    <p class="muted" style="margin:0 0 6px">El contrato SIEMPRE está en dólares: al pagar en pesos se cobra el equivalente al tipo de cambio del día más el margen <b>${c.stripe&&c.stripe.fx_markup_pct!=null?esc(String(c.stripe.fx_markup_pct)):'3'}%</b> (variable <b>FX_MARKUP_PCT</b>).${c.stripe&&c.stripe.fx_rate_mxn?` Hoy: <b>1 USD = ${Number(c.stripe.fx_rate_mxn).toFixed(2)} MXN</b>.`:''}</p>
+    <p class="muted" style="margin:10px 0 4px">Webhook (la MISMA URL en las dos cuentas de Stripe — Developers → Webhooks → evento <code>payment_intent.succeeded</code>):</p>
+    <code style="display:block;background:var(--sunken);padding:8px 10px;border-radius:8px;font-size:12.5px;word-break:break-all">${esc(c.stripe_webhook_url||'')}</code>
+    <p class="muted" style="margin:8px 0 0">Monedas que se pueden cobrar hoy: <b>${esc(((c.stripe&&c.stripe.currencies)||['usd']).map(x=>x.toUpperCase()).join(' · '))}</b>. La conciliación corre después de cada sincronización y con el botón «Conciliar ahora»; los depósitos de cada cuenta se emparejan contra movimientos del banco de su misma moneda.</p>
     <div class="stitle" style="padding:18px 0 8px">Bancos de México</div>
     <p class="muted" style="margin:0">Hoy se cargan con <b>Cuenta manual → Importar estado de cuenta</b> (CSV o Excel del portal del banco). La estructura ya está lista para un agregador mexicano con sincronización automática cuando se elija el proveedor.</p>
     <div class="stitle" style="padding:18px 0 8px">Sincronización automática</div>

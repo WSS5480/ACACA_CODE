@@ -83,9 +83,21 @@ class RainforestImportService
   # dinámicos, así que filtrar aquí es más confiable). NO importa; solo devuelve la lista
   # para que el admin elija, igual que category_preview. El precio está en la moneda del
   # dominio (MXN para amazon.com.mx).
-  def search_preview(search_term:, amazon_domain: 'amazon.com.mx', min_price: nil, max_price: nil, limit: 50)
+  # CATEGORÍA DE AMAZON sin "más vendidos": el mismo type=search acepta
+  # category_id (nodo real de Amazon), así que se puede buscar DENTRO de una
+  # categoría con o sin palabra, con rango de precio y con el orden que se pida.
+  # Rainforest exige search_term O category_id (al menos uno).
+  SORT_BY = %w[bestseller_rankings most_recent price_low_to_high price_high_to_low featured average_review].freeze
+
+  def search_preview(search_term:, amazon_domain: 'amazon.com.mx', min_price: nil, max_price: nil, limit: 50,
+                     category_id: nil, sort_by: nil)
     return { ok: false, error: 'No hay API key de Rainforest configurada.' } unless configured?
-    return { ok: false, error: 'Escribe qué buscar (ej. refrigerador).' } if search_term.blank?
+
+    term = search_term.to_s.strip
+    cat  = category_id.to_s.strip
+    if term.blank? && cat.blank?
+      return { ok: false, error: 'Escribe qué buscar (ej. refrigerador) o elige una categoría de Amazon.' }
+    end
 
     min_p = min_price.present? ? min_price.to_f : nil
     max_p = max_price.present? ? max_price.to_f : nil
@@ -94,7 +106,15 @@ class RainforestImportService
     # espectro de precios; traemos 2 páginas para tener suficientes candidatos tras
     # filtrar por rango. Ordenar por precio concentraría los resultados en un extremo
     # y dejaría vacías las bandas intermedias/altas.
-    params = { type: 'search', amazon_domain: amazon_domain, search_term: search_term, max_page: 2 }
+    params = { type: 'search', amazon_domain: amazon_domain, max_page: 2 }
+    params[:search_term] = term if term.present?
+    if cat.present?
+      params[:category_id] = cat
+      # Navegar una categoría completa: fuera los patrocinados (son ruido y casi
+      # nunca pertenecen a la categoría que se está revisando).
+      params[:exclude_sponsored] = 'true' if term.blank?
+    end
+    params[:sort_by] = sort_by.to_s if SORT_BY.include?(sort_by.to_s)
 
     search = fetch(params)
     return { ok: false, error: search[:error] } unless search[:ok]

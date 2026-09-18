@@ -89,6 +89,10 @@ class Api::ProductsController < ApplicationController
       amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
       min_price: params[:min_price],
       max_price: params[:max_price],
+      # Categoría real de Amazon (nodo) para buscar DENTRO de ella sin usar
+      # el modo "más vendidos", y orden de los resultados.
+      category_id: params[:category_id].presence,
+      sort_by: params[:sort_by].presence,
       limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)

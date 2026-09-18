@@ -4624,10 +4624,11 @@ const RF_BEST_FALLBACK=[
 ];
 function rfFillBestCats(){
   const best=$('rfBest')&&$('rfBest').checked;
-  let list=(rfBestCats&&rfBestCats.length)?rfBestCats:RF_BEST_FALLBACK;
-  // En búsqueda normal solo sirven los NODOS reales de Amazon (numéricos): los
-  // ids tipo 'bestsellers_electronics' son alias del endpoint de más vendidos.
-  if(!best) list=list.filter(c=>/^[0-9]+$/.test(String(c.id)));
+  const list=(rfBestCats&&rfBestCats.length)?rfBestCats:RF_BEST_FALLBACK;
+  // Se muestran TODAS las categorías en los dos modos. Las numéricas son nodos
+  // reales de Amazon (se puede buscar dentro de ellas); las demás son alias del
+  // endpoint de más vendidos y el servidor las resuelve con su lista (aplicando
+  // el rango de precio), así que elegir cualquiera siempre da resultados.
   const prev=$('rfCat').value;
   $('rfCat').innerHTML=(best?'':'<option value="">Todas las categorías</option>')
     +list.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
@@ -4676,7 +4677,8 @@ async function rfSearch(){
   $('rfDoSearch').disabled=false; rfBarDone();
   if(!(r.ok && r.data && r.data.ok)){ $('rfMsg').textContent='Error: '+((r.data&&r.data.error)||('HTTP '+r.status)); $('rfResults').style.display='none'; return; }
   RF=r.data.items||[];
-  $('rfMsg').textContent = RF.length ? (RF.length+' productos encontrados'+(cat?(' en '+catName):'')+'. Elige cuáles descargar.') : 'Sin resultados en ese rango de precio. Prueba otro rango, otra categoría u otra palabra.';
+  const nota=(r.data&&r.data.note)?(' '+r.data.note):'';
+  $('rfMsg').textContent = (RF.length ? (RF.length+' productos encontrados'+(cat?(' en '+catName):'')+'. Elige cuáles descargar.') : 'Sin resultados en ese rango de precio. Prueba otro rango, otra categoría u otra palabra.')+nota;
   renderRf();
 }
 $('rfBest').onchange=()=>rfApplyBestMode($('rfBest').checked);

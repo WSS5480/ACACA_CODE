@@ -102,6 +102,33 @@ class RainforestImportService
     min_p = min_price.present? ? min_price.to_f : nil
     max_p = max_price.present? ? max_price.to_f : nil
 
+    # ALIAS vs NODO: Rainforest devuelve categorías de dos clases. Las numéricas
+    # ('9687925011') son nodos REALES de Amazon y sirven para buscar dentro de la
+    # categoría; las que no lo son ('bestsellers_electronics') son alias del
+    # endpoint de más vendidos y NO se pueden buscar. Para que elegir cualquier
+    # categoría siempre funcione:
+    #   alias + sin palabra  -> su lista de más vendidos, con el rango de precio aplicado
+    #   alias + con palabra  -> se busca la palabra (se avisa que la categoría no aplica)
+    if cat.present? && !cat.match?(/\A\d+\z/)
+      if term.blank?
+        res = category_preview(category_id: cat, amazon_domain: amazon_domain, limit: 200)
+        return res unless res[:ok]
+
+        items = res[:items]
+        if min_p || max_p
+          items = items.select do |i|
+            v = i[:price_value]
+            !v.nil? && (min_p.nil? || v >= min_p) && (max_p.nil? || v <= max_p)
+          end
+        end
+        return { ok: true, count: [items.size, limit].min, items: items.first(limit), mode: 'bestsellers',
+                 note: 'Esa categoría de Amazon solo permite su lista de más vendidos; se le aplicó tu rango de precio.' }
+      end
+
+      cat = ''
+      note_cat = 'La categoría elegida no se puede combinar con una palabra; se buscó solo la palabra.'
+    end
+
     # Relevancia (sin ordenar por precio) para que los resultados abarquen todo el
     # espectro de precios; traemos 2 páginas para tener suficientes candidatos tras
     # filtrar por rango. Ordenar por precio concentraría los resultados en un extremo
@@ -137,7 +164,9 @@ class RainforestImportService
       }
     end.uniq { |i| i[:asin] }.first(limit)
 
-    { ok: true, count: items.size, items: items }
+    out = { ok: true, count: items.size, items: items }
+    out[:note] = note_cat if defined?(note_cat) && note_cat.present?
+    out
   rescue StandardError => e
     { ok: false, error: e.message }
   end

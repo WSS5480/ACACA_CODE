@@ -171,6 +171,62 @@ class RainforestImportService
     { ok: false, error: e.message }
   end
 
+  # PROMOCIONES (type=deals): las ofertas VIGENTES de Amazon, de todo el sitio o
+  # de una categoría. A diferencia de la búsqueda, cada renglón trae el precio de
+  # oferta, el precio de lista y el % de descuento, que es lo que se pinta en la
+  # vista previa. El rango de precio se aplica aquí (sobre el precio de oferta)
+  # para no depender del formato de price_range de Rainforest.
+  def deals_preview(category_id: nil, amazon_domain: 'amazon.com.mx', min_price: nil, max_price: nil, limit: 50)
+    return { ok: false, error: 'No hay API key de Rainforest configurada.' } unless configured?
+
+    min_p = min_price.present? ? min_price.to_f : nil
+    max_p = max_price.present? ? max_price.to_f : nil
+
+    params = { type: 'deals', amazon_domain: amazon_domain, max_page: 2 }
+    params[:category_id] = category_id.to_s.strip if category_id.present?
+
+    res = fetch(params)
+    return { ok: false, error: res[:error] } unless res[:ok]
+
+    entries = res[:body]['deals_results'] || res[:body]['deals'] || []
+    items = entries.filter_map do |e|
+      next if e['asin'].blank?
+
+      price = e['deal_price'] || e['current_price'] || e['price'] || {}
+      list  = e['list_price'] || {}
+      value = price['value']
+      if min_p || max_p
+        next if value.nil?
+        next if min_p && value < min_p
+        next if max_p && value > max_p
+      end
+      pct = e['percent_off']
+      pct = ((1 - (value.to_f / list['value'].to_f)) * 100).round if pct.blank? && value.to_f.positive? && list['value'].to_f.positive?
+      {
+        asin: e['asin'], title: e['title'], image: e['image'], link: e['link'],
+        rating: e['rating'], price_value: value,
+        price_currency: price['currency'], price_raw: money_raw(price),
+        list_price_value: list['value'], list_price_raw: money_raw(list),
+        percent_off: (pct.to_i.positive? ? pct.to_i : nil),
+        deal_badge: (e['deal_badge'].presence || e['deal_type'].presence),
+        is_lightning: e['is_lightning_deal'] == true
+      }
+    end.uniq { |i| i[:asin] }.first(limit)
+
+    { ok: true, count: items.size, items: items, mode: 'deals' }
+  rescue StandardError => e
+    { ok: false, error: e.message }
+  end
+
+  # "$1,234.56" a partir del objeto de precio de Rainforest (deals no siempre trae raw).
+  def money_raw(price)
+    return nil if price.blank?
+    return price['raw'] if price['raw'].present?
+    return nil if price['value'].blank?
+
+    "#{price['symbol'] || '$'}#{ActiveSupport::NumberHelper.number_to_delimited(format('%.2f', price['value']))}"
+  end
+
   # Importa SOLO los ASINs elegidos (1 crédito c/u) como BORRADOR (inactive), con
   # detalle completo (fotos reales, buybox) usando el pipeline probado.
   def import_selected(asins:, amazon_domain: 'amazon.com.mx', sold_only: false, delivered_only: false, keywords: nil)

@@ -709,9 +709,21 @@
               <option value="20000-">$20,000 o más</option>
             </select>
           </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px" title="Búsqueda = catálogo de Amazon (categoría, palabra, precio y orden). Más vendidos = la lista de ranking de la categoría. Promociones = las ofertas vigentes, con su descuento.">Tipo</label>
+            <select class="sel" id="rfMode" style="min-width:150px">
+              <option value="search" selected>Búsqueda</option>
+              <option value="best">Más vendidos</option>
+              <option value="deals">Promociones</option>
+            </select>
+          </div>
           <div id="rfCatWrap">
-            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px" title="Categoría REAL de Amazon (la misma que usa 'Más vendidos'). Sirve sola, con subcategoría o con palabra.">Categoría de Amazon</label>
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px" title="Departamento REAL de Amazon (el mismo que usa 'Más vendidos'). Sirve solo, con subcategoría o con palabra.">Categoría de Amazon</label>
             <select class="sel" id="rfCat" style="min-width:200px"></select>
+          </div>
+          <div id="rfCatSubWrap" style="display:none">
+            <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px" title="Subcategorías REALES de Amazon dentro del departamento elegido (Promociones, líneas por tipo de producto, etc.). Se cargan al elegir el departamento.">Subcategoría de Amazon</label>
+            <select class="sel" id="rfCatSub" style="min-width:220px"></select>
           </div>
           <div id="rfSortWrap">
             <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Ordenar</label>
@@ -724,11 +736,10 @@
               <option value="average_review">Mejor calificados</option>
             </select>
           </div>
-          <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding-bottom:9px" title="Lista de MÁS VENDIDOS de Amazon de esa categoría (ranking puro, sin palabra ni orden). Sin la casilla, la categoría funciona como filtro de búsqueda normal."><input type="checkbox" id="rfBest"> Solo la lista de más vendidos</label>
           <button class="btn" id="rfDoSearch" style="background:var(--navy);color:#fff">Buscar</button>
           <span class="muted" id="rfMsg"></span>
         </div>
-        <p class="muted" style="margin:8px 0 0;font-size:12px">Busca por <b>Categoría de Amazon</b>, por <b>Subcategoría</b> / marca o palabra, o por las tres juntas — con rango de precio y el orden que elijas. La casilla <b>Solo la lista de más vendidos</b> cambia a la lista de ranking de esa categoría (sin palabra, sin orden).</p>
+        <p class="muted" style="margin:8px 0 0;font-size:12px"><b>Búsqueda</b>: categoría de Amazon (y su subcategoría), palabra o marca, rango de precio y orden — todo combinable. <b>Más vendidos</b>: la lista de ranking de la categoría elegida. <b>Promociones</b>: las ofertas vigentes de Amazon, con su precio de lista y % de descuento; deja la categoría en «Todas» para ver todas. El rango de precio aplica a los tres.</p>
         <div id="rfBar" style="display:none;height:9px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-top:12px">
           <div id="rfBarFill" style="width:0%;height:100%;background:var(--good);border-radius:6px;transition:width .2s ease"></div>
         </div>
@@ -4352,7 +4363,17 @@ function rfSaveRF(){ try{ localStorage.setItem('acasa_rf', JSON.stringify(RF)); 
 function rfBarIndet(){ const b=$('rfBar'),f=$('rfBarFill'); b.style.display=''; f.style.transition='none'; f.classList.add('rfbar-indet'); }
 function rfBarSet(pct){ const b=$('rfBar'),f=$('rfBarFill'); b.style.display=''; f.classList.remove('rfbar-indet'); f.style.transition='width .2s ease'; f.style.width=Math.max(0,Math.min(100,pct))+'%'; }
 function rfBarDone(){ rfBarSet(100); setTimeout(()=>{ $('rfBar').style.display='none'; $('rfBarFill').classList.remove('rfbar-indet'); $('rfBarFill').style.width='0%'; }, 500); }
-function rfCategoryId(){ return ($('rfCat') ? ($('rfCat').value||'').trim() : ''); }
+function rfMode(){ const m=$('rfMode'); return (m&&m.value)||'search'; }   // search | best | deals
+function rfCategoryId(){
+  const sub=($('rfCatSub') && $('rfCatSub').value) ? $('rfCatSub').value.trim() : '';
+  return sub || ($('rfCat') ? ($('rfCat').value||'').trim() : '');   // la más específica gana
+}
+function rfCategoryName(){
+  const s=$('rfCatSub');
+  if(s && s.value) return (((s.selectedOptions||[])[0]||{}).textContent||'').trim();
+  const c=$('rfCat');
+  return (c && c.value) ? ((((c.selectedOptions||[])[0]||{}).textContent)||'').trim() : '';
+}
 function rfSelected(){ return [...document.querySelectorAll('.rfChk:checked')].filter(cb=>!cb.disabled).map(cb=>cb.dataset.asin); }
 // Productos que YA están en el catálogo (por ASIN) — no se pueden verificar ni descargar.
 let rfCatSet=new Set();
@@ -4431,8 +4452,12 @@ function renderRf(){
     <label style="border:1px solid var(--line);border-radius:10px;padding:8px;cursor:${inCat?'not-allowed':'pointer'};display:block;background:#fff;position:relative;${inCat?'opacity:.6':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
         <input type="checkbox" class="rfChk" data-asin="${esc(p.asin)}" ${inCat?'disabled':''}>
-        <span style="font-size:11px;color:var(--mut)">${p.price_raw?esc(p.price_raw):(p.price_value?('$'+esc(p.price_value)):'—')}</span>
+        <span style="font-size:11px;color:var(--mut);text-align:right">${p.price_raw?esc(p.price_raw):(p.price_value?('$'+esc(p.price_value)):'—')}${(p.list_price_raw&&p.list_price_value&&p.price_value&&p.list_price_value>p.price_value)?`<br><s style="opacity:.65">${esc(p.list_price_raw)}</s>`:''}</span>
       </div>
+      ${(p.percent_off||p.deal_badge)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 0">
+        ${p.percent_off?`<span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:#d11;color:#fff">-${esc(p.percent_off)}%</span>`:''}
+        ${p.deal_badge?`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#fff3e0;color:#9a3c00">${esc(p.deal_badge)}${p.is_lightning?' ⚡':''}</span>`:''}
+      </div>`:''}
       <div style="margin:4px 0 2px;display:flex;gap:4px;flex-wrap:wrap">
         <span class="rfb-sold" data-asin="${esc(p.asin)}" style="display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c;margin-bottom:2px">Sold ?</span>
         <span class="rfb-del" data-asin="${esc(p.asin)}" style="display:block;width:max-content;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef0f6;color:#8a8f9c;margin-bottom:2px">Delivered ?</span>
@@ -4517,11 +4542,34 @@ function rfPriceRange(){
 // Router de la búsqueda combinada: si hay subcategoría/palabra → búsqueda por palabra (con precio);
 // si solo hay Categoría (Amazon MX) → más vendidos de esa categoría (también filtra por precio).
 async function rfDoSearch(){
-  if($('rfBest').checked) return rfLoad();   // modo más-vendidos: usa la categoría de Amazon
+  const modo=rfMode();
+  if(modo==='best')  return rfLoad();        // lista de ranking de la categoría
+  if(modo==='deals') return rfDeals();       // ofertas vigentes (con descuento)
   const term=[$('rfSSub').value||'', $('rfq').value.trim()].filter(Boolean).join(' ').trim();
   const cat=rfCategoryId();
   if(term||cat) return rfSearch();           // la categoría de Amazon SOLA ya es una búsqueda
   $('rfMsg').textContent='Elige una Categoría de Amazon, o una Subcategoría (o escribe marca/palabra).';
+}
+// PROMOCIONES: ofertas vigentes de Amazon (de una categoría o de todas), con el
+// rango de precio aplicado. Cada tarjeta muestra el descuento.
+async function rfDeals(){
+  const cat=rfCategoryId();
+  const catName=cat?(rfCategoryName()||'la categoría'):'';
+  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  const range=($('rfPrice').value||'').split('-');
+  const min_price=range[0]!==''&&range[0]!=null?range[0]:'';
+  const max_price=range[1]!==''&&range[1]!=null?range[1]:'';
+  $('rfDoSearch').disabled=true;
+  $('rfMsg').textContent='Buscando promociones'+(cat?(' de '+catName):' de Amazon')+'…';
+  rfBarIndet();
+  const r=await api('POST','/api/products/rainforest_deals',{category_id:cat, amazon_domain:rfDom(), min_price, max_price, limit:lim});
+  $('rfDoSearch').disabled=false; rfBarDone();
+  if(!(r.ok && r.data && r.data.ok)){ $('rfMsg').textContent='Error: '+((r.data&&r.data.error)||('HTTP '+r.status)); $('rfResults').style.display='none'; return; }
+  RF=r.data.items||[];
+  $('rfMsg').textContent = RF.length
+    ? (RF.length+' promociones'+(cat?(' en '+catName):'')+'. Elige cuáles descargar.')
+    : 'Sin promociones en ese rango de precio. Prueba otro rango u otra categoría.';
+  renderRf();
 }
 async function rfLoad(){
   const cat=rfCategoryId(); if(!cat){ $('rfMsg').textContent='Elige una Categoría (Amazon MX).'; return; }
@@ -4548,7 +4596,7 @@ async function rfDownload(){
   const total=asins.length, sold=false, deliv=false;   // sin filtro extra: bajas lo que seleccionaste
   const prog=$('rfProg'), fill=$('rfProgFill');
   prog.style.display=''; fill.style.width='0%';
-  const subTag=$('rfBest').checked ? '' : ($('rfSSub').value||'');   // etiqueta la subcategoría para el filtro del catálogo
+  const subTag=(rfMode()==='search') ? ($('rfSSub').value||'') : '';   // etiqueta la subcategoría para el filtro del catálogo
   let imported=0, skipped=0, errors=0, done=0; const importedAsins=[];
   for(const asin of asins){
     $('rfMsg').textContent='Descargando '+(done+1)+' de '+total+'…';
@@ -4623,7 +4671,7 @@ const RF_BEST_FALLBACK=[
   {id:'10189676011',name:'Tablets'}
 ];
 function rfFillBestCats(){
-  const best=$('rfBest')&&$('rfBest').checked;
+  const best=(rfMode()==='best');   // solo ahí es obligatoria (y valen los alias)
   const list=(rfBestCats&&rfBestCats.length)?rfBestCats:RF_BEST_FALLBACK;
   // Se muestran TODAS las categorías en los dos modos. Las numéricas son nodos
   // reales de Amazon (se puede buscar dentro de ellas); las demás son alias del
@@ -4633,7 +4681,41 @@ function rfFillBestCats(){
   $('rfCat').innerHTML=(best?'':'<option value="">Todas las categorías</option>')
     +list.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   if(prev && [...$('rfCat').options].some(o=>o.value===prev)) $('rfCat').value=prev;
+  rfFillCatSub($('rfCat').value ? RF_CHILDREN[rfChildKey($('rfCat').value)] : null);
   if(best) $('rfMsg').textContent=(rfBestCats&&rfBestCats.length)?'Elige una categoría y toca Buscar para ver los más vendidos.':'Lista básica de categorías. Elige y busca.';
+}
+// SUBCATEGORÍAS del departamento elegido (Promociones, líneas por tipo de
+// producto…). Se piden a Rainforest con parent_id la primera vez que se elige
+// ese departamento y quedan en memoria: elegirlo otra vez no vuelve a cobrar.
+const RF_CHILDREN={};
+function rfChildKey(pid){ return rfDom()+'|'+pid; }
+function rfFillCatSub(list){
+  const wrap=$('rfCatSubWrap'), sel=$('rfCatSub');
+  if(!wrap||!sel) return;
+  if(!list||!list.length){ wrap.style.display='none'; sel.innerHTML=''; return; }
+  const padre=((($('rfCat').selectedOptions||[])[0]||{}).textContent||'la categoría').trim();
+  const prev=sel.value;
+  sel.innerHTML='<option value="">Todo: '+esc(padre)+'</option>'
+    +list.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  wrap.style.display='';
+}
+async function rfLoadCatChildren(){
+  const pid=($('rfCat').value||'').trim();
+  if(!pid){ rfFillCatSub(null); return; }
+  const key=rfChildKey(pid);
+  if(RF_CHILDREN[key]){ rfFillCatSub(RF_CHILDREN[key]); return; }
+  $('rfMsg').textContent='Cargando subcategorías de Amazon…';
+  let kids=[];
+  try{
+    const r=await api('GET','/api/products/rainforest_categories?amazon_domain='+rfDom()+'&parent_id='+encodeURIComponent(pid));
+    if(r.ok && r.data && r.data.ok && r.data.categories) kids=r.data.categories.filter(c=>String(c.id)!==String(pid));
+  }catch(e){}
+  RF_CHILDREN[key]=kids;
+  rfFillCatSub(kids);
+  $('rfMsg').textContent = kids.length
+    ? (kids.length+' subcategorías de '+((($('rfCat').selectedOptions||[])[0]||{}).textContent||'').trim()+'. Elige una o deja «Todo».')
+    : 'Amazon no da subcategorías para ese departamento: se busca el departamento completo.';
 }
 // Trae UNA sola vez las categorías reales de Amazon (endpoint /categories de
 // Rainforest). Se pide al usar el dropdown o al marcar la casilla — no al abrir
@@ -4646,13 +4728,18 @@ async function rfEnsureBestCats(){
   }catch(e){}
   if(!rfBestCats) rfBestCats=[];   // ya se intentó: no reintentar en cada clic
 }
-async function rfApplyBestMode(on){
-  // La Categoría de Amazon está SIEMPRE disponible: con la casilla trae la lista
-  // de más vendidos; sin ella, filtra una búsqueda normal (con palabra y orden).
-  if($('rfSortWrap')) $('rfSortWrap').style.display = on ? 'none' : '';
-  ['rfSCat','rfSSub','rfq'].forEach(id=>{ const el=$(id); if(el){ el.disabled=on; el.style.opacity=on?0.5:1; } });
+async function rfApplyBestMode(modo){
+  // La Categoría de Amazon está SIEMPRE disponible. Solo cambia qué pide:
+  //   search -> catálogo de Amazon (palabra y orden habilitados)
+  //   best   -> lista de ranking de la categoría (categoría obligatoria)
+  //   deals  -> ofertas vigentes (sin palabra; la categoría es opcional)
+  if(typeof modo==='boolean') modo = modo ? 'best' : 'search';
+  const conPalabra = (modo==='search');
+  if($('rfSortWrap')) $('rfSortWrap').style.display = conPalabra ? '' : 'none';
+  ['rfSCat','rfSSub','rfq'].forEach(id=>{ const el=$(id); if(el){ el.disabled=!conPalabra; el.style.opacity=conPalabra?1:0.5; } });
+  $('rfDoSearch').textContent = (modo==='deals') ? 'Ver promociones' : 'Buscar';
   rfFillBestCats();
-  if(!on){ $('rfMsg').textContent=''; return; }
+  if(conPalabra){ $('rfMsg').textContent=''; return; }
   if(!rfBestCats) $('rfMsg').textContent='Cargando categorías de Amazon…';
   await rfEnsureBestCats();
   rfFillBestCats();
@@ -4663,7 +4750,7 @@ async function rfSearch(){
   const extra=$('rfq').value.trim();
   const q=[sub,extra].filter(Boolean).join(' ').trim();
   const cat=rfCategoryId();
-  const catName=cat?((($('rfCat').selectedOptions||[])[0]||{}).textContent||'la categoría'):'';
+  const catName=cat?(rfCategoryName()||'la categoría'):'';
   const sort=($('rfSort')&&$('rfSort').value)||'';
   if(!q && !cat){ $('rfMsg').textContent='Elige una Categoría de Amazon o una subcategoría.'; return; }
   const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
@@ -4681,7 +4768,7 @@ async function rfSearch(){
   $('rfMsg').textContent = (RF.length ? (RF.length+' productos encontrados'+(cat?(' en '+catName):'')+'. Elige cuáles descargar.') : 'Sin resultados en ese rango de precio. Prueba otro rango, otra categoría u otra palabra.')+nota;
   renderRf();
 }
-$('rfBest').onchange=()=>rfApplyBestMode($('rfBest').checked);
+$('rfMode').onchange=()=>rfApplyBestMode(rfMode());
 if($('rfVerifyBtn')) $('rfVerifyBtn').onclick=async()=>{ $('rfVerifyBtn').disabled=true; try{ await rfVerify(); } finally { $('rfVerifyBtn').disabled=false; rfUpdate(); } };
 $('rfAll').onchange=()=>{ if($('rfSelSold'))$('rfSelSold').checked=false; if($('rfSelDel'))$('rfSelDel').checked=false; if($('rfSelFoto'))$('rfSelFoto').checked=false; document.querySelectorAll('.rfChk').forEach(cb=>{ if(!cb.disabled) cb.checked=$('rfAll').checked; }); rfUpdate(); };
 // SELECCIÓN POR VEREDICTO: Sold ✓ y/o Delivered ✓ (intersección si ambas).
@@ -4712,8 +4799,9 @@ $('rfSCat').onchange=rfFillSubs;
 // las categorías reales la primera vez que se toca (una sola llamada).
 rfFillBestCats();
 $('rfCat').addEventListener('focus', async()=>{ if(rfBestCats) return; await rfEnsureBestCats(); rfFillBestCats(); }, { once:true });
+$('rfCat').addEventListener('change', rfLoadCatChildren);
 // Cambiar de tienda (México / EE. UU.) invalida las categorías cargadas.
-if($('rfMarket')) $('rfMarket').addEventListener('change', ()=>{ rfBestCats=null; rfApplyBestMode($('rfBest').checked); });
+if($('rfMarket')) $('rfMarket').addEventListener('change', ()=>{ rfBestCats=null; Object.keys(RF_CHILDREN).forEach(k=>delete RF_CHILDREN[k]); rfFillCatSub(null); rfApplyBestMode(rfMode()); });
 $('rfq').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rfDoSearch(); } });
 rfFillCats();
 // Si había una búsqueda/verificación antes del refresh, la restaura (sin gastar créditos).

@@ -78,6 +78,7 @@ Rails.application.routes.draw do
       post 'import_search', on: :collection
       post 'rainforest_category', on: :collection
       post 'rainforest_search', on: :collection
+      post 'rainforest_deals', on: :collection   # promociones vigentes de Amazon
       post 'check_sellers', on: :collection
       post 'verify_availability', on: :collection
       post 'import_selected', on: :collection

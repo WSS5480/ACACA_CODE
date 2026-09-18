@@ -98,6 +98,19 @@ class Api::ProductsController < ApplicationController
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end
 
+  # POST /api/products/rainforest_deals { category_id?, min_price?, max_price?, limit? }
+  # PROMOCIONES vigentes de Amazon (con precio de lista y % de descuento).
+  def rainforest_deals
+    result = RainforestImportService.new.deals_preview(
+      category_id: params[:category_id].presence,
+      amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
+      min_price: params[:min_price],
+      max_price: params[:max_price],
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+    )
+    render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
+  end
+
   # POST /api/products/check_sellers  { asins: [...] }
   # Verifica vendedor/envío por Amazon (1 crédito c/u) para pintar insignias en la vista previa.
   def check_sellers

@@ -775,11 +775,20 @@
             <input id="bulkOrder" type="number" min="0" step="1" placeholder="Orden" title="Orden dentro de la vista para TODO el grupo filtrado (menor = primero)" style="width:60px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
             <button class="btn" id="bulkApply" style="background:var(--brand);color:#fff;padding:6px 12px;font-size:13px">Aplicar al grupo</button>
           </span>
+          <span style="display:inline-flex;align-items:center;gap:6px">
+            <button class="btn cgBtn" id="cgPrecio" data-grupo="precio" style="background:#eef0f6;color:var(--navy);padding:6px 11px;font-size:13px" title="Mostrar u ocultar las columnas que se editan a mano: Precio USD, Con desc., Turns y Factor. Los totales calculados siempre se ven.">▸ Precios</button>
+            <button class="btn cgBtn" id="cgOrden" data-grupo="orden" style="background:#eef0f6;color:var(--navy);padding:6px 11px;font-size:13px" title="Mostrar u ocultar Vista y Orden.">▸ Vista y orden</button>
+          </span>
           <button class="btn" id="catVerify" style="background:#eef0f6;color:var(--navy)" title="ACTUALIZACIÓN SEMANAL (manual): trae el precio actual de Amazon de cada producto, recalcula pesos→dólares y el Desde $X/sem, y marca o quita la PROMOCIÓN según lo que Amazon esté enseñando hoy. 1 crédito de Rainforest por producto. Ya corre solo: promociones a diario y todo el catálogo los domingos a las 3 am.">$ Actualizar precios (semanal)</button>
           <span class="muted" id="catVerMsg"></span>
           <span class="muted" id="catMsg"></span>
         </div>
-        <div style="overflow-x:auto">
+        <style>
+          /* Columnas plegables del catálogo: por omisión cerradas, se abren con
+             los botones de arriba y la preferencia se recuerda en este navegador. */
+          #catWrap.cerrar-precio .cg-precio, #catWrap.cerrar-orden .cg-orden { display:none; }
+        </style>
+        <div id="catWrap" class="cerrar-precio cerrar-orden" style="overflow-x:auto">
           <table><thead>
             <tr>
               <th style="width:26px"><input type="checkbox" id="catAll" title="Seleccionar todo"></th>
@@ -788,17 +797,17 @@
               <th data-sort="asin" style="cursor:pointer">ASIN</th>
               <th data-sort="model_number" style="cursor:pointer">Modelo</th>
               <th data-sort="category" style="cursor:pointer">Categoría</th>
-              <th data-sort="price" class="right" style="cursor:pointer">Precio USD</th>
-              <th data-sort="price_with_discount" class="right" style="cursor:pointer">Con desc.</th>
-              <th data-sort="turns" class="right" style="cursor:pointer">Turns</th>
-              <th data-sort="decimal_factor" class="right" style="cursor:pointer">Factor</th>
+              <th data-sort="price" class="right cg-precio" style="cursor:pointer">Precio USD</th>
+              <th data-sort="price_with_discount" class="right cg-precio" style="cursor:pointer">Con desc.</th>
+              <th data-sort="turns" class="right cg-precio" style="cursor:pointer">Turns</th>
+              <th data-sort="decimal_factor" class="right cg-precio" style="cursor:pointer">Factor</th>
               <th class="right" title="Precio × Turns">Total</th>
               <th class="right" title="Precio de contado — Precio × Turns × Factor">Al Contado · Cash Price</th>
               <th class="right" title="Financiado = Al Contado menos enganche mínimo (10%)">Financiado</th>
               <th data-sort="min_weekly_payment" class="right" style="cursor:pointer">Pago x sem</th>
               <th class="right" title="Net Turns = Al Contado (cash) / Costo (Precio USD) = turns x factor">Net Turns</th>
-              <th data-sort="effective_view" class="right" style="cursor:pointer" title="Vista del catálogo (1 a 6). Las promociones se muestran como vista 0 y van primero; al terminar la oferta el artículo regresa a su vista.">Vista</th>
-              <th data-sort="catalog_order" class="right" style="cursor:pointer" title="Orden dentro de la vista: menor = primero.">Orden</th>
+              <th data-sort="effective_view" class="right cg-orden" style="cursor:pointer" title="Vista del catálogo (1 a 6). Las promociones se muestran como vista 0 y van primero; al terminar la oferta el artículo regresa a su vista.">Vista</th>
+              <th data-sort="catalog_order" class="right cg-orden" style="cursor:pointer" title="Orden dentro de la vista: menor = primero.">Orden</th>
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
@@ -4271,19 +4280,19 @@ function renderCat(){
       <td class="mono">${esc(asin)}</td>
       <td class="mono" style="max-width:130px;font-size:12.5px;white-space:normal;word-break:break-word">${esc(pick(p,['model_number','model'],'—')||'—')}</td>
       <td style="max-width:120px;font-size:12.5px">${esc(catNames(p)||'—')}</td>
-      <td class="right">${catInp(price,'price',id,'type="number" step="0.01"')}</td>
-      <td class="right">${catInp(disc,'price_with_discount',id,'type="number" step="0.01"')}</td>
-      <td class="right">${catInp(turns,'turns',id,'type="number" step="0.1"')}</td>
-      <td class="right">${catInp(fac,'decimal_factor',id,'type="number" step="0.01"')}</td>
+      <td class="right cg-precio">${catInp(price,'price',id,'type="number" step="0.01"')}</td>
+      <td class="right cg-precio">${catInp(disc,'price_with_discount',id,'type="number" step="0.01"')}</td>
+      <td class="right cg-precio">${catInp(turns,'turns',id,'type="number" step="0.1"')}</td>
+      <td class="right cg-precio">${catInp(fac,'decimal_factor',id,'type="number" step="0.01"')}</td>
       <td class="right mono cell-total">—</td>
       <td class="right mono cell-cash">—</td>
       <td class="right mono cell-fin">—</td>
       <td class="right mono cell-pago">—</td>
       <td class="right mono cell-net">—</td>
-      <td class="right">${enPromo
+      <td class="right cg-orden">${enPromo
         ? '<span title="En promoción: se muestra primero. Al terminar la oferta regresa a la vista '+esc(String(vista))+'." style="display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:#fde8e8;color:#b91c1c">0 ⚡</span>'
         : catInp(vista,'catalog_view',id,'type="number" min="1" max="6" step="1"')}</td>
-      <td class="right">${catInp(orden,'catalog_order',id,'type="number" min="0" step="1"')}</td>
+      <td class="right cg-orden">${catInp(orden,'catalog_order',id,'type="number" min="0" step="1"')}</td>
       <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
         <option value="active" ${st==='active'?'selected':''}>En tienda</option>
         <option value="inactive" ${st!=='active'?'selected':''}>Borrador</option></select></td>
@@ -4297,6 +4306,32 @@ function renderCat(){
   list.forEach(p=>recalcRow(String(pick(p,['id'],''))));
   $('catAll').checked=false; updateCatActions();
 }
+// ---- COLUMNAS PLEGABLES del catálogo -------------------------------------
+// Por omisión van CERRADAS (la tabla se lee de un vistazo); se abren con los
+// botones de la barra y lo elegido se recuerda en este navegador. Aunque estén
+// escondidas, las casillas siguen ahí: los totales se recalculan igual y lo que
+// ya se haya editado se guarda.
+const CG_KEY='acasa_cat_cols';
+function cgLee(){ try{ return JSON.parse(localStorage.getItem(CG_KEY))||{}; }catch(e){ return {}; } }
+function cgGuarda(st){ try{ localStorage.setItem(CG_KEY, JSON.stringify(st)); }catch(e){} }
+function cgPinta(){
+  const w=$('catWrap'); if(!w) return;
+  const st=cgLee();
+  [['precio','cgPrecio','Precios'],['orden','cgOrden','Vista y orden']].forEach(([g,btnId,label])=>{
+    const abierto=!!st[g];
+    w.classList.toggle('cerrar-'+g, !abierto);
+    const b=$(btnId);
+    if(b){
+      b.textContent=(abierto?'▾ ':'▸ ')+label;
+      b.style.background=abierto?'var(--navy)':'#eef0f6';
+      b.style.color=abierto?'#fff':'var(--navy)';
+    }
+  });
+}
+function cgToggle(g){ const st=cgLee(); st[g]=!st[g]; cgGuarda(st); cgPinta(); }
+document.querySelectorAll('.cgBtn').forEach(b=>b.onclick=()=>cgToggle(b.dataset.grupo));
+cgPinta();
+
 function recalcRow(id){
   const row=$('catBody').querySelector('tr[data-rid="'+id+'"]'); if(!row) return;
   const g=k=>parseFloat((row.querySelector('input[data-key="'+k+'"]')||{}).value)||0;

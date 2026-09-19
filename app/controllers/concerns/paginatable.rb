@@ -43,18 +43,22 @@ module Paginatable
     collection.page(params[:page]).per(params[:per_page])
   end
 
-  def render_paginated(collection, serializer, alphabetic_column = nil)
+  # serializer_params: datos calculados UNA vez en el controlador (por ejemplo
+  # las ventas de todo el catálogo) que el serializer usa para cada registro,
+  # en vez de consultarlos producto por producto.
+  def render_paginated(collection, serializer, alphabetic_column = nil, serializer_params: nil)
     ordered = apply_order(collection, alphabetic_column)
+    extra = serializer_params.present? ? { params: serializer_params } : {}
 
     if skip_pagination?
       render json: {
-        data: serializer.new(ordered).serializable_hash[:data],
+        data: serializer.new(ordered, **extra).serializable_hash[:data],
         meta: { total_count: ordered.count }
       }, status: :ok
     else
       paginated = paginate(ordered)
       render json: {
-        data: serializer.new(paginated).serializable_hash[:data],
+        data: serializer.new(paginated, **extra).serializable_hash[:data],
         meta: pagination_meta(paginated)
       }, status: :ok
     end

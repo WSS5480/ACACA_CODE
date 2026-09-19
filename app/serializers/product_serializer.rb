@@ -46,6 +46,27 @@ class ProductSerializer
     p.respond_to?(:effective_view) ? p.effective_view : nil
   end
 
+  # VENTAS (solo cuando el admin pide with_sales=true). Salen del mapa que el
+  # controlador calculó de una sola vez, no de una consulta por producto.
+  CON_VENTAS = proc { |_p, params| params.is_a?(Hash) && params.key?(:ventas) }
+  VENTAS_DE = proc { |p, params| (params[:ventas] || {})[p.id] || {} }
+
+  attribute :sales_total, if: CON_VENTAS do |p, params|
+    VENTAS_DE.call(p, params)[:total].to_i
+  end
+  attribute :sales_30, if: CON_VENTAS do |p, params|
+    VENTAS_DE.call(p, params)[:d30].to_i
+  end
+  attribute :sales_60, if: CON_VENTAS do |p, params|
+    VENTAS_DE.call(p, params)[:d60].to_i
+  end
+  attribute :sales_90, if: CON_VENTAS do |p, params|
+    VENTAS_DE.call(p, params)[:d90].to_i
+  end
+  attribute :last_sale_at, if: CON_VENTAS do |p, params|
+    VENTAS_DE.call(p, params)[:last_at]
+  end
+
   attribute :min_weekly_payment do |product|
     product.recalculated_min_weekly_payment
   end

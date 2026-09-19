@@ -761,6 +761,13 @@
           <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="catSearch" placeholder="Buscar producto o ASIN…"></div>
           <select class="sel" id="cfCat" title="Categoría"><option value="">Categoría</option></select>
           <select class="sel" id="cfSub" title="Subcategoría"><option value="">Subcategoría</option></select>
+          <select class="sel" id="cfSales" title="Encuentra lo que NO se está vendiendo para sacarlo del catálogo. Cuenta todo pedido que no esté cancelado (pendiente, aprobado o pagado).">
+            <option value="">Ventas: todas</option>
+            <option value="0">Sin ventas nunca</option>
+            <option value="30">Sin ventas en 30 días</option>
+            <option value="60">Sin ventas en 60 días</option>
+            <option value="90">Sin ventas en 90 días</option>
+          </select>
           <select class="sel" id="cfView" title="Vista del catálogo. Las promociones van SIEMPRE en la vista 0 y se muestran primero; el resto se acomoda en las vistas 1 a 6.">
             <option value="">Todas las vistas</option>
             <option value="0">⚡ Vista 0 · Promociones</option>
@@ -808,10 +815,11 @@
               <th class="right" title="Net Turns = Al Contado (cash) / Costo (Precio USD) = turns x factor">Net Turns</th>
               <th data-sort="effective_view" class="right cg-orden" style="cursor:pointer" title="Vista del catálogo (1 a 6). Las promociones se muestran como vista 0 y van primero; al terminar la oferta el artículo regresa a su vista.">Vista</th>
               <th data-sort="catalog_order" class="right cg-orden" style="cursor:pointer" title="Orden dentro de la vista: menor = primero.">Orden</th>
+              <th data-sort="sales_total" class="right" style="cursor:pointer" title="Pedidos que NO están cancelados (pendientes, aprobados y pagados). Pasa el mouse encima de cada número para ver 30/60/90 días y la última venta.">Ventas</th>
               <th data-sort="status" style="cursor:pointer">Estatus</th>
               <th style="width:34px"></th>
             </tr>
-          </thead><tbody id="catBody"><tr><td colspan="19" class="empty">Cargando…</td></tr></tbody></table>
+          </thead><tbody id="catBody"><tr><td colspan="20" class="empty">Cargando…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -4172,7 +4180,7 @@ async function verifyCatalogAmazon(){
     +(sin?(' · '+sin+' sin datos (revisar a mano)'):'')+'.';
 }
 async function loadCatalog(){
-  const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1'), api('GET','/api/categories?page=-1') ]);
+  const [pr,cr]=await Promise.all([ api('GET','/api/products?page=-1&with_sales=true'), api('GET','/api/categories?page=-1') ]);
   CAT=rows(pr.data); CATS=rows(cr.data);
   SEL.clear();
   cfFillCats();   // cascada Categoría (departamento) → Subcategoría, solo lo que existe en el catálogo
@@ -4180,6 +4188,7 @@ async function loadCatalog(){
   $('cfCat').onchange=()=>{ cfFillSubs(); renderCat(); };
   $('cfSub').onchange=renderCat;
   if($('cfView')) $('cfView').onchange=renderCat;
+  if($('cfSales')) $('cfSales').onchange=renderCat;
   renderCat();
 }
 // ---- Filtro del catálogo: sale de las categorías REALES de Amazon de cada producto ----
@@ -4204,12 +4213,21 @@ function catInp(v,key,id,extra){ return `<input data-id="${id}" data-key="${key}
 function prodCats(p){ return (pick(p,['categories'],[])||[]).map(c=>String(c.id)); }
 let SORT={key:null,dir:1};
 function catNames(p){ return (pick(p,['categories'],[])||[]).map(c=>c.name).join(', '); }
+// VENTAS del producto (llegan del API con with_sales=true).
+function prodSales(p){
+  return { total:parseInt(pick(p,['sales_total'],0),10)||0,
+           d30:parseInt(pick(p,['sales_30'],0),10)||0,
+           d60:parseInt(pick(p,['sales_60'],0),10)||0,
+           d90:parseInt(pick(p,['sales_90'],0),10)||0,
+           last:pick(p,['last_sale_at'],null) };
+}
 function prodView(p){ return pick(p,['promo'],false) ? 0 : (parseInt(pick(p,['catalog_view'],1),10)||1); }
 function prodOrder(p){ const v=parseInt(pick(p,['catalog_order'],100),10); return isNaN(v)?100:v; }
 function sortVal(p,k){
   if(k==='category') return catNames(p);
   if(k==='effective_view') return prodView(p);
   if(k==='catalog_order') return prodOrder(p);
+  if(k==='sales_total') return prodSales(p).total;
   return pick(p,[k],'');
 }
 function sortList(list){
@@ -4232,6 +4250,10 @@ function currentList(){
   else if(cat) list=list.filter(p=>prodTop(p)===cat);
   const vista=$('cfView')?$('cfView').value:'';       // '' = todas · 0 = solo promociones
   if(vista!=='') list=list.filter(p=>prodView(p)===parseInt(vista,10));
+  // SIN VENTAS: '0' = nunca se ha vendido · 30/60/90 = nada en ese periodo
+  const sv=$('cfSales')?$('cfSales').value:'';
+  if(sv==='0') list=list.filter(p=>prodSales(p).total===0);
+  else if(sv) list=list.filter(p=>prodSales(p)['d'+sv]===0);
   if(term) list=list.filter(p=>JSON.stringify(p).toLowerCase().includes(term));
   const f=colFilters();
   if(f.title) list=list.filter(p=>String(pick(p,['title','name'],'')).toLowerCase().includes(f.title));
@@ -4254,7 +4276,7 @@ function catBadges(asin){
 }
 function renderCat(){
   const list=currentList();
-  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="19" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
+  if(!list.length){ $('catBody').innerHTML=`<tr><td colspan="20" class="empty">${CAT.length?'Ningún producto coincide con el filtro.':'No hay productos todavía — impórtalos arriba.'}</td></tr>`; updateCatActions(); return; }
   $('catBody').innerHTML=list.map(p=>{
     const id=String(pick(p,['id'],'')), asin=pick(p,['asin'],'—'), title=pick(p,['title','name'],'—');
     const img=(pick(p,['image_urls'],[])||[])[0]||'';
@@ -4273,6 +4295,12 @@ function renderCat(){
       ${pBadge?`<span class="muted" style="font-size:10px;margin-left:4px">${esc(pBadge)}</span>`:''}
     </div>`:'';
     const vista=pick(p,['catalog_view'],1), orden=pick(p,['catalog_order'],100);
+    const vt=prodSales(p);
+    const ventaTip='Últimos 30 días: '+vt.d30+' · 60 días: '+vt.d60+' · 90 días: '+vt.d90
+      +(vt.last?(' · Última venta: '+fdate(vt.last)):' · Nunca se ha vendido');
+    const ventaCel=vt.total>0
+      ? '<b>'+vt.total+'</b>'+(vt.d90===0?'<div class="muted" style="font-size:10px">nada en 90 d</div>':'')
+      : '<span class="muted">0</span>';
     return `<tr data-rid="${id}"${gone?' style="background:#fde8e8"':((fotoBad||badSeller)?' style="background:#fff4e0"':(enPromo?' style="background:#fff7f7"':''))}>
       <td><input type="checkbox" class="csel" data-id="${id}" ${SEL.has(id)?'checked':''}></td>
       <td>${img?`<img class="cthumb" src="${esc(img)}" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in">`:'<span style="color:var(--mut);font-size:11px">—</span>'}</td>
@@ -4293,6 +4321,7 @@ function renderCat(){
         ? '<span title="En promoción: se muestra primero. Al terminar la oferta regresa a la vista '+esc(String(vista))+'." style="display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:#fde8e8;color:#b91c1c">0 ⚡</span>'
         : catInp(vista,'catalog_view',id,'type="number" min="1" max="6" step="1"')}</td>
       <td class="right cg-orden">${catInp(orden,'catalog_order',id,'type="number" min="0" step="1"')}</td>
+      <td class="right mono" title="${esc(ventaTip)}">${ventaCel}</td>
       <td><select data-id="${id}" data-key="status" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
         <option value="active" ${st==='active'?'selected':''}>En tienda</option>
         <option value="inactive" ${st!=='active'?'selected':''}>Borrador</option></select></td>
@@ -4902,7 +4931,7 @@ document.querySelectorAll('[data-v="catalogos"] th[data-sort]').forEach(th=>{ th
   th.textContent=th.dataset.label+(SORT.dir>0?' ↑':' ↓'); renderCat();
 };});
 document.querySelectorAll('[data-v="catalogos"] .colf').forEach(el=>el.addEventListener('input',renderCat));
-function cfActive(){ return !!($('cfCat').value || $('cfSub').value || ($('cfView')&&$('cfView').value!=='')); }
+function cfActive(){ return !!($('cfCat').value || $('cfSub').value || ($('cfView')&&$('cfView').value!=='') || ($('cfSales')&&$('cfSales').value!=='')); }
 function updateCatActions(){
   const filterActive=cfActive(), n=SEL.size;
   if($('bulkApply')) $('bulkApply').textContent = n>0 ? ('Aplicar a '+n+' seleccionado(s)') : 'Aplicar al grupo';

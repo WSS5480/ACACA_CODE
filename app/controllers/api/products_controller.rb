@@ -16,7 +16,10 @@ class Api::ProductsController < ApplicationController
     # fotos (una consulta por producto, por cosa). Con 380 productos eran más de
     # mil consultas extra solo para pintar la tienda.
     base = Product.includes(:categories, images_attachments: :blob)
-    render_paginated(filtered_products(base), ProductSerializer, 'title')
+    # with_sales=true: solo el admin lo pide. La tienda no carga las ventas
+    # (ni las necesita ni debe verlas), así que sigue igual de ligera.
+    ventas = (params[:with_sales].to_s == 'true' && defined?(Order)) ? { ventas: Order.sales_by_product } : nil
+    render_paginated(filtered_products(base), ProductSerializer, 'title', serializer_params: ventas)
   end
 
   def show

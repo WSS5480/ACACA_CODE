@@ -16,6 +16,37 @@ class Order < ApplicationRecord
 
   before_destroy :refund_credit_to_user
 
+  # VENTAS POR PRODUCTO para el catálogo del admin.
+  #
+  # Cuenta TODO pedido que no esté cancelado —pendiente, aprobado o pagado—:
+  # si alguien intentó llevárselo, el producto se mueve. Devuelve el total
+  # histórico, cuántos en los últimos 30/60/90 días y la fecha de la última
+  # venta, en UNA sola consulta agrupada para todo el catálogo (nada de una
+  # consulta por producto, que era justo lo que hacía lenta esta pantalla).
+  VENTA_NO_CUENTA = %w[cancelled].freeze
+
+  def self.sales_by_product
+    return {} unless table_exists?
+
+    filas = where.not(status: VENTA_NO_CUENTA).where.not(product_id: nil)
+                 .group(:product_id)
+                 .pluck(Arel.sql(<<~SQL.squish))
+                   product_id,
+                   COUNT(*),
+                   COUNT(*) FILTER (WHERE orders.created_at >= NOW() - INTERVAL '30 days'),
+                   COUNT(*) FILTER (WHERE orders.created_at >= NOW() - INTERVAL '60 days'),
+                   COUNT(*) FILTER (WHERE orders.created_at >= NOW() - INTERVAL '90 days'),
+                   MAX(orders.created_at)
+                 SQL
+
+    filas.each_with_object({}) do |(pid, total, d30, d60, d90, ultima), h|
+      h[pid.to_i] = { total: total.to_i, d30: d30.to_i, d60: d60.to_i, d90: d90.to_i, last_at: ultima }
+    end
+  rescue StandardError => e
+    Rails.logger.warn "[Order.sales_by_product] #{e.message}"
+    {}
+  end
+
   private
 
   def refund_credit_to_user

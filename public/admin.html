@@ -4268,7 +4268,7 @@ function renderCat(){
     const enPromo=!!pick(p,['promo'],false), pOff=pick(p,['promo_percent_off'],null);
     const pLista=pick(p,['promo_list_price_usd'],null), pBadge=pick(p,['promo_badge'],'');
     const promoTag=enPromo?`<div style="margin-top:3px">
-      <span style="display:inline-block;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;background:#fde8e8;color:#b91c1c">⚡ PROMO${pOff?(' −'+pOff+'%'):''}</span>
+      <span style="display:inline-block;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;background:#fde8e8;color:#b91c1c">⚡ PROMOCIÓN DE ACASA${pOff?(' −'+pOff+'%'):''}</span>
       ${pLista?`<span class="muted" style="font-size:10px;text-decoration:line-through;margin-left:4px">$${Number(pLista).toFixed(2)}</span>`:''}
       ${pBadge?`<span class="muted" style="font-size:10px;margin-left:4px">${esc(pBadge)}</span>`:''}
     </div>`:'';

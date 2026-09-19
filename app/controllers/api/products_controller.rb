@@ -83,7 +83,7 @@ class Api::ProductsController < ApplicationController
     result = RainforestImportService.new.category_preview(
       category_id: params[:category_id].to_s.strip,
       amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
-      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, RainforestImportService::MAX_PREVIEW].min : 50
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end
@@ -100,7 +100,7 @@ class Api::ProductsController < ApplicationController
       # el modo "más vendidos", y orden de los resultados.
       category_id: params[:category_id].presence,
       sort_by: params[:sort_by].presence,
-      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, RainforestImportService::MAX_PREVIEW].min : 50
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end
@@ -113,7 +113,7 @@ class Api::ProductsController < ApplicationController
       amazon_domain: params[:amazon_domain].presence || 'amazon.com.mx',
       min_price: params[:min_price],
       max_price: params[:max_price],
-      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, 100].min : 50
+      limit: params[:limit].present? ? [[params[:limit].to_i, 1].max, RainforestImportService::MAX_PREVIEW].min : 50
     )
     render json: result, status: (result[:ok] ? :ok : :unprocessable_entity)
   end

@@ -18,6 +18,17 @@ end
 class RainforestImportService
   API_URL = 'https://api.rainforestapi.com/request'.freeze
   MAX_IMAGES = 7
+
+  # CUÁNTO SE PUEDE TRAER DE UNA VEZ.
+  # Ya no hay tope de 100: el límite lo pone la realidad, no un número inventado.
+  #   * Rainforest devuelve ~48 resultados por página y COBRA UN CRÉDITO POR PÁGINA.
+  #   * La vista previa es SÍNCRONA (el admin espera la respuesta), así que hay
+  #     que contestar antes de que expire la petición.
+  # Por eso el número que se pide decide cuántas páginas se traen, hasta
+  # MAX_PAGINAS. Para pasar de ahí habría que mover la importación a un job.
+  POR_PAGINA  = 48
+  MAX_PAGINAS = 10
+  MAX_PREVIEW = POR_PAGINA * MAX_PAGINAS   # 480 por búsqueda
   DETAIL_CACHE_TTL = 6 * 3600 # 6 horas: verificar deja el detalle en caché para que descargar NO recobre crédito.
 
   def initialize(api_key: nil)
@@ -51,6 +62,26 @@ class RainforestImportService
     import_asins(asins, amazon_domain, sold_only: sold_only, delivered_only: delivered_only, keywords: search_term)
   rescue StandardError => e
     { ok: false, error: e.message }
+  end
+
+  # Páginas que hay que pedir para juntar `limit` resultados (1 crédito c/u).
+  def paginas_para(limit)
+    # Piso de 2 páginas: el rango de precio se aplica DESPUÉS de traer, así que
+    # con una sola página un filtro estrecho se quedaba sin candidatos. Eran 2
+    # antes de esto y siguen siendo 2 en las búsquedas chicas.
+    n = (limit.to_f / POR_PAGINA).ceil
+    [[n, 2].max, MAX_PAGINAS].min
+  end
+
+  # Pide varias páginas y, si Rainforest rechaza ese número (o tarda demasiado),
+  # reintenta UNA vez con 2 páginas — lo que ya funcionaba antes de subir el tope.
+  # Así pedir de más nunca deja al admin sin resultados.
+  def fetch_paginado(params)
+    res = fetch(params)
+    return res if res[:ok] || params[:max_page].to_i <= 2
+
+    Rails.logger.warn "[rainforest] max_page=#{params[:max_page]} falló (#{res[:error]}); reintento con 2"
+    fetch(params.merge(max_page: 2))
   end
 
   # VISTA PREVIA de una categoría / más vendidos (1 crédito): devuelve la lista de
@@ -111,7 +142,7 @@ class RainforestImportService
     #   alias + con palabra  -> se busca la palabra (se avisa que la categoría no aplica)
     if cat.present? && !cat.match?(/\A\d+\z/)
       if term.blank?
-        res = category_preview(category_id: cat, amazon_domain: amazon_domain, limit: 200)
+        res = category_preview(category_id: cat, amazon_domain: amazon_domain, limit: MAX_PREVIEW)
         return res unless res[:ok]
 
         items = res[:items]
@@ -130,10 +161,10 @@ class RainforestImportService
     end
 
     # Relevancia (sin ordenar por precio) para que los resultados abarquen todo el
-    # espectro de precios; traemos 2 páginas para tener suficientes candidatos tras
-    # filtrar por rango. Ordenar por precio concentraría los resultados en un extremo
-    # y dejaría vacías las bandas intermedias/altas.
-    params = { type: 'search', amazon_domain: amazon_domain, max_page: 2 }
+    # espectro de precios. Las páginas salen de cuántos resultados se pidieron
+    # (~48 por página, un crédito cada una). Ordenar por precio concentraría los
+    # resultados en un extremo y dejaría vacías las bandas intermedias/altas.
+    params = { type: 'search', amazon_domain: amazon_domain, max_page: paginas_para(limit) }
     params[:search_term] = term if term.present?
     if cat.present?
       params[:category_id] = cat
@@ -143,7 +174,7 @@ class RainforestImportService
     end
     params[:sort_by] = sort_by.to_s if SORT_BY.include?(sort_by.to_s)
 
-    search = fetch(params)
+    search = fetch_paginado(params)
     return { ok: false, error: search[:error] } unless search[:ok]
 
     entries = search[:body]['search_results'] || []
@@ -182,10 +213,10 @@ class RainforestImportService
     min_p = min_price.present? ? min_price.to_f : nil
     max_p = max_price.present? ? max_price.to_f : nil
 
-    params = { type: 'deals', amazon_domain: amazon_domain, max_page: 2 }
+    params = { type: 'deals', amazon_domain: amazon_domain, max_page: paginas_para(limit) }
     params[:category_id] = category_id.to_s.strip if category_id.present?
 
-    res = fetch(params)
+    res = fetch_paginado(params)
     return { ok: false, error: res[:error] } unless res[:ok]
 
     entries = res[:body]['deals_results'] || res[:body]['deals'] || []

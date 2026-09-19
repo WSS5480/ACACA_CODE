@@ -702,7 +702,7 @@
           <div id="rfCatDeep" style="display:contents"></div>
           <div>
             <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Máx.</label>
-            <input id="rfLimit" type="number" min="1" max="100" value="30" style="width:70px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
+            <input id="rfLimit" type="number" min="1" max="480" value="30" title="Cuántos resultados traer. Rainforest cobra un crédito por cada ~48, así que 480 son 10 créditos." style="width:82px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
           </div>
           <div>
             <label style="display:block;font-size:12px;color:var(--mut);margin-bottom:4px">Marca / palabra (opcional)</label>
@@ -4674,7 +4674,7 @@ async function rfDoSearch(){
 async function rfDeals(){
   const cat=rfCategoryId();
   const catName=cat?(rfCategoryPath()||rfCategoryName()||'la categoría'):'';
-  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  const lim=Math.max(1,Math.min(480,parseInt($('rfLimit').value)||30));
   const range=($('rfPrice').value||'').split('-');
   const min_price=range[0]!==''&&range[0]!=null?range[0]:'';
   const max_price=range[1]!==''&&range[1]!=null?range[1]:'';
@@ -4692,7 +4692,7 @@ async function rfDeals(){
 }
 async function rfLoad(){
   const cat=rfCategoryId(); if(!cat){ $('rfMsg').textContent='Elige una categoría de Amazon para ver sus más vendidos.'; return; }
-  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  const lim=Math.max(1,Math.min(480,parseInt($('rfLimit').value)||30));
   $('rfDoSearch').disabled=true; $('rfMsg').textContent='Buscando más vendidos en Amazon…'; rfBarIndet();
   const r=await api('POST','/api/products/rainforest_category',{category_id:cat, amazon_domain:rfDom(), limit:lim});
   $('rfDoSearch').disabled=false; rfBarDone();
@@ -4871,7 +4871,7 @@ async function rfSearch(){
   const catName=cat?(rfCategoryPath()||rfCategoryName()||'la categoría'):'';
   const sort=($('rfSort')&&$('rfSort').value)||'';
   if(!q && !cat){ $('rfMsg').textContent='Elige una categoría de Amazon o escribe una marca o palabra.'; return; }
-  const lim=Math.max(1,Math.min(100,parseInt($('rfLimit').value)||30));
+  const lim=Math.max(1,Math.min(480,parseInt($('rfLimit').value)||30));
   const range=($('rfPrice').value||'').split('-');
   const min_price=range[0]!==''&&range[0]!=null?range[0]:'';
   const max_price=range[1]!==''&&range[1]!=null?range[1]:'';
